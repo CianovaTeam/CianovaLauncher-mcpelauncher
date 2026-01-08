@@ -5,4 +5,3 @@ COMPILED WITH USING NINJA
 ==========================
 DO YOU WANT TO COMPILE YOUR OWN BINARIES?
 LINK TO OFFICIAL PROJECT: https://github.com/minecraft-linux/mcpelauncher-manifest
-hola soy shaggy
