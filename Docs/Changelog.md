@@ -1,5 +1,8 @@
 # 📝 Changelog - CianovaLauncher
 
+# [v2.0d] - 2026-01-13
+**BUG FIX** Ahora el launcher se asegura de tener por defecto "Local (Propio)" cuando esta dentro de Flatpak y tiene una verificación al ejecutar que tratara de evitar que se ejecute accidentalmente de nuevo el launcher en lugar del mcpelauncher.
+
 # [v2.0c] - 2026-01-07
 **SUPPORT** Si no encuentra flatpak-spawn usara el cmd local para hacer un subproceso entonces se reemplazara el proceso para ejecutar el juego con exec.
 

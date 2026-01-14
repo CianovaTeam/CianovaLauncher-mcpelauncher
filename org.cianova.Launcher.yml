@@ -7,7 +7,7 @@ base-version: "5.15-23.08"
 command: cianova-launcher.sh
 
 metadata:
-  x-flatpak-version: "2.0c"
+  x-flatpak-version: "2.0d"
 
 build-options:
   strip: false

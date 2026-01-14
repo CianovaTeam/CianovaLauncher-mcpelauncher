@@ -18,6 +18,7 @@ class ConfigManager:
         self.default_config = {
             c.CONFIG_KEY_BINARY_PATHS: {c.CONFIG_KEY_CLIENT: "", c.CONFIG_KEY_EXTRACT: "", c.CONFIG_KEY_ERROR: "", c.CONFIG_KEY_WEBVIEW: ""},
             c.CONFIG_KEY_MODE: c.UI_DEFAULT_MODE,
+            c.CONFIG_KEY_INSTALL_MODE: c.UI_MODE_VALUES_NORMAL[0], # "Local" por defecto
             c.CONFIG_KEY_FLATPAK_ID: c.DEFAULT_FLATPAK_ID,
             "data_path": os.path.join(c.HOME_DIR, c.LOCAL_SHARE_DIR),
             c.CONFIG_KEY_CLOSE_ON_LAUNCH: True,
@@ -26,6 +27,7 @@ class ConfigManager:
             "accepted_terms": False,
             c.CONFIG_KEY_APPEARANCE: "Dark",
             c.CONFIG_KEY_COLOR_THEME: "blue",
+            c.CONFIG_KEY_INITIAL_SETUP_COMPLETE: False,
         }
         self.config = self.load_config()
 

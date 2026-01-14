@@ -169,23 +169,12 @@ def open_data_folder(app):
     if app.active_path:
         subprocess.Popen(["xdg-open", app.active_path])
 
-def detect_installation(app, mode_override=None):
+def detect_installation(app):
     config_mode = app.config.get(c.CONFIG_KEY_MODE, c.UI_DEFAULT_MODE)
 
-    # El `mode_override` es cuando el usuario cambia desde el ComboBox de la UI de Jugar.
-    # El `config_mode` es el modo de binarios guardado en Ajustes.
-
-    # Mapear el modo de binarios de config al modo de instalación de la UI
-    binary_to_install_map = {
-        "Sistema (Instalado)": "Local",
-        "Local (Junto al script)": "Local",
-        "Personalizado": "Local",
-        "Flatpak (Personalizado)": "Flatpak (Personalizado)"
-    }
-
-    # Determinar el modo a mostrar en la UI de Jugar
-    # Si el usuario acaba de cambiarlo, usar ese. Si no, usar el mapeo del modo guardado.
-    display_mode = mode_override if mode_override else binary_to_install_map.get(config_mode, "Local")
+    # Para retrocompatibilidad con configs antiguas, si no existe la clave, usar 'Local'.
+    default_fallback = c.UI_MODE_VALUES_NORMAL[0] # "Local"
+    display_mode = app.config.get(c.CONFIG_KEY_INSTALL_MODE, default_fallback)
 
     flatpak_id = app.config.get(c.CONFIG_KEY_FLATPAK_ID, c.DEFAULT_FLATPAK_ID)
 
@@ -270,6 +259,9 @@ def detect_installation(app, mode_override=None):
 
 
 def change_mode_ui(app, mode_str):
+    # Guardar siempre el modo de instalación seleccionado
+    app.config_manager.set(c.CONFIG_KEY_INSTALL_MODE, mode_str)
+
     if mode_str == "Flatpak (Personalizado)":
         dialog = ctk.CTkToplevel(app)
         dialog.title(c.UI_CONFIG_FLATPAK_CUSTOM_TITLE)
@@ -287,20 +279,16 @@ def change_mode_ui(app, mode_str):
         def save_and_apply():
             new_id = entry_id.get().strip()
             if new_id:
-                # Guardar en la configuración principal
-                app.config[c.CONFIG_KEY_FLATPAK_ID] = new_id
-                app.config_manager.save_config()
+                app.config_manager.set(c.CONFIG_KEY_FLATPAK_ID, new_id)
                 dialog.destroy()
-                # Refrescar la UI con el nuevo ID
-                detect_installation(app, mode_override="Flatpak (Personalizado)")
+                detect_installation(app)
             else:
                 messagebox.showwarning(c.UI_INFO_TITLE, c.UI_FLATPAK_ID_REQUIRED_MSG)
 
         ctk.CTkButton(dialog, text=c.UI_BUTTON_USE_ID, command=save_and_apply).pack(pady=10)
         dialog.grab_set()
     else:
-        # Para otros modos, simplemente refrescamos la UI
-        detect_installation(app, mode_override=mode_str)
+        detect_installation(app)
 
 def is_running_in_flatpak():
     return os.path.exists(c.FLATPAK_INFO_FILE)
@@ -538,6 +526,29 @@ def launch_game(app):
             messagebox.showerror(c.UI_ERROR_TITLE, c.UI_SYSTEM_BINARY_NOT_FOUND)
             return
         cmd = [sys_bin if os.path.exists(sys_bin) else "mcpelauncher-client", "-dg", version_path]
+
+    # Comprobación de seguridad final y robusta.
+    # Resuelve la ruta real del ejecutable (incluso si está en el PATH)
+    # y la compara con la ruta del lanzador.
+    if cmd:
+        try:
+            # shutil.which encuentra el ejecutable en el PATH si no es una ruta absoluta
+            resolved_game_binary_path = shutil.which(cmd[0])
+
+            if resolved_game_binary_path:
+                game_binary_abs_path = os.path.abspath(resolved_game_binary_path)
+                launcher_script_abs_path = os.path.abspath(app.launcher_path)
+
+                if game_binary_abs_path == launcher_script_abs_path:
+                    messagebox.showerror(
+                        "Error de Configuración",
+                        "Se ha detectado un error crítico: El lanzador está intentando ejecutarse a sí mismo en lugar del juego.\n\n"
+                        "Por favor, revisa la configuración de los binarios en la pestaña 'Ajustes' y asegúrate de que es correcta. "
+                        "Si el modo es 'Sistema', verifica que 'mcpelauncher-client' no esté apuntando a este lanzador."
+                    )
+                    return
+        except Exception as e:
+            print(f"Error en la comprobación de seguridad de la ruta: {e}")
 
     try:
         print(f"Ejecutando ({mode}): {' '.join(cmd)}")

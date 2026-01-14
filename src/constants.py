@@ -33,8 +33,8 @@ import os
 
 # --- Información de la Aplicación ---
 APP_NAME = "CianovaLauncherMCPE"
-VERSION_LAUNCHER = "2.0c"
-CHANGELOG = "Solución de bugs: CianovaLauncherMCPE 2.0c"
+VERSION_LAUNCHER = "2.0d"
+CHANGELOG = "Solución de bugs: CianovaLauncherMCPE 2.0d"
 CREDITOS = "Dev: @PlaGaDev & Antigravity\nProyecto: CianovaLauncherMCPE"
 LEGAL_TEXT = """LICENCIA & TÉRMINOS Y CONDICIONES
 
@@ -101,6 +101,7 @@ DESKTOP_SHORTCUT_NAME = "cianova-launcher.desktop"
 
 
 # --- Claves de Configuración ---
+CONFIG_KEY_INSTALL_MODE = "install_mode"
 CONFIG_KEY_MODE = "mode"
 CONFIG_KEY_FLATPAK_ID = "flatpak_app_id"
 CONFIG_KEY_BINARY_PATHS = "binary_paths"
@@ -116,6 +117,7 @@ CONFIG_KEY_DEBUG_LOG = "debug_log"
 CONFIG_KEY_LAST_VERSION = "last_version"
 CONFIG_KEY_FIRST_RUN_FLATPAK = "first_run_flatpak"
 CONFIG_KEY_MIGRATION_NOTIFIED = "migration_notified"
+CONFIG_KEY_INITIAL_SETUP_COMPLETE = "initial_setup_complete"
 
 
 # --- Colores de la Interfaz ---
