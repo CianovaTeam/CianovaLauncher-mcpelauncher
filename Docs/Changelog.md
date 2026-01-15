@@ -1,5 +1,8 @@
 # 📝 Changelog - CianovaLauncher
 
+# [v2.0e] - 2026-01-15
+**SUPPORT** Hay una nueva opción en ajustes para los usuarios de Nvidia con tarjeta dedicada que intentara usar Zink para darle uso (Tal como dice el boton es experimental).
+
 # [v2.0d] - 2026-01-13
 **BUG FIX** Ahora el launcher se asegura de tener por defecto "Local (Propio)" cuando esta dentro de Flatpak y tiene una verificación al ejecutar que tratara de evitar que se ejecute accidentalmente de nuevo el launcher en lugar del mcpelauncher.
 

@@ -1,6 +1,8 @@
 #!/bin/bash
 # Script de lanzamiento para CianovaLauncher en Flatpak
 # Configurar variables de entorno
+
+#General
 export PATH="/app/bin:$PATH"
 export LD_LIBRARY_PATH="/app/lib:$LD_LIBRARY_PATH"
 export MCPELAUNCHER_DATA_DIR="/app/share/mcpelauncher"

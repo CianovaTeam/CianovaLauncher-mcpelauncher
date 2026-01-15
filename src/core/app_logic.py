@@ -558,6 +558,12 @@ def launch_game(app):
         app.config_manager.save_config()
 
         env = os.environ.copy()
+
+        # Aplicar modo de compatibilidad de Nvidia si está activado
+        if app.config.get(c.CONFIG_KEY_NVIDIA_COMPAT_MODE, False):
+            env["__NV_PRIME_RENDER_OFFLOAD"] = "1"
+            env["MESA_LOADER_DRIVER_OVERRIDE"] = "zink"
+
         if "Personalizado" in mode:
             bin_dirs = {os.path.dirname(p) for k, p in app.config[c.CONFIG_KEY_BINARY_PATHS].items() if p and os.path.exists(p)}
             if bin_dirs:

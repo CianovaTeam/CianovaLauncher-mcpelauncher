@@ -3,6 +3,7 @@ from tkinter import messagebox
 
 from src import constants as c
 from src.utils.dialogs import ask_open_filename_native
+from src.utils.system import is_nvidia_gpu_present
 
 
 class SettingsTab(ctk.CTkFrame):
@@ -116,6 +117,39 @@ class SettingsTab(ctk.CTkFrame):
             command=self.app.restore_default_settings,
         ).pack(side="left", padx=10)
 
+        # --- Opciones de Compatibilidad ---
+        if self.app.running_in_flatpak and is_nvidia_gpu_present():
+            frame_compat = ctk.CTkFrame(self.scroll_settings, corner_radius=12)
+            frame_compat.pack(fill="x", padx=10, pady=10)
+
+            ctk.CTkLabel(
+                frame_compat,
+                text="Compatibilidad",
+                font=ctk.CTkFont(size=14, weight="bold"),
+            ).pack(pady=10)
+
+            f_nvidia = ctk.CTkFrame(frame_compat, fg_color="transparent")
+            f_nvidia.pack(fill="x", padx=15, pady=5)
+
+            self.check_nvidia_compat_var = ctk.BooleanVar(value=self.app.config.get(c.CONFIG_KEY_NVIDIA_COMPAT_MODE, False))
+            self.check_nvidia_compat = ctk.CTkCheckBox(
+                f_nvidia,
+                text=c.UI_NVIDIA_COMPAT_MODE_CHECKBOX,
+                variable=self.check_nvidia_compat_var
+            )
+            self.check_nvidia_compat.pack(side="left", anchor="w")
+
+            btn_nvidia_help = ctk.CTkButton(
+                f_nvidia,
+                text="?",
+                width=30,
+                command=lambda: messagebox.showinfo(
+                    "Modo de Compatibilidad Nvidia", c.UI_NVIDIA_COMPAT_MODE_TOOLTIP
+                ),
+            )
+            btn_nvidia_help.pack(side="right", padx=5)
+
+
         # --- Configuración de Apariencia (Movida al final) ---
         frame_appearance = ctk.CTkFrame(self.scroll_settings, corner_radius=12)
         frame_appearance.pack(fill="x", padx=10, pady=10)
@@ -193,6 +227,8 @@ class SettingsTab(ctk.CTkFrame):
         mode = self.combo_settings_mode.get()
         self.app.config[c.CONFIG_KEY_MODE] = mode
         self.app.config[c.CONFIG_KEY_FLATPAK_ID] = self.entry_flatpak_id.get()
+        if hasattr(self, 'check_nvidia_compat'):
+            self.app.config[c.CONFIG_KEY_NVIDIA_COMPAT_MODE] = self.check_nvidia_compat.get()
 
         # Solo guardar paths si es personalizado
         if "Personalizado" in mode:
