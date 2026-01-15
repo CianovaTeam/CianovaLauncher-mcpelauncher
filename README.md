@@ -20,16 +20,18 @@ O añade manualmente con:
 flatpak remote-add --user --if-not-exists CianovaLauncher https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo
 ```
 
-- Instalar el Launcher :
-```bash
-flatpak install --user CianovaLauncher org.cianova.Launcher
-```
-
-Esto hará que se instale el launcher con sus runtimes necesarios, pero puedes instalarlos manualmente con:
+- Asegurate de instalar los runtimes necesarios que puedes instalarlos manualmente con:
 
 ```bash
 flatpak install org.kde.Platform//5.15-23.08 io.qt.qtwebengine.BaseApp//5.15-23.08
 ```
+
+- Ahora instala el Launcher :
+```bash
+flatpak install --user CianovaLauncher org.cianova.Launcher
+```
+
+
 ##### Metodo 2 - Bundle
 
  Descarga e instala `CianovaLauncher.flatpak` en **RELEASE** publicado en el GitHub oficial del launcher y ábrelo con algún **gestor de software** que tengas o usando el comando:
