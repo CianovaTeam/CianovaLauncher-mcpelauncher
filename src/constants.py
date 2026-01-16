@@ -276,11 +276,11 @@ por el entorno de ejecución (runtime).
 Asegúrate de tener instalados los runtimes necesarios.
 
 Para Usuarios:
-- org.kde.Platform//5.15-23.08
-- io.qt.qtwebengine.BaseApp//5.15-23.08
+- org.kde.Platform//5.15-24.08
+- io.qt.qtwebengine.BaseApp//5.15-24.08
 
 Para Desarrolladores:
-- org.kde.Sdk//5.15-23.08
+- org.kde.Sdk//5.15-24.08
 """
 UI_DEPENDENCY_CHECK_ERROR = "No se encontró '{list_file}'"
 UI_PKG_MANAGER_NOT_SUPPORTED = "Gestor de paquetes no soportado."

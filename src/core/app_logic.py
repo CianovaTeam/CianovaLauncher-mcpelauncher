@@ -562,6 +562,7 @@ def launch_game(app):
         # Aplicar modo de compatibilidad de Nvidia si está activado
         if app.config.get(c.CONFIG_KEY_NVIDIA_COMPAT_MODE, False):
             env["__NV_PRIME_RENDER_OFFLOAD"] = "1"
+            env["DRI_PRIME"] = "1"
             env["MESA_LOADER_DRIVER_OVERRIDE"] = "zink"
 
         if "Personalizado" in mode:

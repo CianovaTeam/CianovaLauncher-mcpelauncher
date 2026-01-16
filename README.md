@@ -23,7 +23,7 @@ flatpak remote-add --user --if-not-exists CianovaLauncher https://plagaplusdev.g
 - Asegurate de instalar los runtimes necesarios que puedes instalarlos manualmente con:
 
 ```bash
-flatpak install org.kde.Platform//5.15-23.08 io.qt.qtwebengine.BaseApp//5.15-23.08
+flatpak install org.kde.Platform//5.15-24.08 io.qt.qtwebengine.BaseApp//5.15-24.08
 ```
 
 - Ahora instala el Launcher :
@@ -43,7 +43,7 @@ flatpak install --user CianovaLauncher.flatpak
 
 Eh instala los runtimes necesarios con:
 ```bash
-flatpak install org.kde.Platform//5.15-23.08 io.qt.qtwebengine.BaseApp//5.15-23.08
+flatpak install org.kde.Platform//5.15-24.08 io.qt.qtwebengine.BaseApp//5.15-24.08
 ```
 
 #### Instalación no-Flatpak:
