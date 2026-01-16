@@ -34,7 +34,7 @@ import os
 # --- Información de la Aplicación ---
 APP_NAME = "CianovaLauncherMCPE"
 VERSION_LAUNCHER = "2.0e"
-CHANGELOG = "Suport for Nvidia: CianovaLauncher 2.0e"
+CHANGELOG = "Support for Nvidia: CianovaLauncher 2.0e"
 CREDITOS = "Dev: @PlaGaDev & Antigravity\nProyecto: CianovaLauncherMCPE"
 LEGAL_TEXT = """LICENCIA & TÉRMINOS Y CONDICIONES
 
@@ -118,6 +118,7 @@ CONFIG_KEY_LAST_VERSION = "last_version"
 CONFIG_KEY_FIRST_RUN_FLATPAK = "first_run_flatpak"
 CONFIG_KEY_MIGRATION_NOTIFIED = "migration_notified"
 CONFIG_KEY_INITIAL_SETUP_COMPLETE = "initial_setup_complete"
+CONFIG_KEY_NVIDIA_COMPAT_MODE = "nvidia_compat_mode"
 
 
 # --- Colores de la Interfaz ---
@@ -187,6 +188,10 @@ UI_SECTION_APPEARANCE = "Apariencia"
 UI_LABEL_COLOR_THEME = "Tema de Color:"
 UI_COLOR_THEMES = ["blue", "green", "dark-blue"]
 UI_RESTART_REQUIRED_MSG = "* El cambio de color requiere reiniciar la aplicación."
+
+# NVIDIA Compatibility
+UI_NVIDIA_COMPAT_MODE_CHECKBOX = "Activar modo de compatibilidad para Nvidia (experimental, solo para Flatpak)"
+UI_NVIDIA_COMPAT_MODE_TOOLTIP = "Activa esta opción si experimentas crasheos o problemas gráficos con una tarjeta Nvidia. Forza el uso de la GPU dedicada con una capa de compatibilidad (Zink)."
 
 # Diálogos y Mensajes
 UI_INFO_TITLE = "Info"

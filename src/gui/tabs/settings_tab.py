@@ -3,7 +3,6 @@ from tkinter import messagebox
 
 from src import constants as c
 from src.utils.dialogs import ask_open_filename_native
-from src.utils.system import is_nvidia_gpu_present
 
 
 class SettingsTab(ctk.CTkFrame):
@@ -118,7 +117,7 @@ class SettingsTab(ctk.CTkFrame):
         ).pack(side="left", padx=10)
 
         # --- Opciones de Compatibilidad ---
-        if self.app.running_in_flatpak and is_nvidia_gpu_present():
+        if self.app.running_in_flatpak:
             frame_compat = ctk.CTkFrame(self.scroll_settings, corner_radius=12)
             frame_compat.pack(fill="x", padx=10, pady=10)
 
@@ -227,8 +226,8 @@ class SettingsTab(ctk.CTkFrame):
         mode = self.combo_settings_mode.get()
         self.app.config[c.CONFIG_KEY_MODE] = mode
         self.app.config[c.CONFIG_KEY_FLATPAK_ID] = self.entry_flatpak_id.get()
-        if hasattr(self, 'check_nvidia_compat'):
-            self.app.config[c.CONFIG_KEY_NVIDIA_COMPAT_MODE] = self.check_nvidia_compat.get()
+        if hasattr(self, 'check_nvidia_compat_var'):
+            self.app.config[c.CONFIG_KEY_NVIDIA_COMPAT_MODE] = self.check_nvidia_compat_var.get()
 
         # Solo guardar paths si es personalizado
         if "Personalizado" in mode:

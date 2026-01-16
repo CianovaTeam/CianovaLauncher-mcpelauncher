@@ -19,7 +19,7 @@ from src.gui.tabs.settings_tab import SettingsTab
 from src.gui.tabs.about_tab import AboutTab
 
 class CianovaLauncherApp(ctk.CTk):
-    def __init__(self, launcher_path=".", force_flatpak_ui=False):
+    def __init__(self, launcher_path=".", force_flatpak_ui=False, force_nvidia_ui=False):
         super().__init__()
 
         # Lógica de la aplicación
@@ -31,6 +31,7 @@ class CianovaLauncherApp(ctk.CTk):
         self.launcher_path = launcher_path
         self.home = c.HOME_DIR
         self.force_flatpak_ui = force_flatpak_ui
+        self.force_nvidia_ui = force_nvidia_ui
 
         # Detectar si estamos en Flatpak
         self.running_in_flatpak = self.logic.is_running_in_flatpak() or self.force_flatpak_ui

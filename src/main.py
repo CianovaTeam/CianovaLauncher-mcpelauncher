@@ -12,7 +12,8 @@ if __name__ == "__main__":
 
     launcher_path = os.path.abspath(sys.argv[0])
     force_flatpak_ui = "--force-flatpak-ui" in sys.argv
-    app = CianovaLauncherApp(launcher_path=launcher_path, force_flatpak_ui=force_flatpak_ui)
+    force_nvidia_ui = "--force-nvidia-ui" in sys.argv
+    app = CianovaLauncherApp(launcher_path=launcher_path, force_flatpak_ui=force_flatpak_ui, force_nvidia_ui=force_nvidia_ui)
 
     # Lógica de configuración inicial inteligente (solo en el primer arranque)
     if not app.config_manager.get(c.CONFIG_KEY_INITIAL_SETUP_COMPLETE, False):
