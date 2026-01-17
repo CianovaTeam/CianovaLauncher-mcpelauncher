@@ -85,6 +85,7 @@ modules:
       - -DCMAKE_BUILD_TYPE=Release
       - -DBUILD_SHARED_LIBS=ON
       - -DLIBZIP_SOVERSION=4
+      - -DCMAKE_INSTALL_LIBDIR=lib
       - -DENABLE_BZIP2=OFF
       - -DENABLE_LZMA=OFF
       - -DBUILD_DOC=OFF
