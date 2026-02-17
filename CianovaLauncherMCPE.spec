@@ -11,7 +11,11 @@ tmp_ret_ctk = collect_all('customtkinter')
 tmp_ret_pil = collect_all('Pillow')
 
 # Definimos los datos manuales: ('origen', 'destino')
-my_datas = [('icon.png', '.')] 
+my_datas = [
+    ('icon.png', '.'),
+    ('src/langs', 'src/langs'),
+    ('src/themes', 'src/themes')
+] 
 
 # Sumamos los datos de las librerías a los nuestros
 datas = my_datas + tmp_ret_ctk[0] + tmp_ret_pil[0]

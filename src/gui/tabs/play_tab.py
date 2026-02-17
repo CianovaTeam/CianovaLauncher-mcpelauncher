@@ -111,6 +111,6 @@ class PlayTab(ctk.CTkFrame):
         self.btn_launch.grid(row=4, column=0, padx=30, pady=15, sticky="ew")
 
     def save_quick_opts(self):
-        self.app.config[c.CONFIG_KEY_CLOSE_ON_LAUNCH] = self.var_close_on_launch.get()
+        self.app.sync_close_on_launch_ui(self.var_close_on_launch.get())
         self.app.sync_gamemode_ui(self.var_gamemode.get())
         self.app.config_manager.save_config()

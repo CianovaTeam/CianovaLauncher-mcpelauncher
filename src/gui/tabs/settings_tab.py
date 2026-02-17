@@ -5,6 +5,7 @@ import os
 from src import constants as c
 from src.core import language_manager
 from src.utils.dialogs import ask_open_filename_native
+from src.utils.resource_path import resource_path
 
 
 class SettingsTab(ctk.CTkFrame):
@@ -169,6 +170,18 @@ class SettingsTab(ctk.CTkFrame):
         self.check_gamemode.pack(side="left")
         ctk.CTkButton(f_gamemode, text="?", width=30, command=lambda: messagebox.showinfo(c.UI_GAMEMODE_CHECKBOX, c.UI_GAMEMODE_TOOLTIP)).pack(side="right", padx=5)
 
+        # Cerrar al Jugar
+        f_close = ctk.CTkFrame(frame_compat, fg_color="transparent")
+        f_close.pack(fill="x", padx=15, pady=2)
+        self.var_close_on_launch = ctk.BooleanVar(value=self.app.config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH, False))
+        self.check_close_on_launch = ctk.CTkCheckBox(
+            f_close,
+            text=c.UI_CHECKBOX_CLOSE_ON_LAUNCH,
+            variable=self.var_close_on_launch,
+            command=lambda: self.app.sync_close_on_launch_ui(self.var_close_on_launch.get())
+        )
+        self.check_close_on_launch.pack(side="left")
+
         # Custom Env Entry
         self.f_custom_vars = ctk.CTkFrame(frame_compat, fg_color="transparent")
         self.f_custom_vars.pack(fill="x", padx=15, pady=(2, 10))
@@ -196,7 +209,7 @@ class SettingsTab(ctk.CTkFrame):
 
         # Combinar temas estáticos y dinámicos
         theme_keys = list(c.UI_THEME_NAMES.keys())
-        themes_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "themes")
+        themes_dir = resource_path(os.path.join("src", "themes"))
         if os.path.exists(themes_dir):
             for f in os.listdir(themes_dir):
                 if f.endswith(".json"):

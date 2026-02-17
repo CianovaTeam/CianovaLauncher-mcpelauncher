@@ -119,8 +119,8 @@ class CianovaLauncherApp(ctk.CTk):
             if theme_name in ["blue", "green", "dark-blue"]:
                 ctk.set_default_color_theme(theme_name)
             else:
-                # Cargar tema personalizado desde src/themes/
-                theme_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "themes", f"{theme_name}.json")
+                # Cargar tema personalizado desde src/themes/ usando resource_path
+                theme_path = resource_path(os.path.join("src", "themes", f"{theme_name}.json"))
                 if os.path.exists(theme_path):
                     ctk.set_default_color_theme(theme_path)
                 else:
@@ -453,3 +453,17 @@ Categories=Game;
         if hasattr(self, "settings_tab") and hasattr(self.settings_tab, "var_gamemode"):
             if self.settings_tab.var_gamemode.get() != value:
                 self.settings_tab.var_gamemode.set(value)
+
+    def sync_close_on_launch_ui(self, value):
+        """Sincroniza el estado de Cerrar al Jugar entre pestañas"""
+        self.config[c.CONFIG_KEY_CLOSE_ON_LAUNCH] = value
+
+        # Actualizar pestaña Jugar
+        if hasattr(self, "play_tab") and hasattr(self.play_tab, "var_close_on_launch"):
+            if self.play_tab.var_close_on_launch.get() != value:
+                self.play_tab.var_close_on_launch.set(value)
+
+        # Actualizar pestaña Ajustes
+        if hasattr(self, "settings_tab") and hasattr(self.settings_tab, "var_close_on_launch"):
+            if self.settings_tab.var_close_on_launch.get() != value:
+                self.settings_tab.var_close_on_launch.set(value)

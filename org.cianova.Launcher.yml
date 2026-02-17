@@ -11,7 +11,7 @@ platform-extensions:
 
 
 metadata:
-  x-flatpak-version: "2.0e"
+  x-flatpak-version: "2.1"
 
 build-options:
   strip: false

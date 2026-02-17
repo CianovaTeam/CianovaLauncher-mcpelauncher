@@ -622,6 +622,9 @@ def launch_game(app):
         except Exception as e:
             print(f"Error en la comprobación de seguridad de la ruta: {e}")
 
+    if not cmd:
+        return
+
     try:
         print(f"Ejecutando ({mode}): {' '.join(cmd)}")
         app.config[c.CONFIG_KEY_LAST_VERSION] = version

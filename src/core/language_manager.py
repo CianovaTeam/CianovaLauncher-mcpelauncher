@@ -1,14 +1,14 @@
 import json
 import os
 from src import constants as c
+from src.utils.resource_path import resource_path
 
 def load_language(lang_code):
     """
     Carga el archivo de idioma JSON y actualiza las constantes en src.constants.
     """
-    # Determinar la ruta del archivo
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    lang_file = os.path.join(base_dir, "langs", f"{lang_code}.json")
+    # Determinar la ruta del archivo usando resource_path para compatibilidad con PyInstaller
+    lang_file = resource_path(os.path.join("src", "langs", f"{lang_code}.json"))
 
     if not os.path.exists(lang_file):
         print(f"Advertencia: Archivo de idioma no encontrado: {lang_file}. Usando valores por defecto.")
