@@ -55,6 +55,8 @@ finish-args:
 
   # Permitir ejecución de binarios empaquetados
   - --talk-name=org.freedesktop.Flatpak
+  # Acceso a GameMode
+  - --talk-name=com.feralinteractive.GameMode
 
   # Acceso para leer /.flatpak-info (detección de contexto)
   - --filesystem=/.flatpak-info:ro

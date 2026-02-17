@@ -9,6 +9,7 @@ if __name__ == "__main__":
 
     import os
     from src import constants as c
+    from src.core import language_manager
 
     launcher_path = os.path.abspath(sys.argv[0])
     force_flatpak_ui = "--force-flatpak-ui" in sys.argv
@@ -21,15 +22,15 @@ if __name__ == "__main__":
             own_path_versions = os.path.join(app.our_data_path, c.VERSIONS_DIR)
             shared_path_versions = os.path.join(os.path.expanduser("~"), c.LOCAL_SHARE_DIR, c.VERSIONS_DIR)
 
-            # Prioridad 1: Usar "Local (Propio)" si ya tiene datos.
+            # Prioridad 1: Usar "local_own" si ya tiene datos.
             if os.path.exists(own_path_versions):
-                app.config_manager.set(c.CONFIG_KEY_INSTALL_MODE, c.UI_MODE_VALUES_FLATPAK[0]) # Local (Propio)
-            # Prioridad 2: Usar "Local (Compartido)" si tiene datos y el propio no.
+                app.config_manager.set(c.CONFIG_KEY_INSTALL_MODE, c.MODE_INSTALL_OWN)
+            # Prioridad 2: Usar "local_shared" si tiene datos y el propio no.
             elif os.path.exists(shared_path_versions):
-                app.config_manager.set(c.CONFIG_KEY_INSTALL_MODE, c.UI_MODE_VALUES_FLATPAK[1]) # Local (Compartido)
-            # Por defecto: "Local (Propio)" si no se encuentra nada.
+                app.config_manager.set(c.CONFIG_KEY_INSTALL_MODE, c.MODE_INSTALL_SHARED)
+            # Por defecto: "local_own" si no se encuentra nada.
             else:
-                app.config_manager.set(c.CONFIG_KEY_INSTALL_MODE, c.UI_MODE_VALUES_FLATPAK[0])
+                app.config_manager.set(c.CONFIG_KEY_INSTALL_MODE, c.MODE_INSTALL_OWN)
 
         # Marcar la configuración inicial como completada para no volver a ejecutarla.
         app.config_manager.set(c.CONFIG_KEY_INITIAL_SETUP_COMPLETE, True)

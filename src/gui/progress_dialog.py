@@ -11,7 +11,8 @@ class ProgressDialog(ctk.CTkToplevel):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.label = ctk.CTkLabel(self, text=message, font=ctk.CTkFont(size=14))
+        from src import constants as c
+        self.label = ctk.CTkLabel(self, text=message, font=c.FONT_NORMAL)
         self.label.pack(pady=(20, 10))
 
         self.progressbar = ctk.CTkProgressBar(self, mode="indeterminate")

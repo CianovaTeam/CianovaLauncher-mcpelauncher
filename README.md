@@ -50,10 +50,10 @@ flatpak install org.kde.Platform//5.15-24.08 io.qt.qtwebengine.BaseApp//5.15-24.
 
 Descarga de la ultima **RELEASE** el archivo `CianovaLauncher-vX.Y.tar.gz` donde `X.Y.Z` es el numero de la versión y lo extraes en alguna carpeta que desees y también compila o descarga algún paquete de binarios del **MCPELAUNCHER-MANIFEST** del proyecto oficial; o algún algún pack Pre-compilado disponible de confianza llamado `BIN X.Y.Z (DATE) + <NOTES>.tar.gz` que vas a extraer y te dejara una carpeta llamada `bin` que la colocaras dentro de la carpeta raíz del launcher (Recomendado) o donde mejor te parezca.
 
-Para iniciar el launcher, simplemente haz doble clic en el ejecutable `CianovaLauncher` o ejecútalo desde la terminal:
+Para iniciar el launcher, simplemente haz doble clic en el script `CianovaLauncher.sh` o ejecútalo desde la terminal:
 
 ```bash
-./CianovaLauncher
+./CianovaLauncher.sh
 ```
 
 ---

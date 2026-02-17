@@ -1,12 +1,15 @@
 import subprocess
 from tkinter import filedialog
 import shutil
+from src import constants as c
 
-def ask_open_filename_native(parent, title="Abrir archivo", filetypes=[("Todos los archivos", "*")]):
+def ask_open_filename_native(parent, title=None, filetypes=None):
     """
     Intenta usar Zenity para un diálogo de archivo nativo, con fallback a Tkinter.
     Refactorizado para usar check_output y evitar cuelgues del sistema.
     """
+    if title is None: title = c.UI_OPEN_FILE_TITLE
+    if filetypes is None: filetypes = [(c.UI_ALL_FILES_TYPE, "*")]
     if hasattr(parent, 'force_flatpak_ui') and parent.force_flatpak_ui:
         return filedialog.askopenfilename(title=title, filetypes=filetypes)
 
@@ -35,11 +38,12 @@ def ask_open_filename_native(parent, title="Abrir archivo", filetypes=[("Todos l
     # Fallback a Tkinter solo si Zenity no está instalado o falla catastróficamente
     return filedialog.askopenfilename(title=title, filetypes=filetypes)
 
-def ask_directory_native(parent, title="Seleccionar carpeta"):
+def ask_directory_native(parent, title=None):
     """
     Intenta usar Zenity para un diálogo de directorio nativo, con fallback a Tkinter.
     Refactorizado para usar check_output y evitar cuelgues del sistema.
     """
+    if title is None: title = c.UI_SELECT_FOLDER_TITLE
     if hasattr(parent, 'force_flatpak_ui') and parent.force_flatpak_ui:
         return filedialog.askdirectory(title=title)
 
@@ -65,10 +69,12 @@ def ask_directory_native(parent, title="Seleccionar carpeta"):
     # Fallback a Tkinter solo si Zenity no está instalado o falla catastróficamente
     return filedialog.askdirectory(title=title)
 
-def ask_open_filenames_native(parent, title="Abrir archivos", filetypes=[("Todos los archivos", "*")]):
+def ask_open_filenames_native(parent, title=None, filetypes=None):
     """
     Intenta usar Zenity para un diálogo de selección de múltiples archivos.
     """
+    if title is None: title = c.UI_OPEN_FILES_TITLE
+    if filetypes is None: filetypes = [(c.UI_ALL_FILES_TYPE, "*")]
     if hasattr(parent, 'force_flatpak_ui') and parent.force_flatpak_ui:
         return filedialog.askopenfilenames(title=title, filetypes=filetypes)
 

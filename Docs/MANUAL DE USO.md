@@ -15,11 +15,13 @@ CianovaLauncher es una interfaz gráfica moderna diseñada para facilitar la ges
 #### Opción A - Ejecución de una versión compilada
 Descarga de la ultima **RELEASE** el archivo `CianovaLauncher-vX.Y.tar.gz` donde `X.Y.Z` es el numero de la versión y lo extraes en alguna carpeta que desees y también compila o descarga algún paquete de binarios del **MCPELAUNCHER-MANIFEST** del proyecto oficial; o algún algún pack Pre-compilado disponible de confianza llamado `BIN X.Y.Z (DATE) + <NOTES>.tar.gz` que vas a extraer y te dejara una carpeta llamada `bin` que la colocaras dentro de la carpeta raíz del launcher (Recomendado) o donde mejor te parezca.
 
-Para iniciar el launcher, simplemente haz doble clic en el ejecutable `CianovaLauncher` o ejecútalo desde la terminal:
+Para iniciar el launcher, simplemente haz doble clic en el script `CianovaLauncher.sh` o ejecútalo desde la terminal:
 
 ```bash
-./CianovaLauncher
+./CianovaLauncher.sh
 ```
+
+**(NOTA: Dentro de la versiion compilada fuera de Flatpak estan los libs necesarios precompilados de menera local en la raíz)**
 
 Luego ve a Ajustes y completa la configuración de binarios y guarda la config.
 #### Opción B - Instalación para Flatpak

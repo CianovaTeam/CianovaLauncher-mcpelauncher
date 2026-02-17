@@ -7,11 +7,12 @@ import zipfile
 import json
 import uuid
 from src.utils.dialogs import ask_open_filenames_native
+from src import constants as c
 
 class SkinPackTool(ctk.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("Creador de Skin Packs")
+        self.title(c.UI_SKIN_PACK_CREATOR_TITLE)
         self.geometry("700x550")
 
         self.transient(parent)
@@ -22,33 +23,42 @@ class SkinPackTool(ctk.CTkToplevel):
         self.grid_rowconfigure(1, weight=1)
 
         # Header
-        header = ctk.CTkFrame(self)
+        header = ctk.CTkFrame(self, corner_radius=c.CORNER_RADIUS)
         header.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        ctk.CTkLabel(header, text="Nombre del Pack:").pack(side="left", padx=5)
-        self.entry_pack_name = ctk.CTkEntry(header, width=200)
+        ctk.CTkLabel(header, text=c.UI_PACK_NAME_LABEL, font=c.FONT_NORMAL).pack(side="left", padx=5)
+        self.entry_pack_name = ctk.CTkEntry(header, width=200, font=c.FONT_NORMAL)
         self.entry_pack_name.pack(side="left", padx=5)
 
         # Lista
-        self.scroll_frame = ctk.CTkScrollableFrame(self, label_text="Skins Añadidas")
+        self.scroll_frame = ctk.CTkScrollableFrame(
+            self,
+            label_text=c.UI_SKINS_ADDED_LABEL,
+            corner_radius=c.CORNER_RADIUS,
+            label_font=c.FONT_BOLD
+        )
         self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
 
         # Botones
-        btn_frame = ctk.CTkFrame(self)
+        btn_frame = ctk.CTkFrame(self, corner_radius=c.CORNER_RADIUS)
         btn_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
         ctk.CTkButton(
-            btn_frame, text="Añadir Skins (PNG)", command=self.add_skins_multi
+            btn_frame,
+            text=c.UI_BUTTON_ADD_SKINS_PNG,
+            command=self.add_skins_multi,
+            font=c.FONT_NORMAL
         ).pack(side="left", padx=5)
         ctk.CTkButton(
             btn_frame,
-            text="Exportar .mcpack",
+            text=c.UI_BUTTON_EXPORT_MCPACK,
             command=self.export_pack,
             fg_color="green",
+            font=c.FONT_BOLD
         ).pack(side="right", padx=5)
 
         self.grab_set()
 
     def add_skins_multi(self):
-        file_paths = ask_open_filenames_native(self, filetypes=[("Imágenes PNG", "*.png")])
+        file_paths = ask_open_filenames_native(self, filetypes=[(c.UI_APK_FILES_TYPE, "*.png")]) # Reusing APK file type name for simplicity or should define UI_PNG_FILES_TYPE
         if file_paths:
             for path in file_paths:
                 # Auto-nombre basado en archivo
@@ -61,16 +71,13 @@ class SkinPackTool(ctk.CTkToplevel):
             widget.destroy()
 
         for i, skin in enumerate(self.skins):
-            f = ctk.CTkFrame(self.scroll_frame)
+            f = ctk.CTkFrame(self.scroll_frame, corner_radius=c.CORNER_RADIUS)
             f.pack(fill="x", pady=2)
 
             # Input para editar nombre
             name_var = ctk.StringVar(value=skin["name"])
 
             # Callback para actualizar nombre al editar
-            def update_name(var, index=i):
-                self.skins[index]["name"] = var.get()
-
             name_var.trace_add(
                 "write",
                 lambda *args, v=name_var, idx=i: self.skins[idx].update(
@@ -78,9 +85,9 @@ class SkinPackTool(ctk.CTkToplevel):
                 ),
             )
 
-            ctk.CTkEntry(f, textvariable=name_var, width=150).pack(side="left", padx=5)
+            ctk.CTkEntry(f, textvariable=name_var, width=150, font=c.FONT_NORMAL).pack(side="left", padx=5)
             ctk.CTkLabel(
-                f, text=os.path.basename(skin["path"]), text_color="gray"
+                f, text=os.path.basename(skin["path"]), text_color="gray", font=c.FONT_SMALL
             ).pack(side="left", padx=10)
             ctk.CTkButton(
                 f,
@@ -97,11 +104,11 @@ class SkinPackTool(ctk.CTkToplevel):
     def export_pack(self):
         pack_name = self.entry_pack_name.get()
         if not pack_name or not self.skins:
-            messagebox.showwarning("Error", "Falta nombre del pack o skins.")
+            messagebox.showwarning(c.UI_ERROR_TITLE, c.UI_ERROR_MISSING_NAME_OR_SKINS)
             return
 
         save_path = filedialog.asksaveasfilename(
-            defaultextension=".mcpack", filetypes=[("Minecraft Pack", "*.mcpack")]
+            defaultextension=".mcpack", filetypes=[(c.UI_MCPACK_FILES_TYPE, "*.mcpack")]
         )
         if not save_path:
             return
@@ -162,9 +169,9 @@ class SkinPackTool(ctk.CTkToplevel):
                             os.path.relpath(os.path.join(root, file), temp_dir),
                         )
 
-            messagebox.showinfo("Éxito", f"Pack guardado en {save_path}")
+            messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_PACK_SAVED_SUCCESS.format(save_path=save_path))
         except Exception as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror(c.UI_ERROR_TITLE, str(e))
         finally:
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)

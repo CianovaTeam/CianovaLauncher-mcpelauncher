@@ -32,10 +32,10 @@ DEPENDENCY_MAP = {
 import os
 
 # --- Información de la Aplicación ---
-APP_NAME = "CianovaLauncherMCPE"
-VERSION_LAUNCHER = "2.0e"
-CHANGELOG = "Support for Nvidia: CianovaLauncher 2.0e"
-CREDITOS = "Dev: @PlaGaDev & Antigravity\nProyecto: CianovaLauncherMCPE"
+APP_NAME = "CianovaLauncher"
+VERSION_LAUNCHER = "2.1"
+CHANGELOG = "User experience update: CianovaLauncher 2.1"
+CREDITOS = "Dev: @PlaGaDev, @ShaggyLinux & Antigravity\nProyecto: CianovaLauncherMCPE"
 LEGAL_TEXT = """LICENCIA & TÉRMINOS Y CONDICIONES
 
 Última Actualización: 26 de Diciembre de 2025
@@ -103,13 +103,27 @@ DESKTOP_SHORTCUT_NAME = "cianova-launcher.desktop"
 # --- Claves de Configuración ---
 CONFIG_KEY_INSTALL_MODE = "install_mode"
 CONFIG_KEY_MODE = "mode"
+CONFIG_KEY_LANGUAGE = "language"
 CONFIG_KEY_FLATPAK_ID = "flatpak_app_id"
+
+# --- Valores de Modos (Internal Keys) ---
+MODE_BIN_SYSTEM = "system"
+MODE_BIN_LOCAL = "local_script"
+MODE_BIN_CUSTOM = "custom"
+MODE_BIN_FLATPAK = "flatpak"
+
+MODE_INSTALL_LOCAL = "local"
+MODE_INSTALL_OWN = "local_own"
+MODE_INSTALL_SHARED = "local_shared"
+MODE_INSTALL_FLATPAK = "flatpak_custom"
+
 CONFIG_KEY_BINARY_PATHS = "binary_paths"
 CONFIG_KEY_CLIENT = "client"
 CONFIG_KEY_EXTRACT = "extract"
 CONFIG_KEY_WEBVIEW = "webview"
 CONFIG_KEY_ERROR = "error"
 CONFIG_KEY_WINDOW_SIZE = "window_size"
+CONFIG_KEY_GAMEMODE_ENABLED = "gamemode_enabled"
 CONFIG_KEY_APPEARANCE = "appearance_mode"
 CONFIG_KEY_COLOR_THEME = "color_theme"
 CONFIG_KEY_CLOSE_ON_LAUNCH = "close_on_launch"
@@ -119,6 +133,18 @@ CONFIG_KEY_FIRST_RUN_FLATPAK = "first_run_flatpak"
 CONFIG_KEY_MIGRATION_NOTIFIED = "migration_notified"
 CONFIG_KEY_INITIAL_SETUP_COMPLETE = "initial_setup_complete"
 CONFIG_KEY_NVIDIA_COMPAT_MODE = "nvidia_compat_mode"
+CONFIG_KEY_NVIDIA_PRIME = "nvidia_prime"
+CONFIG_KEY_ZINK_MODE = "zink_mode"
+CONFIG_KEY_CUSTOM_ENV_ENABLED = "custom_env_enabled"
+CONFIG_KEY_CUSTOM_ENV_VARS = "custom_env_vars"
+CONFIG_KEY_VERSION_LIST_STYLE = "version_list_style"
+CONFIG_KEY_VERSION_ICON_SIZE = "version_icon_size"
+CONFIG_KEY_VERSION_TITLE_SIZE = "version_title_size"
+CONFIG_KEY_TOOLS_LAYOUT = "tools_layout"
+
+STYLE_LIST = "list"
+STYLE_GRID = "grid"
+STYLE_COLUMNS = "columns"
 
 
 # --- Colores de la Interfaz ---
@@ -139,6 +165,19 @@ COLOR_ORANGE_BUTTON = "orange"
 COLOR_ORANGE_BUTTON_HOVER = "darkorange"
 COLOR_SELECTED_GREEN = "#1e8449"
 
+# --- Estilos de la Interfaz ---
+FONT_TITLE = ("Roboto", 22, "bold")
+FONT_SUBTITLE = ("Roboto", 16, "bold")
+FONT_NORMAL = ("Roboto", 13)
+FONT_BOLD = ("Roboto", 13, "bold")
+FONT_SMALL = ("Roboto", 11)
+FONT_MODO = ("Roboto", 12, "bold")
+
+CORNER_RADIUS = 12
+BTN_HEIGHT = 32
+SECTION_PADDING = 10
+ELEMENT_SPACING = 5
+
 # --- Textos de la Interfaz (UI Strings) ---
 # General
 UI_TITLE_VERSION = f"{APP_NAME} - v{VERSION_LAUNCHER}"
@@ -152,10 +191,17 @@ UI_LABEL_SEARCHING = "● Buscando..."
 UI_LABEL_INSTALLATION = "Instalación:"
 UI_LABEL_INSTALLED_VERSIONS = "Versiones Instaladas"
 UI_CHECKBOX_CLOSE_ON_LAUNCH = "Cerrar al jugar"
+UI_CHECKBOX_GAMEMODE = "Activar GameMode"
 UI_CHECKBOX_DEBUG_LOG = "Ver Log (Terminal)"
 UI_BUTTON_PLAY_NOW = "JUGAR AHORA"
-UI_MODE_VALUES_FLATPAK = ["Local (Propio)", "Local (Compartido)", "Flatpak (Personalizado)"]
-UI_MODE_VALUES_NORMAL = ["Local", "Flatpak (Personalizado)"]
+
+# Mapeo de Modos de Instalación (Display)
+UI_INSTALL_MODES = {
+    MODE_INSTALL_LOCAL: "Local",
+    MODE_INSTALL_OWN: "Local (Propio)",
+    MODE_INSTALL_SHARED: "Local (Compartido)",
+    MODE_INSTALL_FLATPAK: "Flatpak (Personalizado)"
+}
 
 # Pestaña Herramientas
 UI_SECTION_MANAGEMENT = "Gestión"
@@ -164,6 +210,7 @@ UI_BUTTON_MOVE_DELETE_VERSION = "Mover/Borrar Versión"
 UI_BUTTON_MIGRATE_DATA = "Migración de Datos"
 UI_SECTION_CUSTOMIZATION = "Personalización"
 UI_BUTTON_SKIN_PACK_CREATOR = "Creador de Skin Packs"
+UI_BUTTON_GAME_CONFIG = "Configurador de Juego"
 UI_LABEL_SHADERS_STATUS = "Shaders: ..."
 UI_BUTTON_FIX_SHADERS = "Fix Shaders"
 UI_SECTION_FILES = "Archivos"
@@ -179,23 +226,90 @@ UI_BUTTON_OPEN_SCREENSHOTS = "Abrir Capturas"
 
 # Pestaña Ajustes
 UI_SECTION_BINARIES = "Rutas de Binarios"
-UI_MODES_SETTINGS_NORMAL = ["Sistema (Instalado)", "Local (Junto al script)", "Personalizado", "Flatpak (Personalizado)"]
-UI_MODES_SETTINGS_FLATPAK = ["Sistema (Instalado)", "Personalizado", "Flatpak (Personalizado)"]
-UI_DEFAULT_MODE = "Sistema (Instalado)"
+
+# Mapeo de Modos de Binarios (Display)
+UI_BIN_MODES = {
+    MODE_BIN_SYSTEM: "Sistema (Instalado)",
+    MODE_BIN_LOCAL: "Local (Junto al script)",
+    MODE_BIN_CUSTOM: "Personalizado",
+    MODE_BIN_FLATPAK: "Flatpak (Personalizado)"
+}
+
+UI_DEFAULT_MODE = MODE_BIN_SYSTEM
 UI_LABEL_FLATPAK_ID = "ID de App Flatpak:"
 UI_BUTTON_SAVE_SETTINGS = "Guardar Configuración"
 UI_SECTION_APPEARANCE = "Apariencia"
 UI_LABEL_COLOR_THEME = "Tema de Color:"
-UI_COLOR_THEMES = ["blue", "green", "dark-blue"]
+UI_LABEL_APPEARANCE_MODE = "Modo de Apariencia:"
+UI_LABEL_LANGUAGE = "Idioma:"
+UI_LABEL_VERSION_LIST_STYLE = "Estilo de Lista:"
+UI_LABEL_TOOLS_LAYOUT = "Diseño de Herramientas:"
+UI_LABEL_ICON_SIZE = "Tamaño de Icono:"
+UI_LABEL_TITLE_SIZE = "Tamaño de Título:"
+
+UI_LIST_STYLES = {
+    STYLE_LIST: "Lista",
+    STYLE_GRID: "Cuadrícula"
+}
+
+UI_TOOLS_LAYOUTS = {
+    STYLE_LIST: "Una Columna",
+    STYLE_COLUMNS: "Dos Columnas",
+    STYLE_GRID: "Tarjetas (Cuadrícula)"
+}
+
+UI_APPEARANCE_MODES = {
+    "Light": "Claro",
+    "Dark": "Oscuro",
+    "System": "Sistema"
+}
+
+UI_COLOR_THEMES = ["blue", "green", "dark-blue", "purple", "orange", "red", "gray", "cyan", "yellow", "midnight", "cherry", "ocean"]
+
+UI_THEME_NAMES = {
+    "blue": "Blue",
+    "green": "Green",
+    "dark-blue": "Dark Blue",
+    "purple": "Purple",
+    "orange": "Orange",
+    "red": "Red",
+    "gray": "Gray",
+    "cyan": "Cyan",
+    "yellow": "Yellow",
+    "midnight": "Midnight",
+    "cherry": "Cherry",
+    "ocean": "Ocean"
+}
 UI_RESTART_REQUIRED_MSG = "* El cambio de color requiere reiniciar la aplicación."
+UI_APPEARANCE_HINT = "Esto solo cambia ligeramente la IU, no la cambia radicalmente."
+UI_CONFIRM_TITLE = "Confirmar"
+UI_RESTORE_DEFAULTS_CONFIRM = "¿Estás seguro de que quieres restaurar todos los ajustes a sus valores por defecto? La aplicación se cerrará."
+UI_RESTORE_DEFAULTS_SUCCESS_TITLE = "Ajustes restaurados"
+UI_RESTORE_DEFAULTS_SUCCESS_MSG = "Los ajustes se han restaurado. La aplicación se cerrará ahora."
+UI_BUTTON_RESTORE_DEFAULTS = "Restaurar valores"
+UI_LABEL_CLIENT_GAME = "Cliente (game):"
+UI_LABEL_EXTRACTOR_APK = "Extractor APK:"
+UI_LABEL_WEBVIEW_OPTIONAL = "Webview (Opcional):"
+UI_LABEL_ERROR_HANDLER_OPTIONAL = "Error Handler (Opcional):"
+UI_SECTION_COMPATIBILITY = "Compatibilidad"
 
 # NVIDIA Compatibility
 UI_NVIDIA_COMPAT_MODE_CHECKBOX = "Activar modo de compatibilidad para Nvidia (experimental, solo para Flatpak)"
 UI_NVIDIA_COMPAT_MODE_TOOLTIP = "Activa esta opción si experimentas crasheos o problemas gráficos con una tarjeta Nvidia. Forza el uso de la GPU dedicada con una capa de compatibilidad (Zink)."
+UI_NVIDIA_PRIME_CHECKBOX = "Usar Nvidia Prime (__NV_PRIME_RENDER_OFFLOAD=1)"
+UI_NVIDIA_PRIME_TOOLTIP = "Fuerza el uso de la GPU Nvidia en sistemas híbridos (Prime Offloading). Establece __NV_PRIME_RENDER_OFFLOAD, __GLX_VENDOR_LIBRARY_NAME y DRI_PRIME."
+UI_ZINK_CHECKBOX = "Usar Driver Zink (MESA_LOADER_DRIVER_OVERRIDE=zink)"
+UI_ZINK_TOOLTIP = "Utiliza la capa de compatibilidad Zink para ejecutar OpenGL sobre Vulkan. Recomendado si tienes errores gráficos ('signal 6' o parpadeos) con los drivers nativos de Nvidia en Flatpak."
+UI_GAMEMODE_CHECKBOX = "Usar GameMode (gamemoderun)"
+UI_GAMEMODE_TOOLTIP = "Optimiza el rendimiento del sistema usando Feral GameMode. Requiere que 'gamemode' esté instalado en el sistema."
+UI_CUSTOM_ARGS_CHECKBOX = "Activar Argumentos/Variables Personalizadas"
+UI_CUSTOM_ARGS_TOOLTIP = "Permite pasar variables de entorno (KEY=VAL) o argumentos adicionales. Desactiva Nvidia Prime y Zink automáticos."
+UI_CUSTOM_ARGS_LABEL = "Argumentos/Variables:"
 
 # Diálogos y Mensajes
 UI_INFO_TITLE = "Info"
 UI_ERROR_TITLE = "Error"
+UI_TITLE_LEGAL = "Términos y Condiciones"
 UI_SUCCESS_TITLE = "Éxito"
 UI_SAVE_SUCCESS_MSG = "Configuración guardada.\nSe aplicarán los cambios al detectar instalación."
 UI_RESTART_REQUIRED_TITLE = "Reinicio Requerido"
@@ -220,6 +334,133 @@ UI_MANAGE_EXISTING_SHORTCUTS = "Gestionar existentes:"
 UI_NO_SHORTCUTS_DETECTED = "(Ninguno detectado)"
 UI_BUTTON_CLOSE = "Cerrar"
 UI_ERROR_MIGRATION_TOOL = "No se pudo abrir la herramienta: {e}"
+UI_MAIN_LAUNCHER_LABEL = "Lanzador Principal"
+UI_FLATPAK_SHORTCUT_INFO_TITLE = "Información"
+UI_FLATPAK_SHORTCUT_INFO_MSG = "El acceso directo principal de la aplicación Flatpak se crea automáticamente al instalar.\n\nPuedes gestionarlo desde tu tienda de aplicaciones (ej. Discover, GNOME Software)."
+UI_SHORTCUT_COMMENT = "Lanzador de Minecraft PE para Linux"
+UI_BUTTON_ADD = "Añadir"
+UI_BUTTON_DELETE = "Borrar"
+UI_CLOSING_FOR_GAME = "Se cerrará el launcher para iniciar el juego..."
+UI_CONFIG_ERROR_TITLE = "Error de Configuración"
+UI_SELF_LAUNCH_ERROR_MSG = "Se ha detectado un error crítico: El lanzador está intentando ejecutarse a sí mismo en lugar del juego.\n\nPor favor, revisa la configuración de los binarios en la pestaña 'Ajustes' y asegúrate de que la ruta al 'mcpelauncher-client' es correcta."
+UI_CRITICAL_LAUNCH_ERROR_TITLE = "Error Crítico de Lanzamiento"
+UI_EXECVE_ERROR_MSG = "No se pudo iniciar el juego (execve falló).\nError: {e}"
+UI_VERIFYING_TITLE = "Verificando..."
+UI_STARTING_MSG = "Iniciando..."
+UI_RESULT_TITLE = "Resultado"
+UI_VERIFICATION_RESULT_HEADER = "Resultado de Verificación"
+UI_ANALYZING_TITLE = "Analizando..."
+UI_ANALYZING_HW_MSG = "Analizando Hardware..."
+UI_HW_ARCH = "Arquitectura: {arch}\n"
+UI_HW_CPU_EXT = "Extensiones CPU: {status}\n"
+UI_HW_MODEL = "Modelo"
+UI_HW_RAM_TOTAL = "Total"
+UI_HW_CPU_INFO = "INFORMACIÓN DE CPU"
+UI_HW_RAM_INFO = "INFORMACIÓN DE RAM"
+UI_HW_GPU_INFO = "INFORMACIÓN DE GPU"
+UI_HW_OPENGL_ES = "OpenGL ES: {gl_ver}\n\n"
+UI_INCOMPATIBLE_TEXT = "Incompatible"
+UI_VERSION_TEXT = "Versión: "
+UI_SHADER_STATUS_LABEL = "Estado Shaders: {status}"
+UI_GAME_CONFIG_TITLE = "Configurador de Juego"
+UI_TAB_VISUAL = "Interfaz Visual"
+UI_TAB_EDITOR = "Editor Manual"
+UI_BUTTON_SAVE_FILE = "Guardar Archivo"
+UI_SAVE_FILE_SUCCESS = "Archivo guardado correctamente."
+UI_ERROR_READING_FILE = "No se pudo leer el archivo: {e}"
+UI_ERROR_SAVING_FILE = "No se pudo guardar el archivo: {e}"
+UI_FILE_NOT_FOUND_WARN = "El archivo options.txt no existe en esta instalación."
+
+# Labels Configuración de Juego
+UI_GC_GRAPHICS = "Gráficos y Rendimiento"
+UI_GC_VIEW_DISTANCE = "Distancia de Renderizado (Chunks)"
+UI_GC_MAX_FPS = "Límite de FPS (0 = Ilimitado)"
+UI_GC_VSYNC = "Sincronización Vertical (VSync)"
+UI_GC_GAMMA = "Brillo (Gamma)"
+UI_GC_FULLSCREEN = "Pantalla Completa"
+UI_GC_FANCY_SKIES = "Cielos Detallados"
+UI_GC_SMOOTH_LIGHTING = "Iluminación Suave"
+
+UI_GC_GAMEPLAY = "Jugabilidad"
+UI_GC_DIFFICULTY = "Dificultad"
+UI_GC_DIFFICULTY_MAP = ["Pacífico", "Fácil", "Normal", "Difícil"]
+UI_GC_PERSPECTIVE = "Cámara"
+UI_GC_PERSPECTIVE_MAP = ["Primera Persona", "Tercera Persona (Detrás)", "Tercera Persona (Frente)"]
+UI_GC_LANGUAGE = "Idioma del Juego (ej. es_MX)"
+
+UI_GC_CONTROLS = "Controles"
+UI_GC_SENSITIVITY = "Sensibilidad del Ratón"
+UI_GC_INVERT_MOUSE = "Invertir Ratón"
+UI_GC_AUTO_JUMP = "Salto Automático"
+UI_GC_LEFT_HANDED = "Modo Zurdo"
+UI_GC_SWAP_JUMP_SNEAK = "Intercambiar Saltar/Agacharse"
+
+UI_GC_AUDIO = "Audio"
+UI_GC_SOUND_VOLUME = "Efectos de Sonido"
+UI_GC_MUSIC_VOLUME = "Música de Fondo"
+
+UI_GC_PRIVACY = "Privacidad y Red"
+UI_GC_SERVER_VISIBLE = "Partida LAN Visible"
+UI_GC_XBOX_VISIBLE = "Estado Online (Xbox)"
+UI_GC_AUTO_UPDATE = "Actualizaciones Automáticas"
+UI_MIGRATION_MANAGER_TITLE = "Gestor de Migración de Datos"
+UI_MIGRATION_TITLE = "Migración de Datos"
+UI_SOURCE_LABEL = "Origen (Desde donde copiar):"
+UI_SOURCE_MODES_DISPLAY = ["Local (.local)", "Flatpak (por ID)", "Personalizado"]
+UI_DESTINATION_LABEL = "Destino (Ruta actual):"
+UI_WHAT_TO_MIGRATE = "¿Qué deseas migrar?:"
+UI_MIGRATE_VERSIONS = "📁 Versiones (versions/)"
+UI_MIGRATE_WORLDS = "🌍 Mundos (games/com.mojang/minecraftWorlds/)"
+UI_MIGRATE_RESOURCES = "🎨 Paquetes de Recursos (resource_packs/)"
+UI_MIGRATE_VERSIONS_SIMPLE = "Versiones"
+UI_MIGRATE_WORLDS_SIMPLE = "Mundos"
+UI_MIGRATE_RESOURCES_SIMPLE = "Paquetes de Recursos"
+UI_MIGRATE_ALL = "📦 Migrar TODO (carpeta completa mcpelauncher/)"
+UI_MIGRATION_METHOD = "Método de Migración:"
+UI_METHOD_COPY = "Copiar (Mantiene origen y duplica)"
+UI_METHOD_MOVE = "Mover (Libera espacio en origen)"
+UI_METHOD_LINK = "Enlazar (Symlink - Sincroniza carpetas)"
+UI_BUTTON_START_MIGRATION = "🚀 INICIAR MIGRACIÓN"
+UI_VALID_FOLDER_DETECTED = "✓ Carpeta válida detectada"
+UI_INVALID_FOLDER_WARNING = "⚠ Carpeta no parece contener datos de mcpelauncher"
+UI_FOLDER_NOT_EXISTS = "✗ Carpeta no existe"
+UI_SELECT_SOURCE_FOLDER = "Seleccionar carpeta de origen"
+UI_MIGRATION_CONFIRM_MSG = "¿Estás seguro de migrar datos?\n\nDe: {src}\nA: {dst}\nMétodo: {method}\nElementos: {items}"
+UI_MIGRATING_TITLE = "Migrando..."
+UI_MIGRATING_MSG = "Copiando archivos, por favor espera..."
+UI_MIGRATION_SUCCESS_MSG = "Migración completada.\nElementos procesados: {count}\n\nRefresca para ver cambios."
+UI_SKIN_PACK_CREATOR_TITLE = "Creador de Skin Packs"
+UI_PACK_NAME_LABEL = "Nombre del Pack:"
+UI_SKINS_ADDED_LABEL = "Skins Añadidas"
+UI_BUTTON_ADD_SKINS_PNG = "Añadir Skins (PNG)"
+UI_BUTTON_EXPORT_MCPACK = "Exportar .mcpack"
+UI_ERROR_MISSING_NAME_OR_SKINS = "Falta nombre del pack o skins."
+UI_PACK_SAVED_SUCCESS = "Pack guardado en {save_path}"
+UI_INSTALL_NEW_VERSION_TITLE = "Instalar Nueva Versión"
+UI_APK_FILE_LABEL = "Archivo APK:"
+UI_SELECT_APK_PLACEHOLDER = "Selecciona un APK..."
+UI_VERSION_NAME_LABEL = "Nombre de la Versión:"
+UI_VERSION_NAME_PLACEHOLDER = "Ej: 1.20.50"
+UI_INSTALL_MODE_DEST_LABEL = "Modo de Instalación (Destino):"
+UI_INSTALL_MODE_OWN = "Local (Flatpak Propio)"
+UI_INSTALL_MODE_SHARED = "Local (.local/share)"
+UI_INSTALL_MODE_LOCAL = "Local"
+UI_INSTALL_MODE_FLATPAK_DESC = "Flatpak (Personalizado)"
+UI_FLATPAK_CUSTOM_ID_LABEL = "Flatpak (ID Personalizado):"
+UI_BUTTON_INSTALL_NOW = "INSTALAR AHORA"
+UI_SELECT_APK_TITLE = "Seleccionar archivo APK"
+UI_APK_FILES_TYPE = "Archivos APK"
+UI_ERROR_SELECT_VALID_APK = "Selecciona un APK válido."
+UI_ERROR_WRITE_VERSION_NAME = "Escribe un nombre para la versión."
+UI_OPEN_FILE_TITLE = "Abrir archivo"
+UI_ALL_FILES_TYPE = "Todos los archivos"
+UI_SELECT_FOLDER_TITLE = "Seleccionar carpeta"
+UI_OPEN_FILES_TITLE = "Abrir archivos"
+UI_ARCH_NATIVE = "Compatible ({arch} Nativo)"
+UI_ARCH_LEGACY = "Compatible (x86 Legacy)"
+UI_ARCH_INCOMPATIBLE = "Incompatible (Solo ARM detectado)"
+UI_ARCH_UNKNOWN = "Desconocido (No se detectaron librerías)"
+UI_ARCH_POSSIBLY_INCOMPATIBLE = "Posiblemente Incompatible (Sistema: {arch})"
 UI_VERSION_NOT_INSTALLED_ERROR = "La versión '{version}' no está instalada."
 UI_NO_TARGET_PATH_ERROR = "No se ha definido una ruta de destino."
 UI_EXTRACTING_APK_TITLE = "Extrayendo APK"
@@ -241,6 +482,19 @@ UI_STATUS_LOCAL = "● Modo: Local (.local)"
 UI_STATUS_FLATPAK_CUSTOM = "● Modo: Flatpak ({flatpak_id})"
 UI_STATUS_FLATPAK_NO_DATA = "● Flatpak: Datos no encontrados"
 UI_STATUS_LOCAL_NO_VERSIONS = "● Local: Sin versiones"
+UI_ERROR_SAME_FOLDER = "Error: La carpeta de origen y destino son la misma"
+UI_ERROR_NOTHING_SELECTED = "Nada seleccionado para migrar"
+UI_ERROR_FLATPAK_SPAWN_NOT_FOUND = "Error: 'flatpak-spawn' no encontrado. No se puede abrir un terminal externo."
+UI_HW_NOT_DETECTED = "No detectado"
+UI_LABEL_APP_ID = "App ID:"
+UI_PLACEHOLDER_SOURCE_PATH = "Ruta de origen..."
+UI_BUTTON_BROWSE_FOLDER = "Buscar Carpeta"
+UI_ERROR_READING_APK = "Error leyendo APK: {e}"
+UI_APK_COMPATIBLE_X86 = "La APK es compatible (x86) o (x86_64)"
+UI_APK_INCOMPATIBLE_ARM = "Esta APK no es compatible (Esta es una APK ARM y necesita una x86)"
+UI_APK_INVALID = "La APK esta incompleta o no es de Minecraft"
+UI_SKIN_PACK_FILES_TYPE = "Archivos de Skin Pack"
+UI_MCPACK_FILES_TYPE = "Archivos Minecraft Pack"
 UI_BUTTON_VERIFY_DEPS_FLATPAK = "Verificar Dependencias [Flatpak]"
 UI_BUTTON_VERIFY_DEPS_LOCAL = "Verificar Dependencias [Local]"
 UI_CONFIG_FLATPAK_CUSTOM_TITLE = "Configurar Flatpak Personalizado"
@@ -258,6 +512,8 @@ UI_LOCAL_BINARY_NOT_FOUND = "No se encontró el binario local en: {local_bin}"
 UI_SYSTEM_BINARY_NOT_FOUND = "No se encontró mcpelauncher-client en el sistema."
 UI_NO_COMPATIBLE_TERMINAL = "No se encontró terminal compatible."
 UI_LAUNCH_ERROR = "Fallo al lanzar: {e}"
+UI_TERMINAL_PROMPT_CLOSE = "Presiona Enter para cerrar..."
+UI_DETECTED_LABEL = "Detectado: {version}"
 UI_NO_WORLDS_FOUND = "No se encontraron mundos."
 UI_EXPORT_WORLDS_TITLE = "Exportar Mundos"
 UI_SELECT_WORLDS_LABEL = "Selecciona Mundos"

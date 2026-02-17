@@ -8,10 +8,13 @@ import subprocess
 from src import constants as c
 from src.utils.dialogs import ask_open_filename_native
 from src.utils.resource_path import resource_path
+from src.utils.image_manager import ImageManager
 from src.core.config_manager import ConfigManager
+from src.core import language_manager
 from src.gui.install_dialog import InstallDialog
 from src.gui.skin_pack_tool import SkinPackTool
 from src.gui.migration_dialog import MigrationDialog
+from src.gui.game_config_dialog import GameConfigDialog
 from src.core import app_logic
 from src.gui.tabs.play_tab import PlayTab
 from src.gui.tabs.tools_tab import ToolsTab
@@ -102,10 +105,26 @@ class CianovaLauncherApp(ctk.CTk):
         )
         self.config = self.config_manager.config
 
+        # ==========================================
+        # 2.5. INICIALIZACIÓN DE IDIOMA
+        # ==========================================
+        lang = self.config.get(c.CONFIG_KEY_LANGUAGE, "en")
+        language_manager.load_language(lang)
+
         # Aplicar Tema de Configuración
         try:
             ctk.set_appearance_mode(self.config.get(c.CONFIG_KEY_APPEARANCE, "Dark"))
-            ctk.set_default_color_theme(self.config.get(c.CONFIG_KEY_COLOR_THEME, "blue"))
+
+            theme_name = self.config.get(c.CONFIG_KEY_COLOR_THEME, "blue")
+            if theme_name in ["blue", "green", "dark-blue"]:
+                ctk.set_default_color_theme(theme_name)
+            else:
+                # Cargar tema personalizado desde src/themes/
+                theme_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "themes", f"{theme_name}.json")
+                if os.path.exists(theme_path):
+                    ctk.set_default_color_theme(theme_path)
+                else:
+                    ctk.set_default_color_theme("blue")
         except Exception as e:
             print(f"Error aplicando tema: {e}")
 
@@ -116,29 +135,16 @@ class CianovaLauncherApp(ctk.CTk):
         self.geometry(self.config.get(c.CONFIG_KEY_WINDOW_SIZE, "700x550"))
         self.bind("<Configure>", self.save_window_size)
 
-        self.app_icon_image = None
+        self.app_icon_image = ImageManager.get_image("icon.png", size=(32, 32))
         try:
-            # Si estamos en flatpak y no existe resource_path, usar path local o /app/bin
-            icon_path = resource_path("icon.png")
-            if self.running_in_flatpak:
-                if os.path.exists("/app/bin/icon.png"):
-                    icon_path = "/app/bin/icon.png"
-            elif os.path.exists(resource_path("icon.png")):
-                icon_path = resource_path("icon.png")
-
-            if os.path.exists(icon_path):
-                if ImageTk:  # Verificar PIL
-                    icon_pil = Image.open(icon_path)
-                    icon_photo = ImageTk.PhotoImage(icon_pil)
-                    self.wm_iconbitmap()
-                    self.iconphoto(False, icon_photo)
-                    self.app_icon_image = ctk.CTkImage(
-                        light_image=icon_pil, dark_image=icon_pil, size=(32, 32)
-                    )
-            else:
-                print(f"Icono no encontrado en: {icon_path}")
+            # Configurar icono nativo de la ventana
+            if self.app_icon_image:
+                icon_pil = self.app_icon_image._light_image
+                icon_photo = ImageTk.PhotoImage(icon_pil)
+                self.wm_iconbitmap()
+                self.iconphoto(False, icon_photo)
         except Exception as e:
-            print(f"No se pudo cargar el icono: {e}")
+            print(f"No se pudo cargar el icono de ventana: {e}")
 
         # ==========================================
         # INTERFAZ PRINCIPAL (LAYOUT)
@@ -147,8 +153,8 @@ class CianovaLauncherApp(ctk.CTk):
         self.grid_rowconfigure(0, weight=1) # Fila principal se expande
 
         # Tabview
-        self.tabview = ctk.CTkTabview(self, corner_radius=10)
-        self.tabview.grid(row=0, column=0, padx=10, pady=(5, 10), sticky="nsew")
+        self.tabview = ctk.CTkTabview(self, corner_radius=c.CORNER_RADIUS)
+        self.tabview.grid(row=0, column=0, padx=c.SECTION_PADDING, pady=(5, c.SECTION_PADDING), sticky="nsew")
 
         self.tab_launcher = self.tabview.add(c.UI_TAB_PLAY)
         self.tab_tools = self.tabview.add(c.UI_TAB_TOOLS)
@@ -188,18 +194,12 @@ class CianovaLauncherApp(ctk.CTk):
                 self.config_manager.set(c.CONFIG_KEY_WINDOW_SIZE, size)
 
     # ==========================================
-    # PESTAÑA 2: HERRAMIENTAS (ORGANIZADO)
-    # ==========================================
-    # ==========================================
-    # PESTAÑA 3: AJUSTES (CONFIGURACIÓN)
-    # ==========================================
-    # ==========================================
     # PESTAÑA 4: ACERCA DE (LEGAL)
     # ==========================================
     def restore_default_settings(self):
-        if messagebox.askyesno("Confirmar", "¿Estás seguro de que quieres restaurar todos los ajustes a sus valores por defecto? La aplicación se cerrará."):
+        if messagebox.askyesno(c.UI_CONFIRM_TITLE, c.UI_RESTORE_DEFAULTS_CONFIRM):
             self.config_manager.restore_defaults()
-            messagebox.showinfo("Ajustes restaurados", "Los ajustes se han restaurado. La aplicación se cerrará ahora.")
+            messagebox.showinfo(c.UI_RESTORE_DEFAULTS_SUCCESS_TITLE, c.UI_RESTORE_DEFAULTS_SUCCESS_MSG)
             self.destroy()
 
     def change_appearance(self, type_change, value):
@@ -228,8 +228,8 @@ class CianovaLauncherApp(ctk.CTk):
 
         # --- SECCIÓN 1: LANZADOR PRINCIPAL ---
         ctk.CTkLabel(
-            scroll, text="Lanzador Principal", font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(pady=(10, 5))
+            scroll, text=c.UI_MAIN_LAUNCHER_LABEL, font=c.FONT_SUBTITLE
+        ).pack(pady=(c.SECTION_PADDING, c.ELEMENT_SPACING))
 
         # Detección inicial
         target_exists = os.path.exists(main_desktop_file)
@@ -245,7 +245,7 @@ class CianovaLauncherApp(ctk.CTk):
             scroll,
             text=status_text,
             text_color=status_color,
-            font=ctk.CTkFont(weight="bold"),
+            font=c.FONT_BOLD,
         ).pack()
 
         def toggle_main():
@@ -262,7 +262,7 @@ class CianovaLauncherApp(ctk.CTk):
             exists_now = os.path.exists(shortcut_path)
 
             if exists_now:
-                if messagebox.askyesno("Confirmar", c.UI_CONFIRM_DELETE_SHORTCUT_MSG):
+                if messagebox.askyesno(c.UI_CONFIRM_TITLE, c.UI_CONFIRM_DELETE_SHORTCUT_MSG):
                     try:
                         os.remove(shortcut_path)
                         messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_SHORTCUT_DELETED_MSG)
@@ -293,7 +293,7 @@ class CianovaLauncherApp(ctk.CTk):
                         else f"python3 {os.path.abspath(__file__)}"
                     )
 
-            name = "CianovaLauncher MCPE"
+            name = c.APP_NAME
             filename = "cianova-launcher"
 
             if version:
@@ -307,7 +307,7 @@ class CianovaLauncherApp(ctk.CTk):
 
             desktop_content = f"""[Desktop Entry]
 Name={name}
-Comment=Lanzador de Minecraft PE para Linux
+Comment={c.UI_SHORTCUT_COMMENT}
 Exec={exec_cmd}
 Icon={icon_path}
 Terminal=false
@@ -317,9 +317,8 @@ Categories=Game;
             # En Flatpak, el archivo .desktop principal se gestiona de forma diferente
             if self.running_in_flatpak and not version:
                 messagebox.showinfo(
-                    "Información",
-                    "El acceso directo principal de la aplicación Flatpak se crea automáticamente al instalar.\n\n"
-                    "Puedes gestionarlo desde tu tienda de aplicaciones (ej. Discover, GNOME Software)."
+                    c.UI_FLATPAK_SHORTCUT_INFO_TITLE,
+                    c.UI_FLATPAK_SHORTCUT_INFO_MSG
                 )
                 return
 
@@ -340,13 +339,14 @@ Categories=Game;
             text=c.UI_BUTTON_DELETE_MAIN if target_exists else c.UI_BUTTON_CREATE_MAIN,
             fg_color=c.COLOR_RED_BUTTON if target_exists else c.COLOR_GREEN_BUTTON,
             command=toggle_main,
+            font=c.FONT_BOLD,
         ).pack(pady=10)
 
         # --- SECCIÓN 2: VERSIONES ESPECÍFICAS ---
         ctk.CTkLabel(
             scroll,
             text=c.UI_SECTION_VERSION_SHORTCUTS,
-            font=ctk.CTkFont(size=16, weight="bold"),
+            font=c.FONT_SUBTITLE,
         ).pack(pady=(20, 5))
 
         # Frame para creación
@@ -355,13 +355,14 @@ Categories=Game;
 
         versions = self.logic.get_installed_versions(self)
         if versions:
-            combo_ver = ctk.CTkComboBox(create_frame, values=versions, width=150)
+            combo_ver = ctk.CTkComboBox(create_frame, values=versions, width=150, font=c.FONT_NORMAL)
             combo_ver.pack(side="left", padx=5)
             ctk.CTkButton(
                 create_frame,
-                text="Añadir",
+                text=c.UI_BUTTON_ADD,
                 width=80,
                 command=lambda: create_shortcut_logic(combo_ver.get()),
+                font=c.FONT_NORMAL,
             ).pack(side="left", padx=5)
         else:
             ctk.CTkLabel(
@@ -372,7 +373,7 @@ Categories=Game;
         ctk.CTkLabel(
             scroll,
             text=c.UI_MANAGE_EXISTING_SHORTCUTS,
-            font=ctk.CTkFont(size=12, slant="italic"),
+            font=c.FONT_SMALL,
         ).pack(pady=(10, 0))
 
         found_any = False
@@ -383,10 +384,10 @@ Categories=Game;
                     ver_name = f.replace("cianova-launcher-", "").replace(
                         ".desktop", ""
                     )
-                    ver_frame = ctk.CTkFrame(scroll)
+                    ver_frame = ctk.CTkFrame(scroll, corner_radius=c.CORNER_RADIUS)
                     ver_frame.pack(fill="x", padx=20, pady=2)
                     ctk.CTkLabel(
-                        ver_frame, text=f"Versión {ver_name}", font=ctk.CTkFont(size=12)
+                        ver_frame, text=f"{c.UI_VERSION_TEXT} {ver_name}", font=c.FONT_NORMAL
                     ).pack(side="left", padx=10)
 
                     def delete_ver(fname=f):
@@ -399,10 +400,11 @@ Categories=Game;
 
                     ctk.CTkButton(
                         ver_frame,
-                        text="Borrar",
+                        text=c.UI_BUTTON_DELETE,
                         width=60,
                         fg_color="red",
                         command=delete_ver,
+                        font=c.FONT_NORMAL,
                     ).pack(side="right", padx=5, pady=2)
 
         if not found_any:
@@ -410,10 +412,10 @@ Categories=Game;
                 scroll,
                 text=c.UI_NO_SHORTCUTS_DETECTED,
                 text_color="gray",
-                font=ctk.CTkFont(size=11),
+                font=c.FONT_SMALL,
             ).pack()
 
-        ctk.CTkButton(dialog, text=c.UI_BUTTON_CLOSE, command=dialog.destroy).pack(pady=10)
+        ctk.CTkButton(dialog, text=c.UI_BUTTON_CLOSE, command=dialog.destroy, font=c.FONT_NORMAL).pack(pady=10)
 
         dialog.grab_set()
 
@@ -431,3 +433,23 @@ Categories=Game;
             MigrationDialog(self)
         except Exception as e:
             messagebox.showerror(c.UI_ERROR_TITLE, c.UI_ERROR_MIGRATION_TOOL.format(e=e))
+
+    def open_game_config_tool(self):
+        try:
+            GameConfigDialog(self)
+        except Exception as e:
+            messagebox.showerror(c.UI_ERROR_TITLE, f"Error: {e}")
+
+    def sync_gamemode_ui(self, value):
+        """Sincroniza el estado de GameMode entre pestañas"""
+        self.config[c.CONFIG_KEY_GAMEMODE_ENABLED] = value
+
+        # Actualizar pestaña Jugar
+        if hasattr(self, "play_tab") and hasattr(self.play_tab, "var_gamemode"):
+            if self.play_tab.var_gamemode.get() != value:
+                self.play_tab.var_gamemode.set(value)
+
+        # Actualizar pestaña Ajustes
+        if hasattr(self, "settings_tab") and hasattr(self.settings_tab, "var_gamemode"):
+            if self.settings_tab.var_gamemode.get() != value:
+                self.settings_tab.var_gamemode.set(value)

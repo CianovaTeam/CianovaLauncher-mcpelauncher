@@ -5,12 +5,13 @@ import shutil
 import threading
 from src.utils.dialogs import ask_directory_native
 from src.gui.progress_dialog import ProgressDialog
+from src import constants as c
 
 class MigrationDialog(ctk.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.title("Gestor de Migración de Datos")
+        self.title(c.UI_MIGRATION_MANAGER_TITLE)
         self.geometry("600x600")  # Reducido de 700 para pantallas pequeñas
         self.resizable(False, False)
 
@@ -22,44 +23,45 @@ class MigrationDialog(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             self.main_scroll,
-            text="Migración de Datos",
-            font=ctk.CTkFont(size=20, weight="bold"),
-        ).pack(pady=10)
+            text=c.UI_MIGRATION_TITLE,
+            font=c.FONT_TITLE,
+        ).pack(pady=c.SECTION_PADDING)
 
         # --- Frame Origen ---
-        self.frame_src = ctk.CTkFrame(self.main_scroll, corner_radius=12)
+        self.frame_src = ctk.CTkFrame(self.main_scroll, corner_radius=c.CORNER_RADIUS)
         self.frame_src.pack(fill="x", padx=10, pady=10)
 
         ctk.CTkLabel(
             self.frame_src,
-            text="Origen (Desde donde copiar):",
-            font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=5)
+            text=c.UI_SOURCE_LABEL,
+            font=c.FONT_SUBTITLE,
+        ).pack(anchor="w", padx=c.SECTION_PADDING, pady=c.ELEMENT_SPACING)
 
-        self.src_mode = ctk.StringVar(value="Local (.local)")
+        self.src_mode = ctk.StringVar(value=c.UI_SOURCE_MODES_DISPLAY[0])
         self.combo_src = ctk.CTkComboBox(
             self.frame_src,
             variable=self.src_mode,
-            values=["Local (.local)", "Flatpak (por ID)", "Personalizado"],
+            values=c.UI_SOURCE_MODES_DISPLAY,
             command=self.update_src_path_ui,
             width=300,
+            font=c.FONT_NORMAL,
         )
         self.combo_src.pack(fill="x", padx=10, pady=5)
 
         # Frame para ID de Flatpak (solo visible en modo Flatpak)
         self.frame_flatpak_id = ctk.CTkFrame(self.frame_src, fg_color="transparent")
-        ctk.CTkLabel(self.frame_flatpak_id, text="App ID:").pack(side="left", padx=5)
-        self.entry_flatpak_src_id = ctk.CTkEntry(self.frame_flatpak_id, width=250)
+        ctk.CTkLabel(self.frame_flatpak_id, text=c.UI_LABEL_APP_ID, font=c.FONT_NORMAL).pack(side="left", padx=5)
+        self.entry_flatpak_src_id = ctk.CTkEntry(self.frame_flatpak_id, width=250, font=c.FONT_NORMAL)
         self.entry_flatpak_src_id.pack(side="left", padx=5)
-        self.entry_flatpak_src_id.insert(0, "org.cianova.Launcher")
+        self.entry_flatpak_src_id.insert(0, c.DEFAULT_FLATPAK_ID)
 
         self.entry_src = ctk.CTkEntry(
-            self.frame_src, placeholder_text="Ruta de origen..."
+            self.frame_src, placeholder_text=c.UI_PLACEHOLDER_SOURCE_PATH, font=c.FONT_NORMAL
         )
         self.entry_src.pack(fill="x", padx=10, pady=5)
 
         self.btn_browse_src = ctk.CTkButton(
-            self.frame_src, text="Buscar Carpeta", width=120, command=self.browse_src
+            self.frame_src, text=c.UI_BUTTON_BROWSE_FOLDER, width=120, command=self.browse_src, font=c.FONT_NORMAL
         )
         self.btn_browse_src.pack(anchor="e", padx=10, pady=5)
 
@@ -70,32 +72,32 @@ class MigrationDialog(ctk.CTkToplevel):
         self.lbl_src_validation.pack(anchor="w", padx=10, pady=2)
 
         # --- Frame Destino ---
-        self.frame_dst = ctk.CTkFrame(self.main_scroll, corner_radius=12)
+        self.frame_dst = ctk.CTkFrame(self.main_scroll, corner_radius=c.CORNER_RADIUS)
         self.frame_dst.pack(fill="x", padx=10, pady=10)
 
         ctk.CTkLabel(
             self.frame_dst,
-            text="Destino (Ruta actual):",
-            font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=5)
+            text=c.UI_DESTINATION_LABEL,
+            font=c.FONT_SUBTITLE,
+        ).pack(anchor="w", padx=c.SECTION_PADDING, pady=c.ELEMENT_SPACING)
 
         self.lbl_dst = ctk.CTkLabel(
             self.frame_dst,
             text=self.parent.compiled_path,
             text_color="#3498db",
-            font=ctk.CTkFont(size=11),
+            font=c.FONT_SMALL,
         )
         self.lbl_dst.pack(anchor="w", padx=10, pady=5)
 
         # --- Opciones de Migración ---
-        self.frame_opts = ctk.CTkFrame(self.main_scroll, corner_radius=12)
+        self.frame_opts = ctk.CTkFrame(self.main_scroll, corner_radius=c.CORNER_RADIUS)
         self.frame_opts.pack(fill="x", padx=10, pady=10)
 
         ctk.CTkLabel(
             self.frame_opts,
-            text="¿Qué deseas migrar?:",
-            font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(anchor="w", padx=10, pady=5)
+            text=c.UI_WHAT_TO_MIGRATE,
+            font=c.FONT_SUBTITLE,
+        ).pack(anchor="w", padx=c.SECTION_PADDING, pady=c.ELEMENT_SPACING)
 
         # Checkboxes para opciones de migración
         self.check_versions = ctk.BooleanVar(value=True)
@@ -105,25 +107,28 @@ class MigrationDialog(ctk.CTkToplevel):
 
         self.cb_versions = ctk.CTkCheckBox(
             self.frame_opts,
-            text="📁 Versiones (versions/)",
+            text=c.UI_MIGRATE_VERSIONS,
             variable=self.check_versions,
             command=self.on_migration_option_change,
+            font=c.FONT_NORMAL,
         )
         self.cb_versions.pack(anchor="w", padx=20, pady=3)
 
         self.cb_worlds = ctk.CTkCheckBox(
             self.frame_opts,
-            text="🌍 Mundos (games/com.mojang/minecraftWorlds/)",
+            text=c.UI_MIGRATE_WORLDS,
             variable=self.check_worlds,
             command=self.on_migration_option_change,
+            font=c.FONT_NORMAL,
         )
         self.cb_worlds.pack(anchor="w", padx=20, pady=3)
 
         self.cb_resources = ctk.CTkCheckBox(
             self.frame_opts,
-            text="🎨 Paquetes de Recursos (resource_packs/)",
+            text=c.UI_MIGRATE_RESOURCES,
             variable=self.check_resources,
             command=self.on_migration_option_change,
+            font=c.FONT_NORMAL,
         )
         self.cb_resources.pack(anchor="w", padx=20, pady=3)
 
@@ -132,56 +137,57 @@ class MigrationDialog(ctk.CTkToplevel):
 
         self.cb_all = ctk.CTkCheckBox(
             self.frame_opts,
-            text="📦 Migrar TODO (carpeta completa mcpelauncher/)",
+            text=c.UI_MIGRATE_ALL,
             variable=self.check_all,
             command=self.on_all_migration_toggle,
-            font=ctk.CTkFont(weight="bold"),
+            font=c.FONT_BOLD,
         )
         self.cb_all.pack(anchor="w", padx=20, pady=3)
 
         # --- Método de Migración ---
-        self.frame_method = ctk.CTkFrame(self.main_scroll, corner_radius=12)
+        self.frame_method = ctk.CTkFrame(self.main_scroll, corner_radius=c.CORNER_RADIUS)
         self.frame_method.pack(fill="x", padx=10, pady=10)
 
         ctk.CTkLabel(
             self.frame_method,
-            text="Método de Migración:",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            text=c.UI_MIGRATION_METHOD,
+            font=c.FONT_SUBTITLE,
         ).pack(anchor="w", padx=10, pady=5)
 
         self.method = ctk.StringVar(value="copy")
         ctk.CTkRadioButton(
             self.frame_method,
-            text="Copiar (Mantiene origen y duplica)",
+            text=c.UI_METHOD_COPY,
             variable=self.method,
             value="copy",
+            font=c.FONT_NORMAL,
         ).pack(anchor="w", padx=20, pady=2)
         ctk.CTkRadioButton(
             self.frame_method,
-            text="Mover (Libera espacio en origen)",
+            text=c.UI_METHOD_MOVE,
             variable=self.method,
             value="move",
+            font=c.FONT_NORMAL,
         ).pack(anchor="w", padx=20, pady=2)
         ctk.CTkRadioButton(
             self.frame_method,
-            text="Enlazar (Symlink - Sincroniza carpetas)",
+            text=c.UI_METHOD_LINK,
             variable=self.method,
             value="link",
+            font=c.FONT_NORMAL,
         ).pack(anchor="w", padx=20, pady=2)
 
         # --- Acción ---
         self.btn_migrate = ctk.CTkButton(
             self,
-            text="🚀 INICIAR MIGRACIÓN",
+            text=c.UI_BUTTON_START_MIGRATION,
             height=40,
-            fg_color="orange",
-            hover_color="darkorange",
-            font=ctk.CTkFont(size=15, weight="bold"),
+            font=c.FONT_BOLD,
             command=self.start_migration,
         )
         self.btn_migrate.pack(pady=(10, 15), padx=30, fill="x", side="bottom")
 
-        self.update_src_path_ui("Local (.local)")
+        self.update_src_path_ui(c.UI_SOURCE_MODES_DISPLAY[0])
         self.update_idletasks()
         self.grab_set()
 
@@ -212,24 +218,24 @@ class MigrationDialog(ctk.CTkToplevel):
             self.cb_resources.configure(state="normal")
 
     def update_src_path_ui(self, choice):
-        if choice == "Local (.local)":
-            path = os.path.join(os.path.expanduser("~"), ".local/share/mcpelauncher")
+        if choice == c.UI_SOURCE_MODES_DISPLAY[0]: # Local (.local)
+            path = os.path.join(os.path.expanduser("~"), c.LOCAL_SHARE_DIR)
             self.entry_src.delete(0, "end")
             self.entry_src.insert(0, path)
             self.entry_src.configure(state="disabled", fg_color="gray30")
             self.frame_flatpak_id.pack_forget()
             self.validate_source_path(path)
 
-        elif choice == "Flatpak (por ID)":
+        elif choice == c.UI_SOURCE_MODES_DISPLAY[1]: # Flatpak (por ID)
             self.entry_src.configure(state="disabled", fg_color="gray30")
             self.frame_flatpak_id.pack(fill="x", padx=10, pady=5)
             # Actualizar ruta basada en ID
             app_id = self.entry_flatpak_src_id.get().strip()
             if not app_id:
-                app_id = "org.cianova.Launcher"
+                app_id = c.DEFAULT_FLATPAK_ID
             path = os.path.join(
                 os.path.expanduser("~"),
-                f".var/app/{app_id}/data/mcpelauncher",
+                f"{c.FLATPAK_DATA_DIR}/{app_id}/{c.MCPELAUNCHER_DATA_SUBDIR}",
             )
             self.entry_src.delete(0, "end")
             self.entry_src.insert(0, path)
@@ -249,30 +255,30 @@ class MigrationDialog(ctk.CTkToplevel):
 
         if os.path.exists(path):
             # Validar que contenga estructura de mcpelauncher
-            if "mcpelauncher" in path or os.path.exists(os.path.join(path, "versions")):
+            if "mcpelauncher" in path or os.path.exists(os.path.join(path, c.VERSIONS_DIR)):
                 self.lbl_src_validation.configure(
-                    text="✓ Carpeta válida detectada", text_color="green"
+                    text=c.UI_VALID_FOLDER_DETECTED, text_color="green"
                 )
                 return True
             else:
                 self.lbl_src_validation.configure(
-                    text="⚠ Carpeta no parece contener datos de mcpelauncher",
+                    text=c.UI_INVALID_FOLDER_WARNING,
                     text_color="orange",
                 )
                 return False
         else:
             self.lbl_src_validation.configure(
-                text="✗ Carpeta no existe", text_color="red"
+                text=c.UI_FOLDER_NOT_EXISTS, text_color="red"
             )
             return False
 
     def browse_src(self):
-        d = ask_directory_native(self, title="Seleccionar carpeta de origen")
+        d = ask_directory_native(self, title=c.UI_SELECT_SOURCE_FOLDER)
         if d:
             self.entry_src.configure(state="normal", fg_color=["#F9F9FA", "#343638"])
             self.entry_src.delete(0, "end")
             self.entry_src.insert(0, d)
-            self.combo_src.set("Personalizado")
+            self.combo_src.set(c.UI_SOURCE_MODES_DISPLAY[2]) # Personalizado
             self.validate_source_path(d)
 
     def start_migration(self):
@@ -285,32 +291,30 @@ class MigrationDialog(ctk.CTkToplevel):
         migrate_resources = self.check_resources.get()
 
         if not os.path.exists(src):
-            messagebox.showerror("Error", "La ruta de origen no existe.")
+            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_FOLDER_NOT_EXISTS)
             return
         if src == dst:
-            messagebox.showerror("Error", "Origen y destino son iguales.")
+            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_ERROR_SAME_FOLDER)
             return
         if not any([migrate_all, migrate_versions, migrate_worlds, migrate_resources]):
-            messagebox.showwarning("Aviso", "No seleccionaste nada para migrar.")
+            messagebox.showwarning(c.UI_INFO_TITLE, c.UI_ERROR_NOTHING_SELECTED)
             return
 
         items_to_migrate = []
         if migrate_all:
-            items_to_migrate.append("TODO (carpeta completa)")
+            items_to_migrate.append("TODO")
         else:
-            if migrate_versions: items_to_migrate.append("Versiones")
-            if migrate_worlds: items_to_migrate.append("Mundos")
-            if migrate_resources: items_to_migrate.append("Paquetes de Recursos")
+            if migrate_versions: items_to_migrate.append(c.UI_MIGRATE_VERSIONS_SIMPLE)
+            if migrate_worlds: items_to_migrate.append(c.UI_MIGRATE_WORLDS_SIMPLE)
+            if migrate_resources: items_to_migrate.append(c.UI_MIGRATE_RESOURCES_SIMPLE)
 
-        msg = (f"¿Estás seguro de migrar datos?\n\n"
-               f"De: {src}\n"
-               f"A: {dst}\n"
-               f"Método: {method.upper()}\n"
-               f"Elementos: {', '.join(items_to_migrate)}")
-        if not messagebox.askyesno("Confirmar", msg):
+        msg = c.UI_MIGRATION_CONFIRM_MSG.format(
+            src=src, dst=dst, method=method.upper(), items=', '.join(items_to_migrate)
+        )
+        if not messagebox.askyesno(c.UI_CONFIRM_TITLE, msg):
             return
 
-        self.progress_dialog = ProgressDialog(self, "Migrando...", "Copiando archivos, por favor espera...")
+        self.progress_dialog = ProgressDialog(self, c.UI_MIGRATING_TITLE, c.UI_MIGRATING_MSG)
 
         thread = threading.Thread(target=self._run_migration, args=(
             src, dst, method, migrate_all, migrate_versions, migrate_worlds, migrate_resources
@@ -331,21 +335,22 @@ class MigrationDialog(ctk.CTkToplevel):
                 if process_item(src, dst): migrated_count = 1
             else:
                 if migrate_versions:
-                    src_dir, dst_dir = os.path.join(src, "versions"), os.path.join(dst, "versions")
+                    src_dir, dst_dir = os.path.join(src, c.VERSIONS_DIR), os.path.join(dst, c.VERSIONS_DIR)
                     if os.path.exists(src_dir):
                         os.makedirs(dst_dir, exist_ok=True)
                         for item in os.listdir(src_dir):
                             if process_item(os.path.join(src_dir, item), os.path.join(dst_dir, item)): migrated_count += 1
 
                 if migrate_worlds:
-                    src_dir = os.path.join(src, "games/com.mojang/minecraftWorlds")
-                    dst_dir = os.path.join(dst, "games/com.mojang/minecraftWorlds")
+                    src_dir = os.path.join(src, c.WORLDS_DIR)
+                    dst_dir = os.path.join(dst, c.WORLDS_DIR)
                     if os.path.exists(src_dir):
                         os.makedirs(dst_dir, exist_ok=True)
                         for item in os.listdir(src_dir):
                             if process_item(os.path.join(src_dir, item), os.path.join(dst_dir, item)): migrated_count += 1
 
                 if migrate_resources:
+                    # resources path is usually games/com.mojang/resource_packs
                     src_dir = os.path.join(src, "games/com.mojang/resource_packs")
                     dst_dir = os.path.join(dst, "games/com.mojang/resource_packs")
                     if os.path.exists(src_dir):
@@ -355,7 +360,7 @@ class MigrationDialog(ctk.CTkToplevel):
 
             def on_complete():
                 self.progress_dialog.close()
-                messagebox.showinfo("Éxito", f"Migración completada.\nElementos procesados: {migrated_count}\n\nRefresca para ver cambios.")
+                messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_MIGRATION_SUCCESS_MSG.format(count=migrated_count))
                 self.parent.logic.refresh_version_list(self.parent)
                 self.destroy()
             self.parent.after(0, on_complete)
@@ -363,5 +368,5 @@ class MigrationDialog(ctk.CTkToplevel):
         except Exception as e:
             def on_error():
                 self.progress_dialog.close()
-                messagebox.showerror("Error Crítico", f"Error durante la migración:\n{e}")
+                messagebox.showerror(c.UI_ERROR_TITLE, f"Error: {e}")
             self.parent.after(0, on_error)

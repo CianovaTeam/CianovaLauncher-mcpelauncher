@@ -1,13 +1,10 @@
 import customtkinter as ctk
-
 from src import constants as c
-
 
 class ToolsTab(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color="transparent")
         self.app = app
-
         self.pack(fill="both", expand=True)
 
         self.grid_columnconfigure(0, weight=1)
@@ -20,196 +17,189 @@ class ToolsTab(ctk.CTkFrame):
         self.lbl_tools_status = ctk.CTkLabel(
             self.frame_tools_header,
             text="",
-            font=ctk.CTkFont(size=12, weight="bold"),
+            font=c.FONT_MODO,
         )
         self.lbl_tools_status.pack(side="left")
 
-        # Usar ScrollableFrame para que todo quepa en pantallas pequeñas
-        self.scroll_tools = ctk.CTkScrollableFrame(
-            self, fg_color="transparent"
-        )
+        # Usar ScrollableFrame
+        self.scroll_tools = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll_tools.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
-        # Grid con pesos para alineación
+        self.refresh_tools_ui()
+
+    def get_tools_data(self):
+        # Definir las herramientas agrupadas
+        groups = [
+            {
+                "title": c.UI_SECTION_MANAGEMENT,
+                "icon": "⚙️",
+                "tools": [
+                    {"text": c.UI_BUTTON_INSTALL_APK, "icon": "📥", "cmd": self.app.install_apk_dialog, "color": None},
+                    {"text": c.UI_BUTTON_MOVE_DELETE_VERSION, "icon": "🗑️", "cmd": lambda: self.app.logic.delete_version_dialog(self.app), "color": c.COLOR_RED_BUTTON},
+                    {"text": c.UI_BUTTON_MIGRATE_DATA, "icon": "🚀", "cmd": self.app.open_migration_tool, "color": None},
+                ]
+            },
+            {
+                "title": c.UI_SECTION_CUSTOMIZATION,
+                "icon": "🎨",
+                "tools": [
+                    {"text": c.UI_BUTTON_SKIN_PACK_CREATOR, "icon": "👕", "cmd": self.app.open_skin_tool, "color": None},
+                    {"text": c.UI_BUTTON_GAME_CONFIG, "icon": "🛠️", "cmd": self.app.open_game_config_tool, "color": None},
+                    {"text": c.UI_BUTTON_FIX_SHADERS, "icon": "✨", "cmd": lambda: self.app.logic.disable_shaders(self.app), "color": c.COLOR_YELLOW_BUTTON, "show_status": True},
+                ]
+            },
+            {
+                "title": c.UI_SECTION_FILES,
+                "icon": "📂",
+                "tools": [
+                    {"text": c.UI_BUTTON_OPEN_DATA_FOLDER, "icon": "📁", "cmd": lambda: self.app.logic.open_data_folder(self.app), "color": None},
+                    {"text": c.UI_BUTTON_EXPORT_WORLDS, "icon": "🌍", "cmd": lambda: self.app.logic.export_worlds_dialog(self.app), "color": None},
+                    {"text": c.UI_BUTTON_OPEN_SCREENSHOTS, "icon": "📸", "cmd": lambda: self.app.logic.export_screenshots_dialog(self.app), "color": None},
+                ]
+            },
+            {
+                "title": c.UI_SECTION_SYSTEM,
+                "icon": "💻",
+                "tools": [
+                    {
+                        "text": c.UI_BUTTON_VERIFY_DEPS_FLATPAK if self.app.running_in_flatpak else c.UI_BUTTON_VERIFY_DEPS_LOCAL,
+                        "icon": "📦", "cmd": lambda: self.app.logic.verify_dependencies(self.app), "color": None
+                    },
+                    {"text": c.UI_BUTTON_VERIFY_HW, "icon": "🔍", "cmd": lambda: self.app.logic.check_requirements_dialog(self.app), "color": None},
+                    {"text": c.UI_BUTTON_MANAGE_SHORTCUT, "icon": "🔗", "cmd": self.app.manage_desktop_shortcut, "color": None},
+                ]
+            }
+        ]
+        return groups
+
+    def refresh_tools_ui(self):
+        # Limpiar scroll
+        for child in self.scroll_tools.winfo_children():
+            child.destroy()
+
+        layout = self.app.config.get(c.CONFIG_KEY_TOOLS_LAYOUT, c.STYLE_COLUMNS)
+        groups = self.get_tools_data()
+
+        if layout == c.STYLE_LIST:
+            self._render_list(groups)
+        elif layout == c.STYLE_COLUMNS:
+            self._render_columns(groups)
+        else: # STYLE_GRID
+            self._render_grid(groups)
+
+        # Footer Créditos
+        footer_row = 100 # Un número grande para que siempre esté al final
+        if layout == c.STYLE_LIST:
+            ctk.CTkLabel(
+                self.scroll_tools, text=c.CREDITOS, text_color="gray", font=c.FONT_SMALL
+            ).grid(row=footer_row, column=0, pady=20)
+        elif layout == c.STYLE_COLUMNS:
+            ctk.CTkLabel(
+                self.scroll_tools, text=c.CREDITOS, text_color="gray", font=c.FONT_SMALL
+            ).grid(row=footer_row, column=0, columnspan=2, pady=20)
+        else: # GRID
+            ctk.CTkLabel(
+                self.scroll_tools, text=c.CREDITOS, text_color="gray", font=c.FONT_SMALL
+            ).grid(row=footer_row, column=0, columnspan=3, pady=20)
+
+    def _create_tool_button(self, parent, tool):
+        if tool.get("hide_if_flatpak") and self.app.running_in_flatpak:
+            return None
+
+        btn_text = f"{tool['icon']} {tool['text']}"
+        btn = ctk.CTkButton(
+            parent,
+            text=btn_text,
+            height=c.BTN_HEIGHT + 4,
+            corner_radius=8,
+            command=tool["cmd"],
+            font=c.FONT_NORMAL,
+        )
+        if tool.get("color"):
+            btn.configure(fg_color=tool["color"])
+            # Si el color es una constante con HOVER, intentar usarla
+            hover_key = tool["color"] + "_HOVER"
+            if hasattr(c, hover_key):
+                btn.configure(hover_color=getattr(c, hover_key))
+
+        btn.pack(pady=c.ELEMENT_SPACING, padx=15, fill="x")
+
+        if tool.get("show_status"):
+            self.lbl_shader_status = ctk.CTkLabel(
+                parent, text=c.UI_LABEL_SHADERS_STATUS, font=c.FONT_SMALL
+            )
+            self.lbl_shader_status.pack(pady=(0, 5))
+            # Actualizar estado inmediatamente
+            self.app.logic.update_shader_status_label(self.app)
+
+        return btn
+
+    def _render_list(self, groups):
+        self.scroll_tools.grid_columnconfigure(0, weight=1)
+        self.scroll_tools.grid_columnconfigure(1, weight=0)
+
+        for i, group in enumerate(groups):
+            frame = ctk.CTkFrame(self.scroll_tools, corner_radius=c.CORNER_RADIUS)
+            frame.grid(row=i, column=0, padx=20, pady=10, sticky="ew")
+
+            ctk.CTkLabel(
+                frame, text=f"{group['icon']} {group['title']}", font=c.FONT_SUBTITLE
+            ).pack(pady=(10, 5))
+
+            for tool in group["tools"]:
+                self._create_tool_button(frame, tool)
+
+    def _render_columns(self, groups):
         self.scroll_tools.grid_columnconfigure(0, weight=1)
         self.scroll_tools.grid_columnconfigure(1, weight=1)
-        self.scroll_tools.grid_rowconfigure(0, weight=1)
 
-        # --- Columna Izquierda ---
-        frame_left = ctk.CTkFrame(self.scroll_tools, fg_color="transparent")
-        frame_left.grid(row=0, column=0, padx=(10, 5), pady=10, sticky="new")
+        for i, group in enumerate(groups):
+            col = i % 2
+            frame = ctk.CTkFrame(self.scroll_tools, corner_radius=c.CORNER_RADIUS)
+            frame.grid(row=i // 2, column=col, padx=10, pady=10, sticky="new")
 
-        # Panel: Gestión
-        frame_install = ctk.CTkFrame(frame_left, corner_radius=12)
-        frame_install.pack(fill="x", pady=(0, 10))
+            ctk.CTkLabel(
+                frame, text=f"{group['icon']} {group['title']}", font=c.FONT_SUBTITLE
+            ).pack(pady=(10, 5))
 
-        ctk.CTkLabel(
-            frame_install, text=c.UI_SECTION_MANAGEMENT, font=ctk.CTkFont(size=14, weight="bold")
-        ).pack(pady=(10, 2))
-        ctk.CTkButton(
-            frame_install,
-            text=c.UI_BUTTON_INSTALL_APK,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_BLUE_BUTTON,
-            command=self.app.install_apk_dialog,
-        ).pack(pady=5, padx=15, fill="x")
-        ctk.CTkButton(
-            frame_install,
-            text=c.UI_BUTTON_MOVE_DELETE_VERSION,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_RED_BUTTON,
-            hover_color=c.COLOR_RED_BUTTON_HOVER,
-            command=lambda: self.app.logic.delete_version_dialog(self.app),
-        ).pack(pady=5, padx=15, fill="x")
+            for tool in group["tools"]:
+                self._create_tool_button(frame, tool)
 
-        # Botón de migración (especialmente útil en Flatpak)
-        ctk.CTkButton(
-            frame_install,
-            text=c.UI_BUTTON_MIGRATE_DATA,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_PURPLE_BUTTON,
-            hover_color=c.COLOR_PURPLE_BUTTON_HOVER,
-            command=self.app.open_migration_tool,
-        ).pack(pady=5, padx=15, fill="x")
+    def _render_grid(self, groups):
+        # Renderizar cada herramienta como una tarjeta individual en un grid
+        self.scroll_tools.grid_columnconfigure((0, 1, 2), weight=1)
 
-        # Panel: Personalización
-        frame_custom = ctk.CTkFrame(frame_left, corner_radius=12)
-        frame_custom.pack(fill="x", pady=10)
+        all_tools = []
+        for group in groups:
+            for tool in group["tools"]:
+                if tool.get("hide_if_flatpak") and self.app.running_in_flatpak:
+                    continue
+                all_tools.append(tool)
 
-        ctk.CTkLabel(
-            frame_custom,
-            text=c.UI_SECTION_CUSTOMIZATION,
-            font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(pady=10)
-        ctk.CTkButton(
-            frame_custom,
-            text=c.UI_BUTTON_SKIN_PACK_CREATOR,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_BLUE_BUTTON,
-            command=self.app.open_skin_tool,
-        ).pack(pady=5, padx=15, fill="x")
+        for i, tool in enumerate(all_tools):
+            row = i // 3
+            col = i % 3
 
-        self.lbl_shader_status = ctk.CTkLabel(
-            frame_custom, text=c.UI_LABEL_SHADERS_STATUS, font=ctk.CTkFont(size=11)
-        )
-        self.lbl_shader_status.pack(pady=(5, 0))
-        ctk.CTkButton(
-            frame_custom,
-            text=c.UI_BUTTON_FIX_SHADERS,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_YELLOW_BUTTON,
-            hover_color=c.COLOR_YELLOW_BUTTON_HOVER,
-            command=lambda: self.app.logic.disable_shaders(self.app),
-        ).pack(pady=5, padx=15, fill="x")
+            card = ctk.CTkFrame(self.scroll_tools, corner_radius=c.CORNER_RADIUS, width=180, height=140)
+            card.grid(row=row, column=col, padx=8, pady=8, sticky="nsew")
+            card.grid_propagate(False)
 
-        # Panel: Archivos (movido aquí al lado izquierdo)
-        frame_files = ctk.CTkFrame(frame_left, corner_radius=12)
-        frame_files.pack(fill="x", pady=10)
+            # Icono grande
+            lbl_icon = ctk.CTkLabel(card, text=tool["icon"], font=("Roboto", 40))
+            lbl_icon.pack(pady=(15, 5))
 
-        ctk.CTkLabel(
-            frame_files, text=c.UI_SECTION_FILES, font=ctk.CTkFont(size=14, weight="bold")
-        ).pack(pady=(15, 5))
-        ctk.CTkButton(
-            frame_files,
-            text=c.UI_BUTTON_OPEN_DATA_FOLDER,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_GRAY_BUTTON,
-            hover_color=c.COLOR_GRAY_BUTTON_HOVER,
-            command=lambda: self.app.logic.open_data_folder(self.app),
-        ).pack(pady=5, padx=15, fill="x")
+            # Texto descriptivo (Label para que pueda hacer wrap)
+            lbl_text = ctk.CTkLabel(card, text=tool["text"], font=c.FONT_SMALL, wraplength=160)
+            lbl_text.pack(padx=10, pady=0)
 
-        # --- Columna Derecha ---
-        frame_right = ctk.CTkFrame(self.scroll_tools, fg_color="transparent")
-        frame_right.grid(row=0, column=1, padx=(5, 10), pady=10, sticky="new")
+            # Toda la tarjeta es clicable
+            for w in [card, lbl_icon, lbl_text]:
+                w.bind("<Button-1>", lambda e, cmd=tool["cmd"]: cmd())
 
-        # Panel: Herramientas de Sistema
-        frame_sys = ctk.CTkFrame(frame_right, corner_radius=12)
-        frame_sys.pack(fill="x", pady=(0, 10))
-
-        ctk.CTkLabel(
-            frame_sys, text=c.UI_SECTION_SYSTEM, font=ctk.CTkFont(size=14, weight="bold")
-        ).pack(pady=(15, 5))
-        # Botón de dependencias con texto dinámico
-        deps_text = (
-            c.UI_BUTTON_VERIFY_DEPS_FLATPAK
-            if self.app.running_in_flatpak
-            else c.UI_BUTTON_VERIFY_DEPS_LOCAL
-        )
-        self.btn_verify_deps = ctk.CTkButton(
-            frame_sys,
-            text=deps_text,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_PURPLE_BUTTON,
-            hover_color=c.COLOR_PURPLE_BUTTON_HOVER,
-            command=lambda: self.app.logic.verify_dependencies(self.app),
-        )
-        self.btn_verify_deps.pack(pady=5, padx=20, fill="x")
-
-        # Ocultar el botón de requisitos de hardware en Flatpak
-        if not self.app.running_in_flatpak:
-            ctk.CTkButton(
-                frame_sys,
-                text=c.UI_BUTTON_VERIFY_HW,
-                height=32,
-                corner_radius=8,
-                fg_color=c.COLOR_PURPLE_BUTTON,
-                hover_color=c.COLOR_PURPLE_BUTTON_HOVER,
-                command=lambda: self.app.logic.check_requirements_dialog(self.app),
-            ).pack(pady=5, padx=20, fill="x")
-
-        # Panel: Acceso Directo del Menú
-        frame_shortcut = ctk.CTkFrame(frame_right, corner_radius=12)
-        frame_shortcut.pack(fill="x", pady=10)
-
-        ctk.CTkLabel(
-            frame_shortcut,
-            text=c.UI_SECTION_SHORTCUT,
-            font=ctk.CTkFont(size=14, weight="bold"),
-        ).pack(pady=(15, 5))
-        ctk.CTkButton(
-            frame_shortcut,
-            text=c.UI_BUTTON_MANAGE_SHORTCUT,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_GREEN_BUTTON,
-            hover_color=c.COLOR_GREEN_BUTTON_HOVER,
-            command=self.app.manage_desktop_shortcut,
-        ).pack(pady=5, padx=20, fill="x")
-
-        # Panel: Exportación
-        frame_export = ctk.CTkFrame(frame_right, corner_radius=12)
-        frame_export.pack(fill="x", pady=10)
-
-        ctk.CTkLabel(
-            frame_export, text=c.UI_SECTION_EXPORT, font=ctk.CTkFont(size=14, weight="bold")
-        ).pack(pady=(15, 5))
-        ctk.CTkButton(
-            frame_export,
-            text=c.UI_BUTTON_EXPORT_WORLDS,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_BLUE_BUTTON,
-            command=lambda: self.app.logic.export_worlds_dialog(self.app),
-        ).pack(pady=5, padx=20, fill="x")
-        ctk.CTkButton(
-            frame_export,
-            text=c.UI_BUTTON_OPEN_SCREENSHOTS,
-            height=32,
-            corner_radius=8,
-            fg_color=c.COLOR_BLUE_BUTTON,
-            command=lambda: self.app.logic.export_screenshots_dialog(self.app),
-        ).pack(pady=5, padx=20, fill="x")
-
-        # Créditos (Footer Global)
-        frame_credits = ctk.CTkFrame(self.scroll_tools, fg_color="transparent")
-        frame_credits.grid(row=2, column=0, columnspan=2, pady=5)
-        ctk.CTkLabel(
-            frame_credits, text=c.CREDITOS, text_color="gray", font=ctk.CTkFont(size=10)
-        ).pack()
+            # Indicador de estado si es necesario
+            if tool.get("show_status"):
+                self.lbl_shader_status = ctk.CTkLabel(
+                    card, text="...", font=("Roboto", 9)
+                )
+                self.lbl_shader_status.pack(side="bottom")
+                self.app.logic.update_shader_status_label(self.app)

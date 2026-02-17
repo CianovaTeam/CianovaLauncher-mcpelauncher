@@ -14,7 +14,7 @@ class AboutTab(ctk.CTkFrame):
 
         # Licencia y Términos
         frame_legal = ctk.CTkScrollableFrame(
-            self, label_text="Términos y Condiciones", corner_radius=12
+            self, label_text=c.UI_TITLE_LEGAL, corner_radius=12
         )
         frame_legal.pack(fill="both", expand=True, padx=20, pady=10)
 
@@ -32,5 +32,5 @@ class AboutTab(ctk.CTkFrame):
             pady=10
         )
         ctk.CTkLabel(
-            self, text=f"Versión: {c.VERSION_LAUNCHER}", text_color="gray"
+            self, text=f"{c.UI_VERSION_TEXT}{c.VERSION_LAUNCHER}", text_color="gray"
         ).pack()
