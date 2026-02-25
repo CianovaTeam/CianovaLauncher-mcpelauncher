@@ -18,13 +18,32 @@ def load_language(lang_code):
         with open(lang_file, "r", encoding="utf-8") as f:
             translations = json.load(f)
 
+        # Definir variables globales que pueden usarse en las traducciones
+        global_vars = {
+            "APP_NAME": getattr(c, "APP_NAME", "CianovaLauncher"),
+            "VERSION_LAUNCHER": getattr(c, "VERSION_LAUNCHER", "1.0.0"),
+            "DEVELOPERS": getattr(c, "DEVELOPERS", "@PlaGaDev"),
+            "UPDATE_NAME": getattr(c, "UPDATE_NAME", "New Update")
+        }
+
+        # Función para procesar reemplazos recursivamente (para diccionarios como UI_BIN_MODES)
+        def process_value(val):
+            if isinstance(val, str):
+                for var_name, var_val in global_vars.items():
+                    placeholder = "{" + var_name + "}"
+                    if placeholder in val:
+                        val = val.replace(placeholder, str(var_val))
+                return val
+            elif isinstance(val, dict):
+                return {k: process_value(v) for k, v in val.items()}
+            elif isinstance(val, list):
+                return [process_value(i) for i in val]
+            return val
+
         # Actualizar constantes en el módulo src.constants
         for key, value in translations.items():
-            if hasattr(c, key):
-                setattr(c, key, value)
-            else:
-                # Opcional: Permitir nuevas claves que no estén en constants.py
-                setattr(c, key, value)
+            processed_value = process_value(value)
+            setattr(c, key, processed_value)
 
         return True
     except Exception as e:

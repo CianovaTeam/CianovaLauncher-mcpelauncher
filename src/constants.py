@@ -33,9 +33,11 @@ import os
 
 # --- Información de la Aplicación ---
 APP_NAME = "CianovaLauncher"
-VERSION_LAUNCHER = "2.1"
-CHANGELOG = "User experience update: CianovaLauncher 2.1"
-CREDITOS = "Dev: @PlaGaDev, @ShaggyLinux & Antigravity\nProyecto: CianovaLauncherMCPE"
+VERSION_LAUNCHER = "2.1.1"
+DEVELOPERS = "@PlaGaDev, @ShaggyLinux & Antigravity"
+UPDATE_NAME = "Fix update"
+CHANGELOG = f"{UPDATE_NAME}: {APP_NAME} {VERSION_LAUNCHER}"
+CREDITOS = f"Dev: {DEVELOPERS}\nProyecto: {APP_NAME}"
 LEGAL_TEXT = """LICENCIA & TÉRMINOS Y CONDICIONES
 
 Última Actualización: 26 de Diciembre de 2025

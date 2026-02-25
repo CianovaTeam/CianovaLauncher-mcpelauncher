@@ -1,6 +1,6 @@
 {
-    "CHANGELOG": "User experience update: CianovaLauncher 2.1",
-    "CREDITOS": "Dev: @PlaGaDev, @ShaggyLinux & Antigravity\nProject: CianovaLauncherMCPE",
+    "CHANGELOG": "{UPDATE_NAME}: {APP_NAME} {VERSION_LAUNCHER}",
+    "CREDITOS": "Dev: {DEVELOPERS}\nProject: {APP_NAME}",
     "LEGAL_TEXT": "LICENSE & TERMS AND CONDITIONS\n\nLast Updated: December 26, 2025\n\n---\n\n1. Nature of the Project\nCianovaLauncher is an open-source tool developed for educational and utility purposes for the Minecraft Bedrock community on Linux.\n\n* AI-Assisted Development: This tool has been developed with the assistance of Google Antigravity, an advanced Artificial Intelligence agent.\n* Original Base: The original script `MCPELauncher Tools ver0.3.sh` is the intellectual property of user @PlaGaDev, who has freely contributed it to this project.\n\n2. Attribution and Dependencies\nThis launcher only works independently in its visual part, but any execution, extraction, or other process requires the prior installation and compiled binaries of:\n* MCPELauncher-Manifest: Base project it is founded on (Credits to ChristopherHX and MCMrARM).\n\nCianovaLauncher does not seek to replace, compete with, or take credit for the aforementioned project or any other launcher fulfilling the same function. Its sole purpose is to facilitate version and process management for users of said manifest without claiming to be the project's official support.\n\nThe CCMC Launcher project by CrowRei34, on which the previous version (v1.0, v1.1, and v1.2) of the MCPETool tool (now called CianovaLauncher) was based, is currently considered obsolete/legacy. CianovaLauncher aims to offer users of the previous version a new way for those who use or used that structure.\n\nCianovaLauncher will not provide the APKs required for execution; the user must obtain them by their own means.\n\n3. Non-Profit Use\nThis project is distributed under the GNU GPL v3.0 license. It is open-source and delivered with the intention of being free forever. The community is appreciated for not monetizing this tool to maintain the spirit of collaboration.\n\n4. Disclaimer\nThe software is provided \"as is\", without warranty of any kind. The developers (@PlaGaDev, GoogleAntigravity) are not responsible for:\n* Data loss (worlds, screenshots, etc.).\n* Account bans due to misuse.\n* System failures derived from the use of the tool.\n\nBy using CianovaLauncher, you accept these terms and conditions.\n\n---\nMade with ❤️ and 🤖 for the Linux community.\n",
     "UI_ALL_FILES_TYPE": "All Files",
     "UI_ANALYZING_HW_MSG": "Analyzing Hardware...",
@@ -333,7 +333,7 @@
     "UI_TAB_VISUAL": "Visual Interface",
     "UI_TERMINAL_PROMPT_CLOSE": "Press Enter to close...",
     "UI_TITLE_LEGAL": "Terms and Conditions",
-    "UI_TITLE_VERSION": "CianovaLauncher - v2.1",
+    "UI_TITLE_VERSION": "{APP_NAME} - v{VERSION_LAUNCHER}",
     "UI_VALID_FOLDER_DETECTED": "✓ Valid folder detected",
     "UI_VERIFICATION_RESULT_HEADER": "Verification Result",
     "UI_VERIFYING_TITLE": "Verifying...",

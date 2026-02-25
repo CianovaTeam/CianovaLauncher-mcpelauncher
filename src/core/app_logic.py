@@ -312,22 +312,35 @@ def setup_flatpak_environment(app):
     if not app.running_in_flatpak:
         return
 
-    # En Flatpak, si el modo no está establecido o es la primera ejecución,
-    # el modo de binarios por defecto debería ser 'Sistema' para usar los binarios empaquetados.
-    if app.config.get(c.CONFIG_KEY_MODE) is None or app.config.get(c.CONFIG_KEY_FIRST_RUN_FLATPAK, True):
+    # 1. Asegurar que el modo sea válido para Flatpak
+    if app.config.get(c.CONFIG_KEY_MODE) is None:
         app.config[c.CONFIG_KEY_MODE] = c.MODE_BIN_SYSTEM
-        # A diferencia del modo "Personalizado", "Sistema" no necesita rutas explícitas
-        # ya que se asume que los binarios están en el PATH del sistema (o del sandbox).
-        # Sin embargo, los guardamos para el fallback de `execve`.
-        if os.path.exists("/app/bin/mcpelauncher-client"):
-            app.config[c.CONFIG_KEY_BINARY_PATHS] = {
-                c.CONFIG_KEY_CLIENT: "/app/bin/mcpelauncher-client",
-                c.CONFIG_KEY_EXTRACT: "/app/bin/mcpelauncher-extract",
-                c.CONFIG_KEY_WEBVIEW: "/app/bin/mcpelauncher-webview",
-                c.CONFIG_KEY_ERROR: "/app/bin/mcpelauncher-error",
-            }
-            app.config[c.CONFIG_KEY_FIRST_RUN_FLATPAK] = False
-            app.config_manager.save_config()
+
+    # 2. Auto-reparar rutas de binarios si están vacías o no existen
+    # Esto ayuda a usuarios que migran de versiones donde no se definían estas rutas explícitamente.
+    # Priorizamos /app/bin/ que es el estándar de nuestro Flatpak.
+    paths = app.config.get(c.CONFIG_KEY_BINARY_PATHS, {})
+    changed = False
+
+    binary_map = {
+        c.CONFIG_KEY_CLIENT: "/app/bin/mcpelauncher-client",
+        c.CONFIG_KEY_EXTRACT: "/app/bin/mcpelauncher-extract",
+        c.CONFIG_KEY_WEBVIEW: "/app/bin/mcpelauncher-webview",
+        c.CONFIG_KEY_ERROR: "/app/bin/mcpelauncher-error",
+    }
+
+    for key, default_path in binary_map.items():
+        current_path = paths.get(key, "")
+        # Si el path está vacío O no existe y es el path interno de Flatpak, lo corregimos
+        if not current_path or (current_path.startswith("/app/bin/") and not os.path.exists(current_path)):
+            if os.path.exists(default_path):
+                paths[key] = default_path
+                changed = True
+
+    if changed:
+        app.config[c.CONFIG_KEY_BINARY_PATHS] = paths
+        app.config[c.CONFIG_KEY_FIRST_RUN_FLATPAK] = False
+        app.config_manager.save_config()
 
 def check_migration_needed(app):
     if not app.running_in_flatpak:
@@ -582,6 +595,12 @@ def launch_game(app):
             else:
                 # Fallback a los binarios internos si flatpak-spawn no está disponible
                 client_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_CLIENT)
+
+                # REFUERZO: Si el path está vacío o no existe, intentar el default de /app/bin
+                if not client_path or not os.path.exists(client_path):
+                    if os.path.exists("/app/bin/mcpelauncher-client"):
+                        client_path = "/app/bin/mcpelauncher-client"
+
                 if client_path and os.path.exists(client_path):
                     cmd = apply_gamemode([client_path, "-dg", version_path])
                 else:

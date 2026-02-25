@@ -43,13 +43,24 @@ class ConfigManager:
         self.config = self.default_config.copy()
         self.save_config()
 
+    def _deep_merge(self, defaults, loaded):
+        """Mezcla profundamente dos diccionarios para asegurar que las claves anidadas existan"""
+        result = defaults.copy()
+        for key, value in loaded.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._deep_merge(result[key], value)
+            else:
+                result[key] = value
+        return result
+
     def load_config(self):
         """Carga configuración con migración automática desde archivo antiguo"""
         # Intentar cargar desde nuevo archivo
         if os.path.exists(self.config_file):
             try:
                 with open(self.config_file, "r") as f:
-                    return {**self.default_config, **json.load(f)}
+                    loaded_config = json.load(f)
+                    return self._deep_merge(self.default_config, loaded_config)
             except Exception as e:
                 print(f"Error cargando config: {e}")
 
@@ -60,8 +71,8 @@ class ConfigManager:
                 with open(self.old_config_file, "r") as f:
                     old_config = json.load(f)
 
-                # Aplicar valores antiguos sobre defaults
-                migrated_config = {**self.default_config, **old_config}
+                # Aplicar valores antiguos sobre defaults usando deep merge
+                migrated_config = self._deep_merge(self.default_config, old_config)
 
                 # Actualizar valores obsoletos y migrar a nuevas claves internas
                 old_to_new_mode = {
