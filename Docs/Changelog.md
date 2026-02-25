@@ -1,5 +1,9 @@
 # 📝 Changelog - CianovaLauncher
 
+# [v2.1.1] - 2026-02-25
+**FIX:** Se corrigio un error que provocaba que los usuarios de config anterior no podian cargar correctamente la ruta de binarios de Flatpak correctamente
+**CODE FIX:** Se cambio para que el launcher pueda cambiarse la descripción de la versión desde constant.py
+
 # [v2.1] - 2026-02-17
 **NEW:** Se puede personalizar la IU con diferentes tonos de colores, modo claro/oscuro, tamaño de iconos y texto.
 **NEW HELLO:** Ahora esta la posibilidad de cambiar el idioma (Actualmente esta Ingles y Español)
