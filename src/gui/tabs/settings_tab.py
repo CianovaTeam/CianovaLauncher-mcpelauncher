@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox
+from src.gui import custom_dialogs as messagebox
 import os
 
 from src import constants as c
@@ -20,6 +20,41 @@ class SettingsTab(ctk.CTkFrame):
             self, fg_color="transparent"
         )
         self.scroll_settings.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # --- Gestión de Perfiles (NUEVO) ---
+        self.frame_profiles = ctk.CTkFrame(self.scroll_settings, corner_radius=12)
+        self.frame_profiles.pack(fill="x", padx=10, pady=(10, 5))
+
+        ctk.CTkLabel(
+            self.frame_profiles,
+            text=c.UI_PROFILES_MANAGER_TITLE,
+            font=c.FONT_SUBTITLE,
+        ).pack(pady=(c.SECTION_PADDING, 5))
+
+        self.f_profile_selector = ctk.CTkFrame(self.frame_profiles, fg_color="transparent")
+        self.f_profile_selector.pack(pady=(0, 15))
+
+        ctk.CTkLabel(self.f_profile_selector, text=c.UI_LABEL_PROFILE, font=c.FONT_NORMAL).pack(side="left", padx=5)
+
+        self.profile_var = ctk.StringVar(value=self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT))
+        self.combo_profile = ctk.CTkComboBox(
+            self.f_profile_selector,
+            values=self.app.logic.get_profiles(self.app),
+            command=self.on_profile_change,
+            variable=self.profile_var,
+            width=200,
+            font=c.FONT_NORMAL,
+        )
+        self.combo_profile.pack(side="left", padx=5)
+
+        self.btn_manage_profiles = ctk.CTkButton(
+            self.f_profile_selector,
+            text="⚙️",
+            width=35,
+            command=self.open_profile_manager,
+            font=c.FONT_BOLD
+        )
+        self.btn_manage_profiles.pack(side="left", padx=5)
 
         # --- Configuración de Binarios ---
         self.frame_bin = ctk.CTkFrame(self.scroll_settings, corner_radius=12)
@@ -65,7 +100,7 @@ class SettingsTab(ctk.CTkFrame):
             text="?",
             width=30,
             command=lambda: messagebox.showinfo(
-                c.UI_INFO_TITLE, c.UI_FLATPAK_ID_EXAMPLE
+                self, c.UI_INFO_TITLE, c.UI_FLATPAK_ID_EXAMPLE
             ),
         )
         self.btn_flatpak_custom.pack(side="right", padx=5)
@@ -139,7 +174,7 @@ class SettingsTab(ctk.CTkFrame):
         self.var_nvidia_prime = ctk.BooleanVar(value=self.app.config.get(c.CONFIG_KEY_NVIDIA_PRIME, False))
         self.check_nvidia_prime = ctk.CTkCheckBox(f_nvidia, text=c.UI_NVIDIA_PRIME_CHECKBOX, variable=self.var_nvidia_prime)
         self.check_nvidia_prime.pack(side="left")
-        ctk.CTkButton(f_nvidia, text="?", width=30, command=lambda: messagebox.showinfo(c.UI_NVIDIA_PRIME_CHECKBOX, c.UI_NVIDIA_PRIME_TOOLTIP)).pack(side="right", padx=5)
+        ctk.CTkButton(f_nvidia, text="?", width=30, command=lambda: messagebox.showinfo(self, c.UI_NVIDIA_PRIME_CHECKBOX, c.UI_NVIDIA_PRIME_TOOLTIP)).pack(side="right", padx=5)
 
         # Zink
         f_zink = ctk.CTkFrame(frame_compat, fg_color="transparent")
@@ -147,7 +182,7 @@ class SettingsTab(ctk.CTkFrame):
         self.var_zink = ctk.BooleanVar(value=self.app.config.get(c.CONFIG_KEY_ZINK_MODE, False))
         self.check_zink = ctk.CTkCheckBox(f_zink, text=c.UI_ZINK_CHECKBOX, variable=self.var_zink)
         self.check_zink.pack(side="left")
-        ctk.CTkButton(f_zink, text="?", width=30, command=lambda: messagebox.showinfo(c.UI_ZINK_CHECKBOX, c.UI_ZINK_TOOLTIP)).pack(side="right", padx=5)
+        ctk.CTkButton(f_zink, text="?", width=30, command=lambda: messagebox.showinfo(self, c.UI_ZINK_CHECKBOX, c.UI_ZINK_TOOLTIP)).pack(side="right", padx=5)
 
         # Custom Env
         f_custom_env = ctk.CTkFrame(frame_compat, fg_color="transparent")
@@ -155,7 +190,7 @@ class SettingsTab(ctk.CTkFrame):
         self.var_custom_env = ctk.BooleanVar(value=self.app.config.get(c.CONFIG_KEY_CUSTOM_ENV_ENABLED, False))
         self.check_custom_env = ctk.CTkCheckBox(f_custom_env, text=c.UI_CUSTOM_ARGS_CHECKBOX, variable=self.var_custom_env, command=self.toggle_custom_env)
         self.check_custom_env.pack(side="left")
-        ctk.CTkButton(f_custom_env, text="?", width=30, command=lambda: messagebox.showinfo(c.UI_CUSTOM_ARGS_CHECKBOX, c.UI_CUSTOM_ARGS_TOOLTIP)).pack(side="right", padx=5)
+        ctk.CTkButton(f_custom_env, text="?", width=30, command=lambda: messagebox.showinfo(self, c.UI_CUSTOM_ARGS_CHECKBOX, c.UI_CUSTOM_ARGS_TOOLTIP)).pack(side="right", padx=5)
 
         # GameMode
         f_gamemode = ctk.CTkFrame(frame_compat, fg_color="transparent")
@@ -168,7 +203,7 @@ class SettingsTab(ctk.CTkFrame):
             command=lambda: self.app.sync_gamemode_ui(self.var_gamemode.get())
         )
         self.check_gamemode.pack(side="left")
-        ctk.CTkButton(f_gamemode, text="?", width=30, command=lambda: messagebox.showinfo(c.UI_GAMEMODE_CHECKBOX, c.UI_GAMEMODE_TOOLTIP)).pack(side="right", padx=5)
+        ctk.CTkButton(f_gamemode, text="?", width=30, command=lambda: messagebox.showinfo(self, c.UI_GAMEMODE_CHECKBOX, c.UI_GAMEMODE_TOOLTIP)).pack(side="right", padx=5)
 
         # Cerrar al Jugar
         f_close = ctk.CTkFrame(frame_compat, fg_color="transparent")
@@ -387,6 +422,7 @@ class SettingsTab(ctk.CTkFrame):
         lang_code = next((k for k, v in self.langs_dict.items() if v == display_name), "en")
         self.app.config[c.CONFIG_KEY_LANGUAGE] = lang_code
         messagebox.showinfo(
+            self,
             c.UI_RESTART_REQUIRED_TITLE,
             c.UI_RESTART_MSG,
         )
@@ -419,6 +455,23 @@ class SettingsTab(ctk.CTkFrame):
         if hasattr(self.app, "tools_tab") and hasattr(self.app.tools_tab, "refresh_tools_ui"):
             self.app.tools_tab.refresh_tools_ui()
 
+    def on_profile_change(self, profile_name):
+        self.app.logic.switch_profile(self.app, profile_name)
+        # Sincronizar en otros sitios si es necesario
+        if hasattr(self.app.play_tab, "update_profile_indicator"):
+            self.app.play_tab.update_profile_indicator()
+
+    def open_profile_manager(self):
+        from src.gui.profile_manager_dialog import ProfileManagerDialog
+        ProfileManagerDialog(self.app, self.app)
+        self.refresh_profile_list()
+
+    def refresh_profile_list(self):
+        profiles = self.app.logic.get_profiles(self.app)
+        self.combo_profile.configure(values=profiles)
+        current = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE)
+        self.profile_var.set(current)
+
     def save_settings(self):
         display_name = self.combo_settings_mode.get()
         mode_key = next((k for k, v in c.UI_BIN_MODES.items() if v == display_name), c.MODE_BIN_SYSTEM)
@@ -442,6 +495,7 @@ class SettingsTab(ctk.CTkFrame):
 
         self.app.config_manager.save_config()
         messagebox.showinfo(
+            self,
             c.UI_SUCCESS_TITLE,
             c.UI_SAVE_SUCCESS_MSG,
         )

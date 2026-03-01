@@ -5,7 +5,8 @@ import shutil
 import subprocess
 import threading
 import zipfile
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
+from src.gui import custom_dialogs as messagebox
 import customtkinter as ctk
 import tempfile
 import time
@@ -40,12 +41,12 @@ def launch_from_args(app, version):
         app.play_tab.version_var.set(version)
         launch_game(app)
     else:
-        messagebox.showerror(c.UI_ERROR_TITLE, c.UI_VERSION_NOT_INSTALLED_ERROR.format(version=version))
+        messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_VERSION_NOT_INSTALLED_ERROR.format(version=version))
 
 def process_apk(app, apk_path, ver_name, target_root=None, is_target_flatpak=None, flatpak_id=None):
     current_root = target_root if target_root else app.active_path
     if not current_root:
-        messagebox.showerror(c.UI_ERROR_TITLE, c.UI_NO_TARGET_PATH_ERROR)
+        messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_NO_TARGET_PATH_ERROR)
         return
 
     target_dir = os.path.join(current_root, c.VERSIONS_DIR, ver_name)
@@ -85,16 +86,16 @@ def process_apk(app, apk_path, ver_name, target_root=None, is_target_flatpak=Non
             app.after(0, progress_dialog.close)
 
             if process.returncode == 0:
-                app.after(0, lambda: messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_EXTRACTION_SUCCESS_MSG.format(ver_name=ver_name)))
+                app.after(0, lambda: messagebox.showinfo(app, c.UI_SUCCESS_TITLE, c.UI_EXTRACTION_SUCCESS_MSG.format(ver_name=ver_name)))
                 if current_root == app.active_path:
                     app.after(0, lambda: refresh_version_list(app))
             else:
                 err_msg = process.stderr
                 print(f"Error extractor: {err_msg}")
-                app.after(0, lambda: messagebox.showerror(c.UI_ERROR_TITLE, c.UI_EXTRACTION_ERROR_MSG.format(err_msg=err_msg)))
+                app.after(0, lambda: messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_EXTRACTION_ERROR_MSG.format(err_msg=err_msg)))
         except Exception as e:
             app.after(0, progress_dialog.close)
-            app.after(0, lambda: messagebox.showerror(c.UI_ERROR_TITLE, c.UI_CRITICAL_ERROR_MSG.format(e=e)))
+            app.after(0, lambda: messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_CRITICAL_ERROR_MSG.format(e=e)))
 
     threading.Thread(target=run_extraction).start()
 
@@ -122,21 +123,21 @@ def delete_version_dialog(app):
                 shutil.rmtree(dst)
             shutil.move(src, backup_dir)
             refresh_version_list(app)
-            messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_VERSION_MOVED_MSG)
+            messagebox.showinfo(app, c.UI_SUCCESS_TITLE, c.UI_VERSION_MOVED_MSG)
             dialog.destroy()
         except Exception as e:
-            messagebox.showerror(c.UI_ERROR_TITLE, str(e))
+            messagebox.showerror(app, c.UI_ERROR_TITLE, str(e))
 
     def do_delete():
-        if messagebox.askyesno(c.UI_CONFIRM_DELETE_TITLE, c.UI_CONFIRM_PERMANENT_DELETE.format(version=version)):
+        if messagebox.askyesno(dialog, c.UI_CONFIRM_DELETE_TITLE, c.UI_CONFIRM_PERMANENT_DELETE.format(version=version)):
             try:
                 src = os.path.join(app.active_path, c.VERSIONS_DIR, version)
                 shutil.rmtree(src)
                 refresh_version_list(app)
-                messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_VERSION_DELETED_MSG)
+                messagebox.showinfo(app, c.UI_SUCCESS_TITLE, c.UI_VERSION_DELETED_MSG)
                 dialog.destroy()
             except Exception as e:
-                messagebox.showerror(c.UI_ERROR_TITLE, str(e))
+                messagebox.showerror(app, c.UI_ERROR_TITLE, str(e))
 
     btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
     btn_frame.pack(fill="x", padx=20, pady=10)
@@ -162,13 +163,199 @@ def disable_shaders(app):
         with open(options_path, "w") as f:
             f.write(new_content)
         check_shader_status(app)
-        messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_SHADERS_DISABLED_MSG)
+        messagebox.showinfo(app, c.UI_SUCCESS_TITLE, c.UI_SHADERS_DISABLED_MSG)
     except Exception as e:
-        messagebox.showerror(c.UI_ERROR_TITLE, str(e))
+        messagebox.showerror(app, c.UI_ERROR_TITLE, str(e))
 
 def open_data_folder(app):
     if app.active_path:
         subprocess.Popen(["xdg-open", app.active_path])
+
+def ensure_profile_system(app):
+    """Asegura que la estructura de perfiles exista y realiza la migración inicial si es necesario"""
+    if not app.active_path:
+        return
+
+    profiles_dir = os.path.join(app.active_path, c.PROFILES_DIR)
+    games_dir = os.path.join(app.active_path, "games")
+    default_profile_path = os.path.join(profiles_dir, c.UI_PROFILE_DEFAULT)
+
+    # REFUERZO: Si active_path no existe, intentar crearla antes de proceder
+    if not os.path.exists(app.active_path):
+        try:
+            os.makedirs(app.active_path, exist_ok=True)
+        except: return
+
+    # Caso 1: Migración inicial
+    if not os.path.exists(profiles_dir):
+        try:
+            # Notificar antes de mover si es una carpeta real (legacy)
+            has_legacy_data = os.path.exists(games_dir) and not os.path.islink(games_dir)
+
+            os.makedirs(default_profile_path, exist_ok=True)
+
+            if has_legacy_data:
+                # Blindaje: Verificar que no haya colisiones en destino
+                dst_games = os.path.join(default_profile_path, "games")
+                if os.path.exists(dst_games):
+                    # Si ya existe por algún motivo, hacemos un merge o backup
+                    backup_legacy = games_dir + "_legacy_backup"
+                    shutil.move(games_dir, backup_legacy)
+                    print(f"Estructura inusual detectada, datos legacy movidos a {backup_legacy}")
+                else:
+                    shutil.move(games_dir, default_profile_path)
+
+                messagebox.showinfo(app, c.UI_INFO_TITLE, c.UI_PROFILE_MIGRATION_NOTICE)
+
+            # Asegurar que games_dir existe en default
+            os.makedirs(os.path.join(default_profile_path, "games"), exist_ok=True)
+
+            # Asegurar que las claves de perfil existen en la configuración migrada
+            if c.CONFIG_KEY_PROFILES not in app.config:
+                app.config[c.CONFIG_KEY_PROFILES] = [c.UI_PROFILE_DEFAULT]
+            if c.CONFIG_KEY_CURRENT_PROFILE not in app.config:
+                app.config[c.CONFIG_KEY_CURRENT_PROFILE] = c.UI_PROFILE_DEFAULT
+            app.config_manager.save_config()
+
+            # Crear enlace simbólico inicial
+            current_profile = app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)
+            apply_profile_symlink(app, current_profile)
+
+        except Exception as e:
+            print(f"Error crítico en migración de perfiles: {e}")
+
+    else:
+        # Asegurar que el perfil actual esté vinculado
+        current_profile = app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)
+        # Blindaje: Si el symlink existe pero apunta mal o no existe, reaplicar
+        apply_profile_symlink(app, current_profile)
+
+def apply_profile_symlink(app, profile_name):
+    """Crea el symlink de 'games' hacia el perfil especificado"""
+    if not app.active_path:
+        return
+
+    games_link = os.path.join(app.active_path, "games")
+    target_path = os.path.join(app.active_path, c.PROFILES_DIR, profile_name, "games")
+
+    # Asegurar que el destino existe
+    os.makedirs(target_path, exist_ok=True)
+
+    try:
+        if os.path.islink(games_link):
+            os.unlink(games_link)
+        elif os.path.exists(games_link):
+            # Si es una carpeta real (no debería pasar tras migración), la movemos por seguridad
+            backup_path = games_link + "_backup_" + str(int(time.time()))
+            os.rename(games_link, backup_path)
+            print(f"Advertencia: games era una carpeta real, movida a {backup_path}")
+
+        os.symlink(os.path.join(c.PROFILES_DIR, profile_name, "games"), games_link)
+    except Exception as e:
+        print(f"Error creando symlink de perfil: {e}. Usando fallback de movimiento.")
+        # Fallback: Mover carpetas si fallan los symlinks
+        try:
+            # Primero, si games_link existe y no es link, moverlo a su perfil actual (si se sabe)
+            if os.path.exists(games_link) and not os.path.islink(games_link):
+                # Esto es complejo sin saber el perfil 'anterior' con seguridad fuera del estado
+                # pero intentamos limpiar la ruta para que el juego pueda usar la carpeta real
+                pass
+
+            # En modo fallback, simplemente nos aseguramos de que 'games' sea la carpeta real del perfil
+            # Pero esto rompería la estructura si el usuario cambia de perfil.
+            # Por ahora, notificamos que los symlinks son recomendados.
+            messagebox.showwarning(app, c.UI_SYMLINK_NOT_SUPPORTED_TITLE, c.UI_SYMLINK_NOT_SUPPORTED_MSG)
+        except: pass
+
+def get_profiles(app):
+    """Devuelve la lista de perfiles guardada en la configuración"""
+    return app.config.get(c.CONFIG_KEY_PROFILES, [c.UI_PROFILE_DEFAULT])
+
+def create_profile_dialog(app):
+    """Muestra un diálogo para crear un nuevo perfil"""
+    dialog = ctk.CTkInputDialog(text=c.UI_PROFILE_NAME_REQUIRED, title=c.UI_BUTTON_ADD_PROFILE)
+    name = dialog.get_input()
+    if name:
+        name = "".join(x for x in name if x.isalnum() or x in " -_").strip()
+        if name:
+            profiles = get_profiles(app)
+            if name not in profiles:
+                profiles.append(name)
+                app.config_manager.set(c.CONFIG_KEY_PROFILES, profiles)
+                # Crear carpeta
+                profile_path = os.path.join(app.active_path, c.PROFILES_DIR, name)
+                os.makedirs(os.path.join(profile_path, "games"), exist_ok=True)
+                # Cambiar a él
+                switch_profile(app, name)
+            return name
+    return None
+
+def delete_profile(app, profile_name):
+    """Elimina un perfil (no el actual ni el default)"""
+    if profile_name == c.UI_PROFILE_DEFAULT:
+        return False
+
+    current_profile = app.config.get(c.CONFIG_KEY_CURRENT_PROFILE)
+    if profile_name == current_profile:
+        return False
+
+    if messagebox.askyesno(app, c.UI_CONFIRM_DELETE_TITLE, c.UI_CONFIRM_DELETE_PROFILE.format(name=profile_name)):
+        try:
+            profiles = get_profiles(app)
+            if profile_name in profiles:
+                profiles.remove(profile_name)
+                app.config_manager.set(c.CONFIG_KEY_PROFILES, profiles)
+
+                profile_path = os.path.join(app.active_path, c.PROFILES_DIR, profile_name)
+                if os.path.exists(profile_path):
+                    shutil.rmtree(profile_path)
+                return True
+        except Exception as e:
+            messagebox.showerror(app, c.UI_ERROR_TITLE, str(e))
+    return False
+
+def rename_profile(app, old_name, n_name):
+    """Renombra un perfil existente"""
+    if old_name == c.UI_PROFILE_DEFAULT: return False
+    if not n_name: return False
+
+    new_name = "".join(x for x in n_name if x.isalnum() or x in " -_").strip()
+    if not new_name: return False
+
+    profiles = get_profiles(app)
+    if new_name in profiles: return False
+
+    try:
+        # Renombrar carpeta
+        old_path = os.path.join(app.active_path, c.PROFILES_DIR, old_name)
+        new_path = os.path.join(app.active_path, c.PROFILES_DIR, new_name)
+        os.rename(old_path, new_path)
+
+        # Actualizar lista
+        idx = profiles.index(old_name)
+        profiles[idx] = new_name
+        app.config_manager.set(c.CONFIG_KEY_PROFILES, profiles)
+
+        # Si era el actual, actualizar config
+        if app.config.get(c.CONFIG_KEY_CURRENT_PROFILE) == old_name:
+            app.config_manager.set(c.CONFIG_KEY_CURRENT_PROFILE, new_name)
+            apply_profile_symlink(app, new_name)
+
+        return True
+    except Exception as e:
+        messagebox.showerror(app, c.UI_ERROR_TITLE, str(e))
+    return False
+
+def switch_profile(app, profile_name):
+    """Cambia el perfil activo"""
+    if not app.active_path:
+        return
+
+    apply_profile_symlink(app, profile_name)
+    app.config_manager.set(c.CONFIG_KEY_CURRENT_PROFILE, profile_name)
+
+    # Refrescar todo
+    detect_installation(app)
 
 def detect_installation(app):
     config_mode = app.config.get(c.CONFIG_KEY_MODE, c.UI_DEFAULT_MODE)
@@ -223,6 +410,10 @@ def detect_installation(app):
             if not os.path.exists(app.active_path):
                 status_text, status_color = c.UI_STATUS_FLATPAK_NO_DATA, "orange"
 
+    # Asegurar sistema de perfiles para la ruta activa
+    if app.active_path:
+        ensure_profile_system(app)
+
     # Si después de toda la lógica, la ruta activa no tiene versiones, mostrarlo
     if app.active_path and not os.path.exists(os.path.join(app.active_path, c.VERSIONS_DIR)):
          if install_mode != c.MODE_INSTALL_FLATPAK:
@@ -230,6 +421,7 @@ def detect_installation(app):
 
     # Actualizar UI
     app.play_tab.lbl_status.configure(text=status_text, text_color=status_color)
+    app.play_tab.update_profile_indicator()
 
     if app.active_path and not app.is_flatpak:
         try:
@@ -241,9 +433,12 @@ def detect_installation(app):
 
     # Sincronizar selectores y estado
     try:
-        app.play_tab.combo_mode.set(c.UI_INSTALL_MODES[install_mode]) # El selector de Jugar muestra el modo de instalación
-        app.settings_tab.combo_settings_mode.set(c.UI_BIN_MODES[config_mode]) # El selector de Ajustes muestra el modo de binarios
-        app.settings_tab.on_settings_mode_change(c.UI_BIN_MODES[config_mode])
+        display_install = c.UI_INSTALL_MODES.get(install_mode, "Desconocido")
+        app.play_tab.combo_mode.set(display_install) # El selector de Jugar muestra el modo de instalación
+
+        display_bin = c.UI_BIN_MODES.get(config_mode, "Desconocido")
+        app.settings_tab.combo_settings_mode.set(display_bin) # El selector de Ajustes muestra el modo de binarios
+        app.settings_tab.on_settings_mode_change(display_bin)
 
         # Ajustar texto del botón de dependencias
         if app.is_flatpak:
@@ -254,6 +449,8 @@ def detect_installation(app):
 
     try:
         app.tools_tab.lbl_tools_status.configure(text=status_text, text_color=status_color)
+        current_profile = app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)
+        app.tools_tab.lbl_current_profile.configure(text=f"👤 {c.UI_LABEL_PROFILE} {current_profile}")
     except Exception as e:
         pass
 
@@ -286,7 +483,7 @@ def change_mode_ui(app, display_name):
                 dialog.destroy()
                 detect_installation(app)
             else:
-                messagebox.showwarning(c.UI_INFO_TITLE, c.UI_FLATPAK_ID_REQUIRED_MSG)
+                messagebox.showwarning(dialog, c.UI_INFO_TITLE, c.UI_FLATPAK_ID_REQUIRED_MSG)
 
         ctk.CTkButton(dialog, text=c.UI_BUTTON_USE_ID, command=save_and_apply).pack(pady=10)
         dialog.grab_set()
@@ -351,7 +548,7 @@ def check_migration_needed(app):
     old_versions = os.path.join(old_local_path, c.VERSIONS_DIR)
     if not os.path.exists(old_versions) or not os.listdir(old_versions):
         return
-    messagebox.showinfo(c.UI_DATA_DETECTED_TITLE, c.UI_MIGRATION_PROMPT_MSG)
+    messagebox.showinfo(app, c.UI_DATA_DETECTED_TITLE, c.UI_MIGRATION_PROMPT_MSG)
     app.config[c.CONFIG_KEY_MIGRATION_NOTIFIED] = True
     app.config_manager.save_config()
 
@@ -525,7 +722,7 @@ def _launch_with_execve_fallback(app, cmd, env):
             launcher_script_path = os.path.abspath(app.launcher_path)
 
             if game_binary_path == launcher_script_path:
-                messagebox.showerror(
+                messagebox.showerror(app,
                     c.UI_CONFIG_ERROR_TITLE,
                     c.UI_SELF_LAUNCH_ERROR_MSG
                 )
@@ -534,7 +731,7 @@ def _launch_with_execve_fallback(app, cmd, env):
 
             os.execve(cmd[0], cmd, env)
         except Exception as e:
-            messagebox.showerror(c.UI_CRITICAL_LAUNCH_ERROR_TITLE,
+            messagebox.showerror(app, c.UI_CRITICAL_LAUNCH_ERROR_TITLE,
                                  c.UI_EXECVE_ERROR_MSG.format(e=e))
             app.destroy()
 
@@ -544,7 +741,7 @@ def _launch_with_execve_fallback(app, cmd, env):
 def launch_game(app):
     version = app.play_tab.version_var.get()
     if not version:
-        messagebox.showwarning(c.UI_INFO_TITLE, c.UI_PLEASE_SELECT_VERSION_MSG)
+        messagebox.showwarning(app, c.UI_INFO_TITLE, c.UI_PLEASE_SELECT_VERSION_MSG)
         return
 
     version_path = os.path.join(app.active_path, c.VERSIONS_DIR, version)
@@ -576,7 +773,7 @@ def launch_game(app):
     if mode == c.MODE_BIN_CUSTOM:
         client = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_CLIENT)
         if not client or not os.path.exists(client):
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_CLIENT_PATH_ERROR)
+            messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_CLIENT_PATH_ERROR)
             return
         cmd = apply_gamemode([client, "-dg", version_path])
 
@@ -604,7 +801,7 @@ def launch_game(app):
                 if client_path and os.path.exists(client_path):
                     cmd = apply_gamemode([client_path, "-dg", version_path])
                 else:
-                    messagebox.showerror(c.UI_ERROR_TITLE, c.UI_CLIENT_PATH_ERROR)
+                    messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_CLIENT_PATH_ERROR)
                     return
         else:
             cmd = apply_gamemode(base_cmd)
@@ -612,17 +809,22 @@ def launch_game(app):
     elif mode == c.MODE_BIN_LOCAL:
         local_bin = os.path.join(os.getcwd(), "bin", "mcpelauncher-client")
         if not os.path.exists(local_bin):
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_LOCAL_BINARY_NOT_FOUND.format(local_bin=local_bin))
+            messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_LOCAL_BINARY_NOT_FOUND.format(local_bin=local_bin))
             return
         cmd = apply_gamemode([local_bin, "-dg", version_path])
 
     elif mode == c.MODE_BIN_SYSTEM:
         sys_bin = "/usr/local/bin/mcpelauncher-client"
         if not os.path.exists(sys_bin) and not shutil.which("mcpelauncher-client"):
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_SYSTEM_BINARY_NOT_FOUND)
+            messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_SYSTEM_BINARY_NOT_FOUND)
             return
         target_bin = sys_bin if os.path.exists(sys_bin) else "mcpelauncher-client"
         cmd = apply_gamemode([target_bin, "-dg", version_path])
+
+    else:
+        # Si llegamos aquí, el modo no es reconocido (posiblemente por migración fallida o valor inválido)
+        messagebox.showerror(app, c.UI_CONFIG_ERROR_TITLE, f"Modo de ejecución no reconocido: {mode}. Por favor, revisa los Ajustes.")
+        return
 
     # Comprobación de seguridad final y robusta.
     if cmd:
@@ -633,7 +835,7 @@ def launch_game(app):
                 launcher_script_abs_path = os.path.abspath(app.launcher_path)
 
                 if game_binary_abs_path == launcher_script_abs_path:
-                    messagebox.showerror(
+                    messagebox.showerror(app,
                         c.UI_CONFIG_ERROR_TITLE,
                         c.UI_SELF_LAUNCH_ERROR_MSG
                     )
@@ -698,11 +900,11 @@ def launch_game(app):
                         if flatpak_spawn_cmd:
                             popen_args = [flatpak_spawn_cmd, "--host"] + popen_args
                         else:
-                            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_ERROR_FLATPAK_SPAWN_NOT_FOUND)
+                            messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_ERROR_FLATPAK_SPAWN_NOT_FOUND)
                             return
                     subprocess.Popen(popen_args)
                 else:
-                    messagebox.showerror(c.UI_ERROR_TITLE, c.UI_NO_COMPATIBLE_TERMINAL)
+                    messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_NO_COMPATIBLE_TERMINAL)
                     subprocess.Popen(cmd, cwd=app.active_path, env=env)
             else:
                 subprocess.Popen(cmd, cwd=app.active_path, env=env)
@@ -714,15 +916,15 @@ def launch_game(app):
                 print(f"Subprocess failed with OSError: {e}. Attempting execve fallback.")
                 _launch_with_execve_fallback(app, cmd, env)
             else:
-                messagebox.showerror(c.UI_ERROR_TITLE, c.UI_LAUNCH_ERROR.format(e=e))
+                messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_LAUNCH_ERROR.format(e=e))
     except Exception as e:
-        messagebox.showerror(c.UI_ERROR_TITLE, c.UI_LAUNCH_ERROR.format(e=e))
+        messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_LAUNCH_ERROR.format(e=e))
 
 def export_worlds_dialog(app):
     if not app.active_path: return
     worlds_path = os.path.join(app.active_path, c.WORLDS_DIR)
     if not os.path.exists(worlds_path):
-        messagebox.showinfo(c.UI_INFO_TITLE, c.UI_NO_WORLDS_FOUND)
+        messagebox.showinfo(app, c.UI_INFO_TITLE, c.UI_NO_WORLDS_FOUND)
         return
 
     worlds = [d for d in os.listdir(worlds_path) if os.path.isdir(os.path.join(worlds_path, d))]
@@ -767,7 +969,7 @@ def export_worlds_dialog(app):
                 count += 1
             except Exception as e:
                 print(f"Error exportando {w_code}: {e}")
-        messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_WORLDS_EXPORTED_SUCCESS.format(count=count, dest_dir=dest_dir))
+        messagebox.showinfo(top, c.UI_SUCCESS_TITLE, c.UI_WORLDS_EXPORTED_SUCCESS.format(count=count, dest_dir=dest_dir))
         top.destroy()
 
     btn_frame = ctk.CTkFrame(top, corner_radius=c.CORNER_RADIUS)
@@ -786,15 +988,15 @@ def export_screenshots_dialog(app):
         fallback_path = os.path.join(app.active_path, "games/com.mojang") if app.active_path else None
         msg = c.UI_SCREENSHOTS_NOT_FOUND_MSG
         if fallback_path and os.path.exists(fallback_path):
-            if messagebox.askyesno(c.UI_INFO_TITLE, c.UI_OPEN_COMOJANG_FOLDER_PROMPT.format(msg=msg)):
+            if messagebox.askyesno(app, c.UI_INFO_TITLE, c.UI_OPEN_COMOJANG_FOLDER_PROMPT.format(msg=msg)):
                 subprocess.Popen(["xdg-open", fallback_path])
         else:
-            messagebox.showinfo(c.UI_INFO_TITLE, msg)
+            messagebox.showinfo(app, c.UI_INFO_TITLE, msg)
         return
     try:
         subprocess.Popen(["xdg-open", screens_path])
     except Exception as e:
-        messagebox.showerror(c.UI_ERROR_TITLE, c.UI_CANNOT_OPEN_FOLDER_ERROR.format(e=e))
+        messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_CANNOT_OPEN_FOLDER_ERROR.format(e=e))
 
 def show_flatpak_runtime_info(app):
     dialog = ctk.CTkToplevel(app)
@@ -832,12 +1034,12 @@ def verify_dependencies(app):
     elif shutil.which("pacman"):
         detected_manager_name = "PACMAN"
     else:
-        messagebox.showerror(c.UI_ERROR_TITLE, c.UI_PKG_MANAGER_NOT_SUPPORTED)
+        messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_PKG_MANAGER_NOT_SUPPORTED)
         return
 
     # Usar el mapa de dependencias de constants.py
     if detected_manager_name not in c.DEPENDENCY_MAP:
-        messagebox.showerror(c.UI_ERROR_TITLE, f"No dependency map for '{detected_manager_name}'")
+        messagebox.showerror(app, c.UI_ERROR_TITLE, f"No dependency map for '{detected_manager_name}'")
         return
 
     check_cmd, install_cmd = manager_map[detected_manager_name]
@@ -878,19 +1080,19 @@ def verify_dependencies(app):
 
         def install():
             full_cmd = f"pkexec {install_cmd} {' '.join(missing_list)}"
-            if messagebox.askyesno(c.UI_INFO_TITLE, c.UI_INSTALL_PROMPT.format(full_cmd=full_cmd)):
+            if messagebox.askyesno(d, c.UI_INFO_TITLE, c.UI_INSTALL_PROMPT.format(full_cmd=full_cmd)):
                 term = next((t for t in ["gnome-terminal", "konsole", "xfce4-terminal", "mate-terminal", "lxterminal", "tilix", "xterm"] if shutil.which(t)), None)
                 if term:
                     bash_cmd = f"{full_cmd}; echo; read -p '{c.UI_TERMINAL_PROMPT_CLOSE}'"
                     subprocess.Popen([term, "-e", f'bash -c "{bash_cmd}"'])
                 else:
-                    messagebox.showerror(c.UI_ERROR_TITLE, c.UI_NO_COMPATIBLE_TERMINAL)
+                    messagebox.showerror(d, c.UI_ERROR_TITLE, c.UI_NO_COMPATIBLE_TERMINAL)
                 d.destroy()
         ctk.CTkButton(d, text=c.UI_BUTTON_INSTALL_ROOT, fg_color="orange", command=install, font=c.FONT_BOLD).pack(pady=10)
         d.grab_set()
 
     def run_check():
-        app.after(0, lambda: lbl_prog.configure(text=f"{c.UI_VERIFYING_TITLE} {len(pkg_list)} packages..."))
+        app.after(0, lambda: lbl_prog.configure(text=c.UI_VERIFYING_PACKAGES_LABEL.format(title=c.UI_VERIFYING_TITLE, count=len(pkg_list))))
         missing = [pkg for pkg in pkg_list if subprocess.call(check_cmd + [pkg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0]
 
         # Manejar casos de paquetes 't64' en sistemas APT

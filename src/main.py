@@ -1,19 +1,28 @@
 import customtkinter as ctk
 import sys
+import os
 from src.gui.main_window import CianovaLauncherApp
+from src.gui.test_window import TestWindow
+from src import constants as c
+from src.core import language_manager
 
 if __name__ == "__main__":
-    # Configuración de Tema por defecto
+    # 1. Configuración básica de UI
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("blue")
 
-    import os
-    from src import constants as c
-    from src.core import language_manager
-
+    # 2. Parseo de argumentos
     launcher_path = os.path.abspath(sys.argv[0])
     force_flatpak_ui = "--force-flatpak-ui" in sys.argv
     force_nvidia_ui = "--force-nvidia-ui" in sys.argv
+    test_mode = "--test-mode" in sys.argv
+
+    if test_mode:
+        app = TestWindow()
+        app.mainloop()
+        sys.exit(0)
+
+    # 3. Lanzamiento normal
     app = CianovaLauncherApp(launcher_path=launcher_path, force_flatpak_ui=force_flatpak_ui, force_nvidia_ui=force_nvidia_ui)
 
     # Lógica de configuración inicial inteligente (solo en el primer arranque)

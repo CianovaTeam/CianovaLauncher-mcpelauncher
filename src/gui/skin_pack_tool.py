@@ -1,5 +1,6 @@
 import customtkinter as ctk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
+from src.gui import custom_dialogs as messagebox
 import os
 import shutil
 import tempfile
@@ -104,7 +105,7 @@ class SkinPackTool(ctk.CTkToplevel):
     def export_pack(self):
         pack_name = self.entry_pack_name.get()
         if not pack_name or not self.skins:
-            messagebox.showwarning(c.UI_ERROR_TITLE, c.UI_ERROR_MISSING_NAME_OR_SKINS)
+            messagebox.showwarning(self, c.UI_ERROR_TITLE, c.UI_ERROR_MISSING_NAME_OR_SKINS)
             return
 
         save_path = filedialog.asksaveasfilename(
@@ -169,9 +170,9 @@ class SkinPackTool(ctk.CTkToplevel):
                             os.path.relpath(os.path.join(root, file), temp_dir),
                         )
 
-            messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_PACK_SAVED_SUCCESS.format(save_path=save_path))
+            messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_PACK_SAVED_SUCCESS.format(save_path=save_path))
         except Exception as e:
-            messagebox.showerror(c.UI_ERROR_TITLE, str(e))
+            messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))
         finally:
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)

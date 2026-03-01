@@ -9,10 +9,6 @@ command: cianova-launcher.sh
 platform-extensions:
   - org.freedesktop.Platform.GL.default//24.1
 
-
-metadata:
-  x-flatpak-version: "2.1"
-
 build-options:
   strip: false
   no-debug-source: true

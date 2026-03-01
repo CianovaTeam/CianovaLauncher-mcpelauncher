@@ -21,6 +21,14 @@ class ToolsTab(ctk.CTkFrame):
         )
         self.lbl_tools_status.pack(side="left")
 
+        self.lbl_current_profile = ctk.CTkLabel(
+            self.frame_tools_header,
+            text="",
+            font=c.FONT_SMALL,
+            text_color=c.COLOR_PRIMARY_GREEN
+        )
+        self.lbl_current_profile.pack(side="right", padx=10)
+
         # Usar ScrollableFrame
         self.scroll_tools = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll_tools.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
@@ -45,15 +53,15 @@ class ToolsTab(ctk.CTkFrame):
                 "tools": [
                     {"text": c.UI_BUTTON_SKIN_PACK_CREATOR, "icon": "👕", "cmd": self.app.open_skin_tool, "color": None},
                     {"text": c.UI_BUTTON_GAME_CONFIG, "icon": "🛠️", "cmd": self.app.open_game_config_tool, "color": None},
-                    {"text": c.UI_BUTTON_FIX_SHADERS, "icon": "✨", "cmd": lambda: self.app.logic.disable_shaders(self.app), "color": c.COLOR_YELLOW_BUTTON, "show_status": True},
+                    {"text": c.UI_BUTTON_DISABLE_SHADERS, "icon": "✨", "cmd": lambda: self.app.logic.disable_shaders(self.app), "color": c.COLOR_YELLOW_BUTTON, "show_status": True},
                 ]
             },
             {
                 "title": c.UI_SECTION_FILES,
                 "icon": "📂",
                 "tools": [
+                    {"text": c.UI_BUTTON_ADDON_MANAGER, "icon": "📦", "cmd": self.app.open_addon_manager, "color": None},
                     {"text": c.UI_BUTTON_OPEN_DATA_FOLDER, "icon": "📁", "cmd": lambda: self.app.logic.open_data_folder(self.app), "color": None},
-                    {"text": c.UI_BUTTON_EXPORT_WORLDS, "icon": "🌍", "cmd": lambda: self.app.logic.export_worlds_dialog(self.app), "color": None},
                     {"text": c.UI_BUTTON_OPEN_SCREENSHOTS, "icon": "📸", "cmd": lambda: self.app.logic.export_screenshots_dialog(self.app), "color": None},
                 ]
             },
@@ -176,25 +184,61 @@ class ToolsTab(ctk.CTkFrame):
                     continue
                 all_tools.append(tool)
 
+        # Obtener el color primario del tema actual
+        try:
+            theme_color = ctk.ThemeManager.theme["CTkButton"]["fg_color"]
+            hover_color = ctk.ThemeManager.theme["CTkButton"]["hover_color"]
+        except:
+            theme_color = ("#3B8ED0", "#1F6AA5")
+            hover_color = ("#3276AD", "#144870")
+
         for i, tool in enumerate(all_tools):
             row = i // 3
             col = i % 3
 
-            card = ctk.CTkFrame(self.scroll_tools, corner_radius=c.CORNER_RADIUS, width=180, height=140)
-            card.grid(row=row, column=col, padx=8, pady=8, sticky="nsew")
+            # Tarjetas con fondo gris por defecto
+            card = ctk.CTkFrame(
+                self.scroll_tools,
+                corner_radius=c.CORNER_RADIUS,
+                width=180,
+                height=145,
+                fg_color=("gray85", "gray25"),
+                border_width=0
+            )
+            card.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
             card.grid_propagate(False)
 
             # Icono grande
-            lbl_icon = ctk.CTkLabel(card, text=tool["icon"], font=("Roboto", 40))
-            lbl_icon.pack(pady=(15, 5))
+            lbl_icon = ctk.CTkLabel(card, text=tool["icon"], font=("Roboto", 42))
+            lbl_icon.pack(pady=(18, 5))
 
-            # Texto descriptivo (Label para que pueda hacer wrap)
-            lbl_text = ctk.CTkLabel(card, text=tool["text"], font=c.FONT_SMALL, wraplength=160)
-            lbl_text.pack(padx=10, pady=0)
+            # Texto descriptivo
+            lbl_text = ctk.CTkLabel(
+                card,
+                text=tool["text"],
+                font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
+                wraplength=150
+            )
+            lbl_text.pack(padx=10, pady=2)
 
-            # Toda la tarjeta es clicable
+            # Toda la tarjeta es clicable y reacciona al hover visualmente
+            def on_enter(e, target_card=card, h_color=theme_color, t_icon=lbl_icon, t_text=lbl_text):
+                try:
+                    target_card.configure(fg_color=h_color)
+                    t_icon.configure(text_color="white")
+                    t_text.configure(text_color="white")
+                except: pass
+            def on_leave(e, target_card=card, t_icon=lbl_icon, t_text=lbl_text):
+                try:
+                    target_card.configure(fg_color=("gray85", "gray25"))
+                    t_icon.configure(text_color=("black", "white"))
+                    t_text.configure(text_color=("black", "white"))
+                except: pass
+
             for w in [card, lbl_icon, lbl_text]:
                 w.bind("<Button-1>", lambda e, cmd=tool["cmd"]: cmd())
+                w.bind("<Enter>", on_enter)
+                w.bind("<Leave>", on_leave)
 
             # Indicador de estado si es necesario
             if tool.get("show_status"):

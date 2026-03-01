@@ -33,41 +33,44 @@ import os
 
 # --- Información de la Aplicación ---
 APP_NAME = "CianovaLauncher"
-VERSION_LAUNCHER = "2.1.1"
+VERSION_LAUNCHER = "2.2"
 DEVELOPERS = "@PlaGaDev, @ShaggyLinux & Antigravity"
-UPDATE_NAME = "Fix update"
+UPDATE_NAME = "AddonManager and ProfileSystem Update"
 CHANGELOG = f"{UPDATE_NAME}: {APP_NAME} {VERSION_LAUNCHER}"
 CREDITOS = f"Dev: {DEVELOPERS}\nProyecto: {APP_NAME}"
 LEGAL_TEXT = """LICENCIA & TÉRMINOS Y CONDICIONES
 
-Última Actualización: 26 de Diciembre de 2025
+Última Actualización: 27 de Febrero de 2026
 
 ---
 
 1. Naturaleza del Proyecto
 CianovaLauncher es una herramienta de código abierto desarrollada con fines educativos y de utilidad para la comunidad de Minecraft Bedrock en Linux.
 
-* Desarrollo Asistido por IA: Esta herramienta ha sido desarrollada con la asistencia de Google Antigravity, un agente de Inteligencia Artificial avanzado.
+* Desarrollo Asistido por IA: Esta herramienta ha sido desarrollada con la asistencia de Google Antigravity y Google Jules, un agente de Inteligencia Artificial avanzado.
 * Base Original: El script original `MCPELauncher Tools ver0.3.sh` es propiedad intelectual del usuario @PlaGaDev, quien lo ha cedido libremente para este proyecto.
 
 2. Atribución y Dependencias
 Este "launcher" solo funciona de forma independiente en su apartado visual pero cualquier opción de ejecución, extracción u otro proceso requiere la instalación previa y binarios compilados de:
-* MCPELauncher-Manifest: Proyecto base en el que se fundamenta (Creditos a ChristopherHX y MCMrARM).
+* MCPELauncher-Manifest: Proyecto base en el que se fundamenta (Créditos a ChristopherHX y MCMrARM).
 
 CianovaLauncher no busca reemplazar, competir ni apropiarse del crédito del proyecto mencionado anteriormente ni ningún otro launcher que cumpla su misma función. Su único propósito es facilitar la gestión de versiones y procesos para los usuarios de dicho manifest sin pretender ser el soporte oficial del proyecto.
 
+Minecraft es una marca registrada de Mojang AB. CianovaLauncher no está afiliado, asociado, autorizado, respaldado ni conectado oficialmente de ninguna manera con Microsoft Corporation, Mojang AB, o cualquiera de sus subsidiarias o afiliadas.
+
 El proyecto CCMC Launcher por CrowRei34, en el cual se basaba la versión anterior (v1.0, v1.1 y v1.2) de la herramienta MCPETool (Ahora llamada CianovaLauncher) se considera actualmente como obsoleto/legacy. CianovaLauncher busca ofrecer a los usuarios de la versión anterior una nueva forma para los usuarios que usan o usaban dicha estructura.
 
-CianovaLauncher no proporcionará las APKs que se requieren para la ejecución, el usuario debe conseguirlas por sus propios medios.
+CianovaLauncher NO incluye, distribuye ni facilita la obtención ilegal de archivos APK o datos del juego. El usuario es el único responsable de poseer una copia del juego. CianovaLauncher es exclusivamente una herramienta de gestión para binarios del proyecto MCPELauncher-Manifest.
 
 3. Uso No Lucrativo
 Este proyecto se distribuye bajo la licencia GNU GPL v3.0. Es de código abierto y se entrega con la intención de ser gratuito para siempre. Se agradece a la comunidad no monetizar esta herramienta para mantener el espíritu de colaboración.
 
 4. Exención de Responsabilidad
-El software se proporciona "tal cual", sin garantía de ningún tipo. Los desarrolladores (@PlaGaDev, GoogleAntigravity) no se hacen responsables de:
+De acuerdo con la licencia GPL v3.0 el software se proporciona "tal cual", sin garantía de ningún tipo. Los desarrolladores (@PlaGaDev y @ShaggyLinux) y el equipo de soporte técnico no se hacen responsables de:
 * Pérdida de datos (mundos, capturas, etc.).
 * Baneos de cuentas por uso indebido.
 * Fallos en el sistema derivados del uso de la herramienta.
+* Algún error causado por descargar un launcher desde una fuente no-oficial.
 
 Al utilizar CianovaLauncher, aceptas estos términos y condiciones.
 
@@ -92,6 +95,8 @@ OLD_CONFIG_FILE_NAME = "config.json"
 
 # Nombres de directorios
 VERSIONS_DIR = "versions"
+PROFILES_DIR = "profiles"
+DISABLED_PACKS_DIR = "disabled_packs"
 WORLDS_DIR = "games/com.mojang/minecraftWorlds"
 SCREENSHOTS_DIR = "games/com.mojang/Screenshots"
 SCREENSHOTS_DIR_ALT = "games/com.mojang/screenshots"
@@ -107,6 +112,8 @@ CONFIG_KEY_INSTALL_MODE = "install_mode"
 CONFIG_KEY_MODE = "mode"
 CONFIG_KEY_LANGUAGE = "language"
 CONFIG_KEY_FLATPAK_ID = "flatpak_app_id"
+CONFIG_KEY_PROFILES = "profiles"
+CONFIG_KEY_CURRENT_PROFILE = "current_profile"
 
 # --- Valores de Modos (Internal Keys) ---
 MODE_BIN_SYSTEM = "system"
@@ -210,11 +217,13 @@ UI_SECTION_MANAGEMENT = "Gestión"
 UI_BUTTON_INSTALL_APK = "Instalar APK"
 UI_BUTTON_MOVE_DELETE_VERSION = "Mover/Borrar Versión"
 UI_BUTTON_MIGRATE_DATA = "Migración de Datos"
+UI_SECTION_ADDONS = "Complementos"
+UI_BUTTON_ADDON_MANAGER = "Gestor de recursos"
 UI_SECTION_CUSTOMIZATION = "Personalización"
 UI_BUTTON_SKIN_PACK_CREATOR = "Creador de Skin Packs"
 UI_BUTTON_GAME_CONFIG = "Configurador de Juego"
 UI_LABEL_SHADERS_STATUS = "Shaders: ..."
-UI_BUTTON_FIX_SHADERS = "Fix Shaders"
+UI_BUTTON_DISABLE_SHADERS = "Disable Shaders"
 UI_SECTION_FILES = "Archivos"
 UI_BUTTON_OPEN_DATA_FOLDER = "Abrir Carpeta de Datos"
 UI_SECTION_SYSTEM = "Sistema"
@@ -361,6 +370,9 @@ UI_HW_CPU_INFO = "INFORMACIÓN DE CPU"
 UI_HW_RAM_INFO = "INFORMACIÓN DE RAM"
 UI_HW_GPU_INFO = "INFORMACIÓN DE GPU"
 UI_HW_OPENGL_ES = "OpenGL ES: {gl_ver}\n\n"
+UI_SYMLINK_NOT_SUPPORTED_TITLE = "Compatibilidad"
+UI_SYMLINK_NOT_SUPPORTED_MSG = "Los enlaces simbólicos no están soportados en este sistema. El cambio de perfiles puede ser más lento."
+UI_VERIFYING_PACKAGES_LABEL = "{title} {count} paquetes..."
 UI_INCOMPATIBLE_TEXT = "Incompatible"
 UI_VERSION_TEXT = "Versión: "
 UI_SHADER_STATUS_LABEL = "Estado Shaders: {status}"
@@ -382,6 +394,8 @@ UI_GC_GAMMA = "Brillo (Gamma)"
 UI_GC_FULLSCREEN = "Pantalla Completa"
 UI_GC_FANCY_SKIES = "Cielos Detallados"
 UI_GC_SMOOTH_LIGHTING = "Iluminación Suave"
+UI_GC_GRAPHICS_MODE = "Modo de Gráficos"
+UI_GC_GRAPHICS_MODE_MAP = ["Simple", "Fancy", "Vibrant Visual"]
 
 UI_GC_GAMEPLAY = "Jugabilidad"
 UI_GC_DIFFICULTY = "Dificultad"
@@ -484,6 +498,47 @@ UI_STATUS_LOCAL = "● Modo: Local (.local)"
 UI_STATUS_FLATPAK_CUSTOM = "● Modo: Flatpak ({flatpak_id})"
 UI_STATUS_FLATPAK_NO_DATA = "● Flatpak: Datos no encontrados"
 UI_STATUS_LOCAL_NO_VERSIONS = "● Local: Sin versiones"
+
+# --- Sistema de Perfiles ---
+UI_LABEL_PROFILE = "Perfil:"
+UI_PROFILE_DEFAULT = "default"
+UI_BUTTON_MANAGE_PROFILES = "Gestionar Perfiles"
+UI_PROFILES_MANAGER_TITLE = "Gestor de Perfiles"
+UI_BUTTON_ADD_PROFILE = "Añadir Perfil"
+UI_BUTTON_DELETE_PROFILE = "Eliminar Perfil"
+UI_BUTTON_RENAME_PROFILE = "Renombrar"
+UI_PROFILE_MIGRATION_NOTICE = "Sistema de perfiles activado. Tus datos se han movido al perfil 'default'."
+UI_PROFILE_NAME_REQUIRED = "Escribe un nombre para el perfil:"
+UI_CONFIRM_DELETE_PROFILE = "¿Estás seguro de que quieres eliminar el perfil '{name}'?"
+
+# --- Gestor de Addons ---
+UI_ADDON_MANAGER_TITLE = "Gestor de Addons y Recursos"
+UI_SEARCH_PLACEHOLDER = "Buscar por nombre..."
+UI_STATUS_ACTIVE = "Activo"
+UI_STATUS_DISABLED = "Desactivado"
+UI_STATUS_ENABLED_BTN = "Activado"
+UI_STATUS_DISABLED_BTN = "Desactivado"
+UI_BUTTON_IMPORT_FILE = "Importar archivo"
+UI_TAB_WORLDS = "Mundos"
+UI_TAB_BP = "Behavior Packs (BP)"
+UI_TAB_RP = "Resource Packs (RP)"
+UI_TYPE_RESOURCE = "Recursos"
+UI_TYPE_BEHAVIOR = "Comportamiento"
+UI_TYPE_WORLD = "Mundo"
+UI_TYPE_SKIN = "Skins"
+UI_TYPE_SKINPACK = "Skinpack"
+UI_SCANNING_RESOURCES = "Escaneando recursos..."
+UI_TOGGLING_STATUS = "Cambiando estado..."
+UI_DELETING_RESOURCE = "Eliminando recurso..."
+UI_WORLD_EXPORTED_SUCCESS = "Mundo exportado a: {path}"
+UI_INSTALLING_PACK = "Instalando pack..."
+UI_PACK_INSTALLED = "Pack instalado correctamente."
+UI_INVALID_MANIFEST = "Manifest inválido o no encontrado."
+UI_SELECT_PACK_TYPE = "Selecciona el tipo de pack:"
+UI_BUTTON_EXPORT = "Exportar"
+UI_YES = "Sí"
+UI_NO = "No"
+UI_CANCEL = "Cancelar"
 UI_ERROR_SAME_FOLDER = "Error: La carpeta de origen y destino son la misma"
 UI_ERROR_NOTHING_SELECTED = "Nada seleccionado para migrar"
 UI_ERROR_FLATPAK_SPAWN_NOT_FOUND = "Error: 'flatpak-spawn' no encontrado. No se puede abrir un terminal externo."

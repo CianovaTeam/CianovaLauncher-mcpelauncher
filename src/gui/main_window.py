@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox
+from src.gui import custom_dialogs as messagebox
 import os
 import sys
 from PIL import Image, ImageTk
@@ -13,6 +13,7 @@ from src.core.config_manager import ConfigManager
 from src.core import language_manager
 from src.gui.install_dialog import InstallDialog
 from src.gui.skin_pack_tool import SkinPackTool
+from src.gui.addon_manager_dialog import AddonManagerDialog
 from src.gui.migration_dialog import MigrationDialog
 from src.gui.game_config_dialog import GameConfigDialog
 from src.core import app_logic
@@ -98,7 +99,6 @@ class CianovaLauncherApp(ctk.CTk):
             )  # Ruta antigua para migración
 
         print(f"DEBUG: Config Path: {config_path}")
-        print(f"DEBUG: Old Config Path (for migration): {old_config_path}")
 
         self.config_manager = ConfigManager(
             config_path, old_config_file=old_config_path
@@ -197,15 +197,16 @@ class CianovaLauncherApp(ctk.CTk):
     # PESTAÑA 4: ACERCA DE (LEGAL)
     # ==========================================
     def restore_default_settings(self):
-        if messagebox.askyesno(c.UI_CONFIRM_TITLE, c.UI_RESTORE_DEFAULTS_CONFIRM):
+        if messagebox.askyesno(self, c.UI_CONFIRM_TITLE, c.UI_RESTORE_DEFAULTS_CONFIRM):
             self.config_manager.restore_defaults()
-            messagebox.showinfo(c.UI_RESTORE_DEFAULTS_SUCCESS_TITLE, c.UI_RESTORE_DEFAULTS_SUCCESS_MSG)
+            messagebox.showinfo(self, c.UI_RESTORE_DEFAULTS_SUCCESS_TITLE, c.UI_RESTORE_DEFAULTS_SUCCESS_MSG)
             self.destroy()
 
     def change_appearance(self, type_change, value):
         if type_change == "color":
             self.config[c.CONFIG_KEY_COLOR_THEME] = value
             messagebox.showinfo(
+                self,
                 c.UI_RESTART_REQUIRED_TITLE,
                 c.UI_RESTART_MSG,
             )
@@ -262,14 +263,14 @@ class CianovaLauncherApp(ctk.CTk):
             exists_now = os.path.exists(shortcut_path)
 
             if exists_now:
-                if messagebox.askyesno(c.UI_CONFIRM_TITLE, c.UI_CONFIRM_DELETE_SHORTCUT_MSG):
+                if messagebox.askyesno(self, c.UI_CONFIRM_TITLE, c.UI_CONFIRM_DELETE_SHORTCUT_MSG):
                     try:
                         os.remove(shortcut_path)
-                        messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_SHORTCUT_DELETED_MSG)
+                        messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_SHORTCUT_DELETED_MSG)
                         dialog.destroy()
                         self.manage_desktop_shortcut()
                     except Exception as e:
-                        messagebox.showerror(c.UI_ERROR_TITLE, str(e))
+                        messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))
             else:
                 create_shortcut_logic()
 
@@ -317,6 +318,7 @@ Categories=Game;
             # En Flatpak, el archivo .desktop principal se gestiona de forma diferente
             if self.running_in_flatpak and not version:
                 messagebox.showinfo(
+                    self,
                     c.UI_FLATPAK_SHORTCUT_INFO_TITLE,
                     c.UI_FLATPAK_SHORTCUT_INFO_MSG
                 )
@@ -328,11 +330,11 @@ Categories=Game;
                 with open(target, "w") as f:
                     f.write(desktop_content)
                 os.chmod(target, 0o755)
-                messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_SHORTCUT_CREATED_MSG.format(name=name))
+                messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_SHORTCUT_CREATED_MSG.format(name=name))
                 dialog.destroy()
                 self.manage_desktop_shortcut()
             except Exception as e:
-                messagebox.showerror(c.UI_ERROR_TITLE, c.UI_SHORTCUT_CREATION_ERROR_MSG.format(e=e))
+                messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_SHORTCUT_CREATION_ERROR_MSG.format(e=e))
 
         ctk.CTkButton(
             scroll,
@@ -432,13 +434,19 @@ Categories=Game;
         try:
             MigrationDialog(self)
         except Exception as e:
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_ERROR_MIGRATION_TOOL.format(e=e))
+            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_MIGRATION_TOOL.format(e=e))
 
     def open_game_config_tool(self):
         try:
             GameConfigDialog(self)
         except Exception as e:
-            messagebox.showerror(c.UI_ERROR_TITLE, f"Error: {e}")
+            messagebox.showerror(self, c.UI_ERROR_TITLE, f"Error: {e}")
+
+    def open_addon_manager(self):
+        try:
+            AddonManagerDialog(self)
+        except Exception as e:
+            messagebox.showerror(self, c.UI_ERROR_TITLE, f"Error: {e}")
 
     def sync_gamemode_ui(self, value):
         """Sincroniza el estado de GameMode entre pestañas"""

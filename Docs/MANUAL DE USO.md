@@ -1,7 +1,7 @@
 # 📘 MANUAL DE USO - CianovaLauncher
 
-**Versión:** 2.0
-**Desarrollador:** @PlaGaDev & Antigravity
+**Versión:** 2.2
+**Desarrollador:** @PlaGaDev
 
 ---
 ## 🌟 Introducción
@@ -21,13 +21,14 @@ Para iniciar el launcher, simplemente haz doble clic en el script `CianovaLaunch
 ./CianovaLauncher.sh
 ```
 
-**(NOTA: Dentro de la versiion compilada fuera de Flatpak estan los libs necesarios precompilados de menera local en la raíz)**
+**(NOTA: Dentro de la version compilada fuera de Flatpak estan los libs necesarios precompilados de menera local en la raíz)**
 
 Luego ve a Ajustes y completa la configuración de binarios y guarda la config.
 #### Opción B - Instalación para Flatpak
 
 **NOTA:** Antes de cualquier instalación por Flatpak recuerda instalarlo en el caso de que no lo tengas.
 Link para configurar Flatpak la primera vez según tu distro: [FLATPAK SETUP](https://flathub.org/en/setup)
+
 **NOTA 2** Si tu distro es muy estricto con permisos y no tiene `flatpak-spawn` va a hacer un subproceso local o reemplazar el proceso del launcher (Solo usara los binarios disponibles en el Flatpak. Si no es muy estricto tipo Ubuntu, Mint, Debian, Arch, ZorinOS funcionara completamente.)
 
 ##### Metodo 1 (Recomendado) - Actualizaciones
@@ -86,7 +87,7 @@ Clona el repositorio e instala con `pip` las librerías `Pillow` y `customtkinte
 
 **AMBOS:**
 	- Instala una APK conseguida por sus propios medios en la herramienta `Instalación de APK`
-	- Si tienes algún error durante la carga al 75% aproximadamente usa la herramienta `Fix Shaders` para que cambie la calidad de gráficos.
+	- Si tienes algún error durante la carga al 75% aproximadamente usa la herramienta `Desactivar Shaders` para que cambie la calidad de gráficos.
 
 ---
 ## Documentación del Launcher
@@ -108,6 +109,10 @@ Si se encuentran todas o una parte, el modo se establecerá en **"Automático"**
 ## 🎮 Pestaña: JUGAR
 
 Esta es la pantalla principal donde gestionas tus sesiones de juego.
+
+* **Gestión de Perfiles:**
+    * **Selector de Perfiles:** Ubicado en la parte superior, permite cambiar entre diferentes perfiles de usuario. Cada perfil aísla sus mundos, recursos y configuraciones mediante enlaces simbólicos (symlinks).
+    * **Botón de Ajustes (⚙️):** Abre el **Gestor de Perfiles** donde puedes añadir nuevos perfiles, renombrarlos o eliminarlos (El perfil `default` no puede ser eliminado por seguridad).
 
 * **Selector de Versiones:**
     * Verás una lista de tarjetas con el icono del juego y el nombre de la versión (ej. `1.20.50`).
@@ -153,11 +158,24 @@ Aquí encontrarás utilidades avanzadas divididas en cuatro secciones:
 ### 2. Personalización
 * **Creador de Skin Packs:**
     * Abre una sub-herramienta para crear paquetes de skins (`.mcpack`) a partir de tus imágenes `.png`.
-* **Fix Shaders:**
+* **Desactivar Shaders:**
     * Si tienes la pantalla negra o errores gráficos por activar shaders incompatibles (Vibrant Visuals), este botón edita el archivo `options.txt` para desactivarlos y devolver el juego a la normalidad.
 
 
 ### 3. Archivos
+* **Gestor de recursos:**
+    * Una herramienta completa para administrar tus complementos de Minecraft. Se divide en tres secciones:
+        * **Mundos:** Gestiona tus partidas. Incluye la función de **Exportar** para crear archivos `.mcworld`.
+        * **Resource Packs (RP):** Gestiona tus texturas y recursos visuales.
+        * **Behavior Packs (BP):** Gestiona los packs de comportamiento.
+    * **Funciones:**
+        * **Importar:** Permite añadir archivos `.mcpack`, `.mcaddon` y `.mcworld` usando el selector nativo del sistema.
+        * **Activar/Desactivar:** Los packs se pueden habilitar o deshabilitar moviéndolos a una carpeta aislada sin borrarlos.
+        * **Eliminar:** Borra permanentemente el recurso del disco.
+        * **Traducción Inteligente:** Si un pack usa claves internas (ej: `pack.name`), el gestor las resuelve automáticamente leyendo los archivos `.lang` para mostrar el nombre real.
+        * **Optimización:** Utiliza un sistema de carga por lotes y caché para que la navegación y búsqueda sean instantáneas incluso con cientos de archivos.
+    * **Botón Recargar (↻):** Permite refrescar la lista manualmente si has hecho cambios externos en las carpetas.
+
 -   **Abrir carpeta de datos:** 
 	-   Abre la carpeta raíz (Data) del modo que tengas activo actualmente.
 
@@ -178,9 +196,6 @@ Aquí encontrarás utilidades avanzadas divididas en cuatro secciones:
 	- Opción para colocar un enlace del launcher directamente en tu menú de inicio en la categoría de juegos (Se puede activar y desactivar).
 	- Permite crear y eliminar accesos directos a versiones especificas en tu menú de inicio.
 ### 6. Exportación
-* **Exportar Mundos:**
-    * Convierte tus carpetas de mundos en archivos `.mcworld` listos para compartir o hacer copias de seguridad.
-    * Se guardan en la carpeta `~/Documentos/MCPE_Backups`.
 * **Abrir Capturas:**
     * Abre directamente la carpeta de capturas de pantalla (`Screenshots`) del juego en tu explorador de archivos.
 
@@ -212,7 +227,7 @@ inconvenientes éticos y legales.
 ## ⚠️ Solución de Problemas
 
 * **"No se encontró versión":** Asegúrate de haber extraído al menos una versión del juego y haberlo ejecutado la primera vez para crear todas las carpetas base.
-* **El juego no inicia:** Prueba a usar el botón "Fix Shaders" si modificaste los gráficos recientemente.
+* **El juego no inicia:** Prueba a usar el botón "Desactivar Shaders" si modificaste los gráficos recientemente.
 * **Error de Arquitectura en APK:** Si el instalador dice "Incompatible", necesitas buscar un APK que sea `x86` o `x86_64`. Los APKs estándar de la Play Store suelen ser solo ARM64.
 
 ---
@@ -225,10 +240,17 @@ inconvenientes éticos y legales.
 ├── src/
 │   ├── core/
 │   │   ├── __init__.py
+│   │   ├── addon_manager.py
 │   │   ├── app_logic.py
-│   │   └── config_manager.py
+│   │   ├── config_manager.py
+│   │   └── language_manager.py
 │   ├── gui/
 │   │   ├── __init__.py
+│   │   ├── addon_manager_dialog.py
+|   │   ├── custom_dialogs.py
+│   │   ├── profile_manager_dialog.py
+|   │   ├── test_window.py
+│   │   ├── game_config_dialog.py
 │   │   ├── install_dialog.py
 │   │   ├── main_window.py
 │   │   ├── migration_dialog.py

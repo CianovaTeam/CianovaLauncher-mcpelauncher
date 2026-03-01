@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import filedialog, messagebox
+from src.gui import custom_dialogs as messagebox
 import os
 import platform
 import zipfile
@@ -234,10 +234,10 @@ class InstallDialog(ctk.CTkToplevel):
         mode_key = self.target_mode.get()
 
         if not apk or not os.path.exists(apk):
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_ERROR_SELECT_VALID_APK)
+            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_SELECT_VALID_APK)
             return
         if not name:
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_ERROR_WRITE_VERSION_NAME)
+            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_WRITE_VERSION_NAME)
             return
 
         # Determinar rutas y modo sin cambiar el estado global de la app

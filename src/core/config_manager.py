@@ -36,6 +36,8 @@ class ConfigManager:
             c.CONFIG_KEY_VERSION_LIST_STYLE: c.STYLE_LIST,
             c.CONFIG_KEY_VERSION_ICON_SIZE: 32,
             c.CONFIG_KEY_VERSION_TITLE_SIZE: 13,
+            c.CONFIG_KEY_PROFILES: [c.UI_PROFILE_DEFAULT],
+            c.CONFIG_KEY_CURRENT_PROFILE: c.UI_PROFILE_DEFAULT,
         }
         self.config = self.load_config()
 
@@ -53,6 +55,51 @@ class ConfigManager:
                 result[key] = value
         return result
 
+    def _migrate_config(self, config):
+        """Migra valores de configuración antiguos o localizados a los nuevos formatos internos"""
+        changed = False
+
+        # 1. Migración de modos de ejecución/binarios
+        old_to_new_mode = {
+            "Sistema (Instalado)": c.MODE_BIN_SYSTEM,
+            "Local (Junto al script)": c.MODE_BIN_LOCAL,
+            "Personalizado": c.MODE_BIN_CUSTOM,
+            "Flatpak (Personalizado)": c.MODE_BIN_FLATPAK,
+            "Automático": c.MODE_BIN_SYSTEM,
+            "System (Installed)": c.MODE_BIN_SYSTEM,
+            "Local (Next to script)": c.MODE_BIN_LOCAL,
+            "Custom": c.MODE_BIN_CUSTOM,
+            "Flatpak (Custom)": c.MODE_BIN_FLATPAK
+        }
+
+        mode = config.get(c.CONFIG_KEY_MODE)
+        if mode in old_to_new_mode:
+            config[c.CONFIG_KEY_MODE] = old_to_new_mode[mode]
+            changed = True
+
+        # 2. Migración de modos de instalación
+        old_to_new_install = {
+            "Local": c.MODE_INSTALL_LOCAL,
+            "Local (Propio)": c.MODE_INSTALL_OWN,
+            "Local (Compartido)": c.MODE_INSTALL_SHARED,
+            "Flatpak (Personalizado)": c.MODE_INSTALL_FLATPAK,
+            "Local (Own Data)": c.MODE_INSTALL_OWN,
+            "Local (Shared .local)": c.MODE_INSTALL_SHARED,
+            "Flatpak (Custom)": c.MODE_INSTALL_FLATPAK
+        }
+
+        install_mode = config.get(c.CONFIG_KEY_INSTALL_MODE)
+        if install_mode in old_to_new_install:
+            config[c.CONFIG_KEY_INSTALL_MODE] = old_to_new_install[install_mode]
+            changed = True
+
+        # 3. Corregir ID de Flatpak antiguo si existe
+        if config.get(c.CONFIG_KEY_FLATPAK_ID) == c.MCPELAUNCHER_FLATPAK_ID:
+            config[c.CONFIG_KEY_FLATPAK_ID] = c.DEFAULT_FLATPAK_ID
+            changed = True
+
+        return changed
+
     def load_config(self):
         """Carga configuración con migración automática desde archivo antiguo"""
         # Intentar cargar desde nuevo archivo
@@ -60,7 +107,17 @@ class ConfigManager:
             try:
                 with open(self.config_file, "r") as f:
                     loaded_config = json.load(f)
-                    return self._deep_merge(self.default_config, loaded_config)
+
+                # Aplicar valores cargados sobre defaults usando deep merge
+                config = self._deep_merge(self.default_config, loaded_config)
+
+                # Aplicar migraciones por si acaso vienen de una v2.1 temprana con strings localizados
+                if self._migrate_config(config):
+                    print("Configuración actualizada con nuevos estándares de claves internas.")
+                    self.config = config
+                    self.save_config()
+
+                return config
             except Exception as e:
                 print(f"Error cargando config: {e}")
 
@@ -74,33 +131,8 @@ class ConfigManager:
                 # Aplicar valores antiguos sobre defaults usando deep merge
                 migrated_config = self._deep_merge(self.default_config, old_config)
 
-                # Actualizar valores obsoletos y migrar a nuevas claves internas
-                old_to_new_mode = {
-                    "Sistema (Instalado)": c.MODE_BIN_SYSTEM,
-                    "Local (Junto al script)": c.MODE_BIN_LOCAL,
-                    "Personalizado": c.MODE_BIN_CUSTOM,
-                    "Flatpak (Personalizado)": c.MODE_BIN_FLATPAK,
-                    "Automático": c.MODE_BIN_SYSTEM
-                }
-                mode = migrated_config.get(c.CONFIG_KEY_MODE)
-                if mode in old_to_new_mode:
-                    migrated_config[c.CONFIG_KEY_MODE] = old_to_new_mode[mode]
-
-                old_to_new_install = {
-                    "Local": c.MODE_INSTALL_LOCAL,
-                    "Local (Propio)": c.MODE_INSTALL_OWN,
-                    "Local (Compartido)": c.MODE_INSTALL_SHARED,
-                    "Flatpak (Personalizado)": c.MODE_INSTALL_FLATPAK
-                }
-                install_mode = migrated_config.get(c.CONFIG_KEY_INSTALL_MODE)
-                if install_mode in old_to_new_install:
-                    migrated_config[c.CONFIG_KEY_INSTALL_MODE] = old_to_new_install[install_mode]
-
-                if (
-                    migrated_config.get(c.CONFIG_KEY_FLATPAK_ID)
-                    == c.MCPELAUNCHER_FLATPAK_ID
-                ):
-                    migrated_config[c.CONFIG_KEY_FLATPAK_ID] = c.DEFAULT_FLATPAK_ID
+                # Aplicar migraciones a claves internas
+                self._migrate_config(migrated_config)
 
                 # Guardar en nuevo archivo
                 self.config = migrated_config

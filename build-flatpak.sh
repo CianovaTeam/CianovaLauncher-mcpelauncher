@@ -16,8 +16,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # Sin color
 
 # Verificar que estamos en el directorio correcto
-if [ ! -f "mcpe_tool_gui.py" ]; then
-    echo -e "${RED}Error: No se encuentra mcpe_tool_gui.py${NC}"
+if [ ! -f "src/main.py" ]; then
+    echo -e "${RED}Error: No se encuentra el script de inicio main.py${NC}"
     echo "Ejecuta este script desde el directorio del proyecto."
     exit 1
 fi
@@ -56,14 +56,20 @@ echo -e "${GREEN}✓ Runtime instalado${NC}"
 
 echo -e "${GREEN}✓ Runtime instalado${NC}"
 
-# Nota: Ya no usamos PyInstaller. El Flatpak instalará las dependencias de Python nativamente.
-echo -e "${YELLOW}[4/6]${NC} Saltando compilación (no necesaria)..."
+if [ -d "dist/CianovaLauncherMCPE" ]; then
+    echo -e "${YELLOW}[4/6]${NC} Saltando compilación (no necesaria)..."
+    # Nota: Ya no usamos PyInstaller. El Flatpak instalará las dependencias de Python nativamente.
 
-echo -e "${GREEN}✓ Compilación OK${NC}"
+    echo -e "${GREEN}✓ Compilación OK${NC}"
 
-# Crear directorio bin si no existe y copiar binarios
-echo -e "${YELLOW}[5/7]${NC} Preparando binarios..."
-mkdir -p bin
+    # Crear directorio bin si no existe y copiar binarios
+    echo -e "${YELLOW}[5/7]${NC} Preparando binarios..."
+    mkdir -p bin
+
+else
+    echo -e "${RED}No se encuentra el proyecto compilado porfavor ejecuta build.sh primero${NC}"
+    exit 1
+fi
 
 # Verificar si hay binarios de mcpelauncher
 if [ -d "bin" ] && [ -f "bin/mcpelauncher-client" ]; then

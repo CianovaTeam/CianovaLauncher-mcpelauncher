@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox
+from src.gui import custom_dialogs as messagebox
 import os
 import shutil
 import threading
@@ -73,7 +73,7 @@ class MigrationDialog(ctk.CTkToplevel):
 
         # --- Frame Destino ---
         self.frame_dst = ctk.CTkFrame(self.main_scroll, corner_radius=c.CORNER_RADIUS)
-        self.frame_dst.pack(fill="x", padx=10, pady=10)
+        self.frame_dst.pack(fill="x", padx=10, pady=20)
 
         ctk.CTkLabel(
             self.frame_dst,
@@ -81,17 +81,34 @@ class MigrationDialog(ctk.CTkToplevel):
             font=c.FONT_SUBTITLE,
         ).pack(anchor="w", padx=c.SECTION_PADDING, pady=c.ELEMENT_SPACING)
 
+        f_dst_selector = ctk.CTkFrame(self.frame_dst, fg_color="transparent")
+        f_dst_selector.pack(fill="x", padx=10, pady=5)
+
+        ctk.CTkLabel(f_dst_selector, text=f"👤 {c.UI_LABEL_PROFILE}", font=c.FONT_BOLD).pack(side="left", padx=5)
+
+        self.dst_profile_var = ctk.StringVar(value=self.parent.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT))
+        self.combo_dst_profile = ctk.CTkComboBox(
+            f_dst_selector,
+            values=self.parent.logic.get_profiles(self.parent),
+            variable=self.dst_profile_var,
+            command=self.update_dst_path_info,
+            width=200
+        )
+        self.combo_dst_profile.pack(side="left", padx=5)
+
         self.lbl_dst = ctk.CTkLabel(
             self.frame_dst,
-            text=self.parent.compiled_path,
+            text="",
             text_color="#3498db",
             font=c.FONT_SMALL,
+            wraplength=550
         )
         self.lbl_dst.pack(anchor="w", padx=10, pady=5)
+        self.update_dst_path_info()
 
         # --- Opciones de Migración ---
         self.frame_opts = ctk.CTkFrame(self.main_scroll, corner_radius=c.CORNER_RADIUS)
-        self.frame_opts.pack(fill="x", padx=10, pady=10)
+        self.frame_opts.pack(fill="x", padx=10, pady=15)
 
         ctk.CTkLabel(
             self.frame_opts,
@@ -146,7 +163,7 @@ class MigrationDialog(ctk.CTkToplevel):
 
         # --- Método de Migración ---
         self.frame_method = ctk.CTkFrame(self.main_scroll, corner_radius=c.CORNER_RADIUS)
-        self.frame_method.pack(fill="x", padx=10, pady=10)
+        self.frame_method.pack(fill="x", padx=10, pady=15)
 
         ctk.CTkLabel(
             self.frame_method,
@@ -281,9 +298,21 @@ class MigrationDialog(ctk.CTkToplevel):
             self.combo_src.set(c.UI_SOURCE_MODES_DISPLAY[2]) # Personalizado
             self.validate_source_path(d)
 
+    def update_dst_path_info(self, *args):
+        profile = self.dst_profile_var.get()
+        # Ruta base + profiles/perfil
+        path = os.path.join(self.parent.active_path, c.PROFILES_DIR, profile)
+        # Pero si el perfil es el actual, podemos usar active_path directamente para mundos/recursos
+        # No obstante, para el migrador es mejor ser explícito con el perfil destino seleccionado.
+        self.lbl_dst.configure(text=f"Ruta: {path}")
+
     def start_migration(self):
         src = self.entry_src.get().strip()
-        dst = self.parent.active_path
+
+        # Determinar destino basado en el perfil seleccionado en el diálogo
+        profile = self.dst_profile_var.get()
+        dst = os.path.join(self.parent.active_path, c.PROFILES_DIR, profile)
+
         method = self.method.get()
         migrate_all = self.check_all.get()
         migrate_versions = self.check_versions.get()
@@ -291,13 +320,13 @@ class MigrationDialog(ctk.CTkToplevel):
         migrate_resources = self.check_resources.get()
 
         if not os.path.exists(src):
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_FOLDER_NOT_EXISTS)
+            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_FOLDER_NOT_EXISTS)
             return
         if src == dst:
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_ERROR_SAME_FOLDER)
+            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_SAME_FOLDER)
             return
         if not any([migrate_all, migrate_versions, migrate_worlds, migrate_resources]):
-            messagebox.showwarning(c.UI_INFO_TITLE, c.UI_ERROR_NOTHING_SELECTED)
+            messagebox.showwarning(self, c.UI_INFO_TITLE, c.UI_ERROR_NOTHING_SELECTED)
             return
 
         items_to_migrate = []
@@ -311,7 +340,7 @@ class MigrationDialog(ctk.CTkToplevel):
         msg = c.UI_MIGRATION_CONFIRM_MSG.format(
             src=src, dst=dst, method=method.upper(), items=', '.join(items_to_migrate)
         )
-        if not messagebox.askyesno(c.UI_CONFIRM_TITLE, msg):
+        if not messagebox.askyesno(self, c.UI_CONFIRM_TITLE, msg):
             return
 
         self.progress_dialog = ProgressDialog(self, c.UI_MIGRATING_TITLE, c.UI_MIGRATING_MSG)
@@ -321,9 +350,11 @@ class MigrationDialog(ctk.CTkToplevel):
         ))
         thread.start()
 
-    def _run_migration(self, src, dst, method, migrate_all, migrate_versions, migrate_worlds, migrate_resources):
+    def _run_migration(self, src, dst_profile_path, method, migrate_all, migrate_versions, migrate_worlds, migrate_resources):
         try:
             migrated_count = 0
+            base_dst = self.parent.active_path
+
             def process_item(s_item, d_item):
                 if os.path.exists(d_item): return False
                 if method == "copy": shutil.copytree(s_item, d_item)
@@ -332,27 +363,30 @@ class MigrationDialog(ctk.CTkToplevel):
                 return True
 
             if migrate_all:
-                if process_item(src, dst): migrated_count = 1
+                # Migrar todo a la base (incluye todas las carpetas)
+                if process_item(src, base_dst): migrated_count = 1
             else:
                 if migrate_versions:
-                    src_dir, dst_dir = os.path.join(src, c.VERSIONS_DIR), os.path.join(dst, c.VERSIONS_DIR)
+                    # Versiones siempre van a la raíz del active_path (compartidas)
+                    src_dir, dst_dir = os.path.join(src, c.VERSIONS_DIR), os.path.join(base_dst, c.VERSIONS_DIR)
                     if os.path.exists(src_dir):
                         os.makedirs(dst_dir, exist_ok=True)
                         for item in os.listdir(src_dir):
                             if process_item(os.path.join(src_dir, item), os.path.join(dst_dir, item)): migrated_count += 1
 
                 if migrate_worlds:
+                    # Mundos van al perfil seleccionado
                     src_dir = os.path.join(src, c.WORLDS_DIR)
-                    dst_dir = os.path.join(dst, c.WORLDS_DIR)
+                    dst_dir = os.path.join(dst_profile_path, c.WORLDS_DIR)
                     if os.path.exists(src_dir):
                         os.makedirs(dst_dir, exist_ok=True)
                         for item in os.listdir(src_dir):
                             if process_item(os.path.join(src_dir, item), os.path.join(dst_dir, item)): migrated_count += 1
 
                 if migrate_resources:
-                    # resources path is usually games/com.mojang/resource_packs
+                    # Recursos van al perfil seleccionado
                     src_dir = os.path.join(src, "games/com.mojang/resource_packs")
-                    dst_dir = os.path.join(dst, "games/com.mojang/resource_packs")
+                    dst_dir = os.path.join(dst_profile_path, "games/com.mojang/resource_packs")
                     if os.path.exists(src_dir):
                         os.makedirs(dst_dir, exist_ok=True)
                         for item in os.listdir(src_dir):
@@ -360,7 +394,7 @@ class MigrationDialog(ctk.CTkToplevel):
 
             def on_complete():
                 self.progress_dialog.close()
-                messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_MIGRATION_SUCCESS_MSG.format(count=migrated_count))
+                messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_MIGRATION_SUCCESS_MSG.format(count=migrated_count))
                 self.parent.logic.refresh_version_list(self.parent)
                 self.destroy()
             self.parent.after(0, on_complete)
@@ -368,5 +402,5 @@ class MigrationDialog(ctk.CTkToplevel):
         except Exception as e:
             def on_error():
                 self.progress_dialog.close()
-                messagebox.showerror(c.UI_ERROR_TITLE, f"Error: {e}")
+                messagebox.showerror(self, c.UI_ERROR_TITLE, f"Error: {e}")
             self.parent.after(0, on_error)

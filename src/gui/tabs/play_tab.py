@@ -24,6 +24,28 @@ class PlayTab(ctk.CTkFrame):
         )
         self.lbl_status.pack(side="left", padx=10)
 
+        # Contenedor para selectores (Derecha)
+        self.frame_selectors = ctk.CTkFrame(self.frame_header, fg_color="transparent")
+        self.frame_selectors.pack(side="right", padx=10)
+
+        # 1. Indicador de Perfil
+        self.lbl_profile_indicator = ctk.CTkLabel(
+            self.frame_selectors,
+            text="",
+            text_color=c.COLOR_PRIMARY_GREEN,
+            font=c.FONT_SMALL,
+        )
+        self.lbl_profile_indicator.pack(side="left", padx=(0, 15))
+        self.update_profile_indicator()
+
+        # 2. Instalación
+        ctk.CTkLabel(
+            self.frame_selectors,
+            text=c.UI_LABEL_INSTALLATION,
+            text_color="gray",
+            font=c.FONT_SMALL,
+        ).pack(side="left", padx=2)
+
         # Selector de modo con opciones según contexto
         if self.app.running_in_flatpak:
             mode_keys = [c.MODE_INSTALL_OWN, c.MODE_INSTALL_SHARED, c.MODE_INSTALL_FLATPAK]
@@ -33,21 +55,15 @@ class PlayTab(ctk.CTkFrame):
         mode_values = [c.UI_INSTALL_MODES[k] for k in mode_keys]
 
         self.combo_mode = ctk.CTkComboBox(
-            self.frame_header,
+            self.frame_selectors,
             values=mode_values,
             command=lambda mode: self.app.logic.change_mode_ui(self.app, mode),
-            width=180,
+            width=170,
             height=28,
             corner_radius=8,
             font=c.FONT_NORMAL,
         )
-        self.combo_mode.pack(side="right", padx=10)
-        ctk.CTkLabel(
-            self.frame_header,
-            text=c.UI_LABEL_INSTALLATION,
-            text_color="gray",
-            font=c.FONT_SMALL,
-        ).pack(side="right", padx=5)
+        self.combo_mode.pack(side="left", padx=2)
 
         # Lista (Card Style)
         self.version_listbox = ctk.CTkScrollableFrame(
@@ -109,6 +125,10 @@ class PlayTab(ctk.CTkFrame):
             command=lambda: self.app.logic.launch_game(self.app),
         )
         self.btn_launch.grid(row=4, column=0, padx=30, pady=15, sticky="ew")
+
+    def update_profile_indicator(self):
+        current = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)
+        self.lbl_profile_indicator.configure(text=f"👤 {c.UI_LABEL_PROFILE} {current}")
 
     def save_quick_opts(self):
         self.app.sync_close_on_launch_ui(self.var_close_on_launch.get())

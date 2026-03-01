@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox
+from src.gui import custom_dialogs as messagebox
 import os
 from src import constants as c
 
@@ -33,7 +33,7 @@ class GameConfigDialog(ctk.CTkToplevel):
 
     def load_options(self):
         if not os.path.exists(self.options_path):
-            messagebox.showwarning(c.UI_INFO_TITLE, c.UI_FILE_NOT_FOUND_WARN)
+            messagebox.showwarning(self, c.UI_INFO_TITLE, c.UI_FILE_NOT_FOUND_WARN)
             return
 
         try:
@@ -50,7 +50,7 @@ class GameConfigDialog(ctk.CTkToplevel):
 
             self.update_visual_ui()
         except Exception as e:
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_ERROR_READING_FILE.format(e=e))
+            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_READING_FILE.format(e=e))
 
     def save_options(self, from_editor=False):
         try:
@@ -89,7 +89,10 @@ class GameConfigDialog(ctk.CTkToplevel):
             with open(self.options_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
-            messagebox.showinfo(c.UI_SUCCESS_TITLE, c.UI_SAVE_FILE_SUCCESS)
+            messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_SAVE_FILE_SUCCESS)
+
+            # Actualizar el indicador de shaders en la pestaña Herramientas
+            self.parent.logic.check_shader_status(self.parent)
 
             # Reload to sync both tabs
             if from_editor:
@@ -107,7 +110,7 @@ class GameConfigDialog(ctk.CTkToplevel):
                 self.text_editor.insert("1.0", content)
 
         except Exception as e:
-            messagebox.showerror(c.UI_ERROR_TITLE, c.UI_ERROR_SAVING_FILE.format(e=e))
+            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_SAVING_FILE.format(e=e))
 
     def setup_editor_tab(self):
         self.tab_editor.grid_columnconfigure(0, weight=1)
@@ -146,6 +149,9 @@ class GameConfigDialog(ctk.CTkToplevel):
 
         self.smoothlighting_var = ctk.BooleanVar(value=True)
         self.create_switch_setting(self.scroll_visual, c.UI_GC_SMOOTH_LIGHTING, self.smoothlighting_var)
+
+        self.graphics_mode_var = ctk.StringVar(value=c.UI_GC_GRAPHICS_MODE_MAP[0])
+        self.create_option_setting(self.scroll_visual, c.UI_GC_GRAPHICS_MODE, self.graphics_mode_var, c.UI_GC_GRAPHICS_MODE_MAP)
 
         # SECCIÓN 2: JUGABILIDAD
         self.create_section_label(self.scroll_visual, c.UI_GC_GAMEPLAY)
@@ -269,6 +275,11 @@ class GameConfigDialog(ctk.CTkToplevel):
             if "gfx_smoothlighting" in self.options_data:
                 self.smoothlighting_var.set(self.options_data["gfx_smoothlighting"] == "1")
 
+            if "graphics_mode" in self.options_data:
+                idx = int(self.options_data["graphics_mode"])
+                if 0 <= idx < len(c.UI_GC_GRAPHICS_MODE_MAP):
+                    self.graphics_mode_var.set(c.UI_GC_GRAPHICS_MODE_MAP[idx])
+
             if "game_difficulty_new" in self.options_data:
                 idx = int(self.options_data["game_difficulty_new"])
                 if 0 <= idx < len(c.UI_GC_DIFFICULTY_MAP):
@@ -331,6 +342,7 @@ class GameConfigDialog(ctk.CTkToplevel):
         self.options_data["gfx_fullscreen"] = "1" if self.fullscreen_var.get() else "0"
         self.options_data["gfx_fancyskies"] = "1" if self.fancyskies_var.get() else "0"
         self.options_data["gfx_smoothlighting"] = "1" if self.smoothlighting_var.get() else "0"
+        self.options_data["graphics_mode"] = str(c.UI_GC_GRAPHICS_MODE_MAP.index(self.graphics_mode_var.get()))
 
         self.options_data["game_difficulty_new"] = str(c.UI_GC_DIFFICULTY_MAP.index(self.difficulty_var.get()))
         self.options_data["game_thirdperson"] = str(c.UI_GC_PERSPECTIVE_MAP.index(self.perspective_var.get()))
