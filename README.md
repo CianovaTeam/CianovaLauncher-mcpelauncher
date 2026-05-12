@@ -1,5 +1,5 @@
-# <img src="icon.png" width="48" height="48"> CianovaLauncher v2.2
-### Nota está rama es para la versión Qt5
+# <img src="icon.png" width="48" height="48"> CianovaLauncher v3.0
+### Nota está rama es para la versión Qt6
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![CustomTkinter](https://img.shields.io/badge/UI-CustomTkinter-blue?style=for-the-badge)](https://github.com/TomSchimansky/CustomTkinter)
@@ -11,22 +11,8 @@
 
 ---
 
-## ✨ Características de la v2.1 y v2.2
-### 👤 Gestión Multiperfil Inteligente
-Aísla completamente tus entornos de juego. Crea perfiles específicos para "Survival", "Creativo" o "Packs de Texturas" sin conflictos.
-- **Migración Automática:** Si vienes de versiones anteriores, tus datos se mueven al perfil `default` sin perder nada.
-- **Aislamiento Total:** Cada perfil tiene sus propios mundos, ajustes (`options.txt`) y servidores.
-
-### 📦 Gestor de Complementos (Addons)
-Una herramienta integral para administrar el contenido del juego:
-- **Soporte de Formatos:** Importa `.mcpack`, `.mcaddon`, `.mcworld` y `.mcworldtemplate` con un clic.
-- **Extracción de Metadatos:** Lee el `manifest.json` y archivos `.lang` para mostrar nombres reales e iconos, incluso si están cifrados o usan claves de traducción.
-- **Control de Estado:** Activa o desactiva packs sin necesidad de borrarlos.
-
-### 🚀 Rendimiento y Gráficos
-- **Optimización Nvidia:** Soporte nativo para Nvidia Prime y capa de compatibilidad **Zink** para solucionar errores de drivers en Flatpak.
-- **GameMode:** Prioriza el proceso de Minecraft sobre otras aplicaciones del sistema.
-- **Verificador de Hardware:** Analiza tu CPU y GPU para recomendarte la mejor versión compatible.
+## ✨ Características de la v3.0
+**EN PROGRESO LAS NOTAS**
 
 ## 1. Ejecución
 
@@ -52,7 +38,7 @@ flatpak remote-add --user --if-not-exists CianovaLauncher https://plagaplusdev.g
 - Asegurate de instalar los runtimes necesarios que puedes instalarlos manualmente con:
 
 ```bash
-flatpak install org.kde.Platform//5.15-24.08 io.qt.qtwebengine.BaseApp//5.15-24.08
+flatpak install org.kde.Platform//6.9 io.qt.qtwebengine.BaseApp//6.9
 ```
 
 - Ahora instala el Launcher :
@@ -72,7 +58,7 @@ flatpak install --user CianovaLauncher.flatpak
 
 Eh instala los runtimes necesarios con:
 ```bash
-flatpak install org.kde.Platform//5.15-24.08 io.qt.qtwebengine.BaseApp//5.15-24.08
+flatpak install org.kde.Platform//6.9 io.qt.qtwebengine.BaseApp//6.9
 ```
 
 ### Instalación no-Flatpak:
@@ -99,7 +85,7 @@ Luego ve a Ajustes y completa la configuración de binarios, requisitos y guarda
 
 El uso de esta herramienta implica la aceptación de los siguientes puntos:
 1. **Independencia:** Este launcher es una interfaz visual independiente y NO incluye el juego ni las APKs necesarias.
-2. **Atribución:** Se reconoce el trabajo de **MCPELauncher-manifest** (Perteneciente de **ChristopherHX**, **MCMrARM** y todo su equipo de trabajo). como la base técnica esencial.
+2. **Atribución:** Se reconoce el trabajo del proyecto **MCPELauncher** (Perteneciente de **ChristopherHX**, **MCMrARM** y todo su equipo de trabajo). como la base técnica esencial.
 3. **No Lucrativo:** Esta herramienta es gratuita y de código abierto (GPL v3). Se agradece a la comunidad de mantenerlo asi para fomentar el espiritu colaborativo.
 4. **Responsabilidad:** Los desarrolladores no se hacen responsables por pérdida de datos, baneos de cuentas o fallos en el sistema derivados del uso indebido.
 
