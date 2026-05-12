@@ -11,7 +11,14 @@ def get_com_mojang_path(active_path):
     """Retorna la ruta a games/com.mojang"""
     if not active_path:
         return None
-    return os.path.join(active_path, "games", "com.mojang")
+    # Try standard path first
+    p = os.path.join(active_path, "games", "com.mojang")
+    if os.path.exists(p): return p
+    # Try alternate if games/ is missing but active_path is the base
+    alt = os.path.join(active_path, "com.mojang")
+    if os.path.exists(alt): return alt
+    # Default to standard
+    return p
 
 def get_disabled_packs_path(app):
     """Retorna la ruta a disabled_packs dentro del perfil actual"""
@@ -65,7 +72,8 @@ def scan_all_addons(app):
             try:
                 for item in os.listdir(path):
                     item_path = os.path.join(path, item)
-                    if os.path.isdir(item_path):
+                    # Support both directories and individual files (e.g. .mcpack, .mcworld)
+                    if os.path.isdir(item_path) or (os.path.isfile(item_path) and item.lower().endswith(('.mcpack', '.mcworld', '.mcaddon', '.mcworldtemplate', '.zip'))):
                         info = get_addon_info(item_path, folder)
                         if not info.get("is_valid", True): continue
                         addon_list.append({
@@ -86,7 +94,7 @@ def scan_all_addons(app):
                 try:
                     for item in os.listdir(path):
                         item_path = os.path.join(path, item)
-                        if os.path.isdir(item_path):
+                        if os.path.isdir(item_path) or (os.path.isfile(item_path) and item.lower().endswith(('.mcpack', '.mcworld', '.mcaddon', '.mcworldtemplate'))):
                             info = get_addon_info(item_path, folder)
                             if not info.get("is_valid", True): continue
                             addon_list.append({
@@ -111,6 +119,12 @@ def get_addon_info(path, folder_type=None):
         "is_valid": True,
         "real_type": folder_type
     }
+
+    # Handle packed files (.mcpack, .mcworld)
+    if os.path.isfile(path) and path.lower().endswith(('.mcpack', '.mcworld', '.mcaddon', '.mcworldtemplate', '.zip')):
+        # For packed files, we don't extract info here to keep scan fast,
+        # just show filename and basic type
+        return info
 
     if folder_type == "minecraftWorlds":
         levelname_path = os.path.join(path, "levelname.txt")
@@ -228,8 +242,12 @@ def toggle_addon(app, addon_info):
     os.makedirs(target_dir, exist_ok=True)
     target_path = os.path.join(target_dir, item_name)
 
+    if os.path.abspath(current_path) == os.path.abspath(target_path):
+        return target_path
+
     if os.path.exists(target_path):
-        shutil.rmtree(target_path)
+        if os.path.isdir(target_path): shutil.rmtree(target_path)
+        else: os.remove(target_path)
 
     shutil.move(current_path, target_path)
     return target_path

@@ -49,7 +49,7 @@ flatpak install --user CianovaLauncher org.cianova.Launcher
 Esto hará que se instale el launcher con sus runtimes necesarios, pero puedes instalarlos manualmente con:
 
 ```bash
-flatpak install org.kde.Platform//5.15-24.08 io.qt.qtwebengine.BaseApp//5.15-24.08
+flatpak install org.kde.Platform//6.9 io.qt.qtwebengine.BaseApp//6.9
 ```
 ##### Metodo 2 - Bundle
 
@@ -62,14 +62,14 @@ flatpak install --user CianovaLauncher.flatpak
 
 Eh instala los runtimes necesarios con:
 ```bash
-flatpak install org.kde.Platform//5.15-24.08 io.qt.qtwebengine.BaseApp//5.15-24.08
+flatpak install org.kde.Platform//6.9 io.qt.qtwebengine.BaseApp//6.9
 ```
 
 #### Metodo 3 - Compilado local
 
 Descarga un pack de binarios precompilados y colocandolos en la carpeta `bin` y compila mediante PyInstaller usando `./build.sh` y luego ejecuta `./build-flatpak.sh` y se van a descargar los runtimes necesarios y automatizara la instalación en tu sistema como `--user`.
 
-*(NOTA: Adicional se usara `org.kde.Sdk//5.15-24.08` para el empaquetado).*
+*(NOTA: Adicional se usara `org.kde.Sdk//6.9` para el empaquetado).*
 
 ### Opcion C - Ejecutar de source code
 

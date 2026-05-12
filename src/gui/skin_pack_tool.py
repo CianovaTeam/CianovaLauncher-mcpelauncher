@@ -1,5 +1,6 @@
-import customtkinter as ctk
-from tkinter import filedialog
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+                             QLineEdit, QPushButton, QFrame, QScrollArea, QWidget, QFileDialog)
+from PySide6.QtCore import Qt
 from src.gui import custom_dialogs as messagebox
 import os
 import shutil
@@ -10,169 +11,150 @@ import uuid
 from src.utils.dialogs import ask_open_filenames_native
 from src import constants as c
 
-class SkinPackTool(ctk.CTkToplevel):
+class SkinPackTool(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title(c.UI_SKIN_PACK_CREATOR_TITLE)
-        self.geometry("700x550")
-
-        self.transient(parent)
+        self.setWindowTitle(c.UI_SKIN_PACK_CREATOR_TITLE)
+        self.resize(700, 550)
 
         self.skins = []
+        self.setup_ui()
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+    def setup_ui(self):
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(15, 15, 15, 15)
+        self.main_layout.setSpacing(10)
 
         # Header
-        header = ctk.CTkFrame(self, corner_radius=c.CORNER_RADIUS)
-        header.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        ctk.CTkLabel(header, text=c.UI_PACK_NAME_LABEL, font=c.FONT_NORMAL).pack(side="left", padx=5)
-        self.entry_pack_name = ctk.CTkEntry(header, width=200, font=c.FONT_NORMAL)
-        self.entry_pack_name.pack(side="left", padx=5)
+        header = QFrame()
+        header.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
+        h_layout = QHBoxLayout(header)
+        h_layout.addWidget(QLabel(c.UI_PACK_NAME_LABEL))
+        self.entry_pack_name = QLineEdit()
+        self.entry_pack_name.setMinimumWidth(200)
+        h_layout.addWidget(self.entry_pack_name)
+        self.main_layout.addWidget(header)
 
-        # Lista
-        self.scroll_frame = ctk.CTkScrollableFrame(
-            self,
-            label_text=c.UI_SKINS_ADDED_LABEL,
-            corner_radius=c.CORNER_RADIUS,
-            label_font=c.FONT_BOLD
-        )
-        self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+        # Scroll Area
+        lbl_skins = QLabel(c.UI_SKINS_ADDED_LABEL)
+        lbl_skins.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.main_layout.addWidget(lbl_skins)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setStyleSheet("background: transparent;")
+
+        self.scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setAlignment(Qt.AlignTop)
+        self.scroll_area.setWidget(self.scroll_content)
+        self.main_layout.addWidget(self.scroll_area, 1)
 
         # Botones
-        btn_frame = ctk.CTkFrame(self, corner_radius=c.CORNER_RADIUS)
-        btn_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
-        ctk.CTkButton(
-            btn_frame,
-            text=c.UI_BUTTON_ADD_SKINS_PNG,
-            command=self.add_skins_multi,
-            font=c.FONT_NORMAL
-        ).pack(side="left", padx=5)
-        ctk.CTkButton(
-            btn_frame,
-            text=c.UI_BUTTON_EXPORT_MCPACK,
-            command=self.export_pack,
-            fg_color="green",
-            font=c.FONT_BOLD
-        ).pack(side="right", padx=5)
+        btn_frame = QFrame()
+        btn_frame.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
+        b_layout = QHBoxLayout(btn_frame)
 
-        self.grab_set()
+        btn_add = QPushButton(c.UI_BUTTON_ADD_SKINS_PNG)
+        btn_add.clicked.connect(self.add_skins_multi)
+        b_layout.addWidget(btn_add)
+
+        b_layout.addStretch()
+
+        btn_export = QPushButton(c.UI_BUTTON_EXPORT_MCPACK)
+        btn_export.setStyleSheet("background-color: green; color: white; font-weight: bold;")
+        btn_export.clicked.connect(self.export_pack)
+        b_layout.addWidget(btn_export)
+
+        self.main_layout.addWidget(btn_frame)
+        self.setStyleSheet("background-color: #2b2b2b; color: white;")
 
     def add_skins_multi(self):
-        file_paths = ask_open_filenames_native(self, filetypes=[(c.UI_APK_FILES_TYPE, "*.png")]) # Reusing APK file type name for simplicity or should define UI_PNG_FILES_TYPE
-        if file_paths:
-            for path in file_paths:
-                # Auto-nombre basado en archivo
+        paths = ask_open_filenames_native(self, filetypes=[("PNG Files", "*.png")])
+        if paths:
+            for path in paths:
                 name = os.path.splitext(os.path.basename(path))[0]
                 self.skins.append({"name": name, "path": path})
             self.refresh_list()
 
     def refresh_list(self):
-        for widget in self.scroll_frame.winfo_children():
-            widget.destroy()
+        while self.scroll_layout.count():
+            item = self.scroll_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
         for i, skin in enumerate(self.skins):
-            f = ctk.CTkFrame(self.scroll_frame, corner_radius=c.CORNER_RADIUS)
-            f.pack(fill="x", pady=2)
+            f = QFrame()
+            f.setStyleSheet("background-color: #3a3a3a; border-radius: 8px;")
+            l = QHBoxLayout(f)
 
-            # Input para editar nombre
-            name_var = ctk.StringVar(value=skin["name"])
+            e = QLineEdit(skin["name"])
+            e.setMinimumWidth(150)
+            e.textChanged.connect(lambda text, idx=i: self.update_skin_name(idx, text))
+            l.addWidget(e)
 
-            # Callback para actualizar nombre al editar
-            name_var.trace_add(
-                "write",
-                lambda *args, v=name_var, idx=i: self.skins[idx].update(
-                    {"name": v.get()}
-                ),
-            )
+            l.addWidget(QLabel(os.path.basename(skin["path"])), 1)
 
-            ctk.CTkEntry(f, textvariable=name_var, width=150, font=c.FONT_NORMAL).pack(side="left", padx=5)
-            ctk.CTkLabel(
-                f, text=os.path.basename(skin["path"]), text_color="gray", font=c.FONT_SMALL
-            ).pack(side="left", padx=10)
-            ctk.CTkButton(
-                f,
-                text="X",
-                width=30,
-                fg_color="red",
-                command=lambda idx=i: self.remove_skin(idx),
-            ).pack(side="right", padx=5)
+            btn_del = QPushButton("X")
+            btn_del.setFixedWidth(30)
+            btn_del.setStyleSheet("background-color: red; color: white;")
+            btn_del.clicked.connect(lambda checked=False, idx=i: self.remove_skin(idx))
+            l.addWidget(btn_del)
 
-    def remove_skin(self, index):
-        del self.skins[index]
+            self.scroll_layout.addWidget(f)
+
+    def update_skin_name(self, idx, text):
+        self.skins[idx]["name"] = text
+
+    def remove_skin(self, idx):
+        del self.skins[idx]
         self.refresh_list()
 
     def export_pack(self):
-        pack_name = self.entry_pack_name.get()
+        pack_name = self.entry_pack_name.text().strip()
         if not pack_name or not self.skins:
             messagebox.showwarning(self, c.UI_ERROR_TITLE, c.UI_ERROR_MISSING_NAME_OR_SKINS)
             return
 
-        save_path = filedialog.asksaveasfilename(
-            defaultextension=".mcpack", filetypes=[(c.UI_MCPACK_FILES_TYPE, "*.mcpack")]
-        )
-        if not save_path:
-            return
-
-        # Generación de UUIDs y JSONs (Simplificado)
-        header_uuid = str(uuid.uuid4())
-        module_uuid = str(uuid.uuid4())
-
-        manifest = {
-            "format_version": 1,
-            "header": {"name": pack_name, "uuid": header_uuid, "version": [1, 0, 0]},
-            "modules": [
-                {"type": "skin_pack", "uuid": module_uuid, "version": [1, 0, 0]}
-            ],
-        }
-
-        skins_json = {
-            "skins": [],
-            "serialize_name": pack_name,
-            "localization_name": pack_name,
-        }
+        save_path, _ = QFileDialog.getSaveFileName(self, filter=f"{c.UI_MCPACK_FILES_TYPE} (*.mcpack)")
+        if not save_path: return
 
         temp_dir = tempfile.mkdtemp(prefix="skin_pack_")
-
         try:
+            skins_json = {"skins": [], "serialize_name": pack_name, "localization_name": pack_name}
             for skin in self.skins:
                 safe_name = "".join(x for x in skin["name"] if x.isalnum())
                 filename = f"{safe_name}.png"
                 shutil.copy(skin["path"], os.path.join(temp_dir, filename))
+                skins_json["skins"].append({
+                    "localization_name": skin["name"],
+                    "geometry": "geometry.humanoid.custom",
+                    "texture": filename,
+                    "type": "free"
+                })
 
-                skins_json["skins"].append(
-                    {
-                        "localization_name": skin["name"],
-                        "geometry": "geometry.humanoid.custom",
-                        "texture": filename,
-                        "type": "free",
-                    }
-                )
+            manifest = {
+                "format_version": 1,
+                "header": {"name": pack_name, "uuid": str(uuid.uuid4()), "version": [1, 0, 0]},
+                "modules": [{"type": "skin_pack", "uuid": str(uuid.uuid4()), "version": [1, 0, 0]}]
+            }
 
-            with open(os.path.join(temp_dir, "manifest.json"), "w") as f:
-                json.dump(manifest, f, indent=4)
-            with open(os.path.join(temp_dir, "skins.json"), "w") as f:
-                json.dump(skins_json, f, indent=4)
+            with open(os.path.join(temp_dir, "manifest.json"), "w") as f: json.dump(manifest, f, indent=4)
+            with open(os.path.join(temp_dir, "skins.json"), "w") as f: json.dump(skins_json, f, indent=4)
 
-            # Idioma
             texts_dir = os.path.join(temp_dir, "texts")
             os.makedirs(texts_dir)
             with open(os.path.join(texts_dir, "en_US.lang"), "w") as f:
                 f.write(f"skinpack.{pack_name}={pack_name}\n")
-                for skin in self.skins:
-                    f.write(f"skin.{pack_name}.{skin['name']}={skin['name']}\n")
+                for skin in self.skins: f.write(f"skin.{pack_name}.{skin['name']}={skin['name']}\n")
 
             with zipfile.ZipFile(save_path, "w") as zipf:
-                for root, dirs, files in os.walk(temp_dir):
+                for root, _, files in os.walk(temp_dir):
                     for file in files:
-                        zipf.write(
-                            os.path.join(root, file),
-                            os.path.relpath(os.path.join(root, file), temp_dir),
-                        )
+                        zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), temp_dir))
 
             messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_PACK_SAVED_SUCCESS.format(save_path=save_path))
-        except Exception as e:
-            messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))
+        except Exception as e: messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))
         finally:
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
+            if os.path.exists(temp_dir): shutil.rmtree(temp_dir)

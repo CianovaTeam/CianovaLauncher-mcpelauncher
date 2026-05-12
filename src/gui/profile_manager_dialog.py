@@ -1,82 +1,88 @@
-import customtkinter as ctk
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+                             QPushButton, QFrame, QScrollArea, QWidget, QInputDialog)
+from PySide6.QtCore import Qt
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
 
-class ProfileManagerDialog(ctk.CTkToplevel):
+class ProfileManagerDialog(QDialog):
     def __init__(self, parent, app):
         super().__init__(parent)
         self.app = app
-        self.title(c.UI_PROFILES_MANAGER_TITLE)
-        self.geometry("500x500")
-        self.transient(parent)
-        self.resizable(False, False)
+        self.setWindowTitle(c.UI_PROFILES_MANAGER_TITLE)
+        self.resize(500, 500)
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.setup_ui()
+        self.refresh_list()
+
+    def setup_ui(self):
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setSpacing(15)
 
         # Header
-        self.frame_top = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_top.grid(row=0, column=0, padx=20, pady=15, sticky="ew")
+        self.btn_add = QPushButton(f"➕ {c.UI_BUTTON_ADD_PROFILE}")
+        self.btn_add.setObjectName("ToolButton")
+        self.btn_add.setFixedHeight(35)
+        self.btn_add.clicked.connect(self.add_profile)
+        self.main_layout.addWidget(self.btn_add)
 
-        self.btn_add = ctk.CTkButton(
-            self.frame_top,
-            text=f"➕ {c.UI_BUTTON_ADD_PROFILE}",
-            command=self.add_profile,
-            fg_color=c.COLOR_GREEN_BUTTON,
-            hover_color=c.COLOR_GREEN_BUTTON_HOVER,
-            height=35,
-            font=c.FONT_BOLD
-        )
-        self.btn_add.pack(fill="x")
+        # List
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setStyleSheet("background: transparent;")
 
-        # Lista
-        self.scroll_list = ctk.CTkScrollableFrame(self, corner_radius=c.CORNER_RADIUS, fg_color=("gray90", "gray15"))
-        self.scroll_list.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
+        self.scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setAlignment(Qt.AlignTop)
+        self.scroll_area.setWidget(self.scroll_content)
+        self.main_layout.addWidget(self.scroll_area)
 
-        self.refresh_list()
-        self.grab_set()
+        self.setStyleSheet("background-color: #2b2b2b; color: white;")
 
     def refresh_list(self):
-        for widget in self.scroll_list.winfo_children():
-            widget.destroy()
+        while self.scroll_layout.count():
+            item = self.scroll_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
         profiles = self.app.logic.get_profiles(self.app)
         current = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE)
 
-        # Asegurar orden y listar correctamente
         for p in sorted(profiles):
             self.create_item(p, p == current)
 
     def create_item(self, name, is_current):
-        frame = ctk.CTkFrame(self.scroll_list, corner_radius=10, fg_color=("gray85", "gray25") if not is_current else (c.COLOR_PRIMARY_GREEN, c.COLOR_SELECTED_GREEN))
-        frame.pack(fill="x", pady=4, padx=5)
+        frame = QFrame()
+        bg = c.COLOR_SELECTED_GREEN if is_current else "#333333"
+        frame.setStyleSheet(f"background-color: {bg}; border-radius: 10px;")
+        layout = QHBoxLayout(frame)
 
         status_dot = "●" if is_current else "○"
-        lbl_name = ctk.CTkLabel(frame, text=f"{status_dot} {name}", font=c.FONT_BOLD, text_color="white" if is_current else None)
-        lbl_name.pack(side="left", padx=15, pady=12)
+        lbl_name = QLabel(f"{status_dot} {name}")
+        lbl_name.setStyleSheet("font-weight: bold; color: white;")
+        layout.addWidget(lbl_name)
 
-        actions = ctk.CTkFrame(frame, fg_color="transparent")
-        actions.pack(side="right", padx=10)
+        layout.addStretch()
 
         if name != c.UI_PROFILE_DEFAULT:
-            btn_rename = ctk.CTkButton(
-                actions, text="✏️", width=35, height=30,
-                fg_color=("gray75", "gray40"), hover_color="gray50",
-                command=lambda n=name: self.rename_profile(n)
-            )
-            btn_rename.pack(side="left", padx=2)
+            btn_rename = QPushButton("✏️")
+            btn_rename.setFixedSize(35, 30)
+            btn_rename.clicked.connect(lambda checked=False, n=name: self.rename_profile(n))
+            layout.addWidget(btn_rename)
 
             if not is_current:
-                btn_del = ctk.CTkButton(
-                    actions, text="🗑️", width=35, height=30,
-                    fg_color=c.COLOR_RED_BUTTON, hover_color=c.COLOR_RED_BUTTON_HOVER,
-                    command=lambda n=name: self.delete_profile(n)
-                )
-                btn_del.pack(side="left", padx=2)
+                btn_del = QPushButton("🗑️")
+                btn_del.setFixedSize(35, 30)
+                btn_del.setStyleSheet(f"background-color: {c.COLOR_RED_BUTTON}; color: white;")
+                btn_del.clicked.connect(lambda checked=False, n=name: self.delete_profile(n))
+                layout.addWidget(btn_del)
         else:
-             # Indicador de que default no se borra
-             lbl_def = ctk.CTkLabel(actions, text="[System]", font=c.FONT_SMALL, text_color="gray")
-             lbl_def.pack(side="right", padx=5)
+            lbl_def = QLabel("[System]")
+            lbl_def.setStyleSheet("font-size: 11px; color: #aaaaaa; font-weight: bold;")
+            layout.addWidget(lbl_def)
+
+        self.scroll_layout.addWidget(frame)
 
     def _sync_ui(self):
         if hasattr(self.app.settings_tab, "refresh_profile_list"):
@@ -85,14 +91,18 @@ class ProfileManagerDialog(ctk.CTkToplevel):
             self.app.play_tab.update_profile_indicator()
 
     def add_profile(self):
-        if self.app.logic.create_profile_dialog(self.app):
-            self.refresh_list()
-            self._sync_ui()
+        name, ok = QInputDialog.getText(self, c.UI_BUTTON_ADD_PROFILE, c.UI_PROFILE_NAME_REQUIRED)
+        if ok and name:
+            # Reusing logic from app_logic would be better, but app_logic uses CTkInputDialog
+            # I should update app_logic to be toolkit-agnostic or update it to use PySide6
+            # For now, let's keep it consistent.
+            if self.app.logic.create_profile_pyside(self.app, name):
+                self.refresh_list()
+                self._sync_ui()
 
     def rename_profile(self, old_name):
-        dialog = ctk.CTkInputDialog(text=c.UI_PROFILE_NAME_REQUIRED, title=c.UI_BUTTON_RENAME_PROFILE)
-        new_name = dialog.get_input()
-        if new_name and self.app.logic.rename_profile(self.app, old_name, new_name):
+        new_name, ok = QInputDialog.getText(self, c.UI_BUTTON_RENAME_PROFILE, c.UI_PROFILE_NAME_REQUIRED, text=old_name)
+        if ok and new_name and self.app.logic.rename_profile(self.app, old_name, new_name):
             self.refresh_list()
             self._sync_ui()
 

@@ -1,29 +1,38 @@
-import customtkinter as ctk
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar
+from PySide6.QtCore import Qt
 
-class ProgressDialog(ctk.CTkToplevel):
+class ProgressDialog(QDialog):
     def __init__(self, parent, title, message):
         super().__init__(parent)
-        self.title(title)
-        self.geometry("400x150")
-        self.resizable(False, False)
-        self.attributes("-topmost", True)
+        self.setWindowTitle(title)
+        self.setFixedSize(400, 150)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
 
         from src import constants as c
-        self.label = ctk.CTkLabel(self, text=message, font=c.FONT_NORMAL)
-        self.label.pack(pady=(20, 10))
+        self.label = QLabel(message)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setStyleSheet("font-size: 13px; color: white;")
+        layout.addWidget(self.label)
 
-        self.progressbar = ctk.CTkProgressBar(self, mode="indeterminate")
-        self.progressbar.pack(pady=10, padx=20, fill="x")
-        self.progressbar.start()
+        self.progressbar = QProgressBar()
+        self.progressbar.setRange(0, 0) # Indeterminate mode
+        self.progressbar.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid grey;
+                border-radius: 5px;
+                text-align: center;
+                background-color: #333333;
+            }
+            QProgressBar::chunk {
+                background-color: #1f6aa5;
+            }
+        """)
+        layout.addWidget(self.progressbar)
 
-        # Centrar ventana
-        self.update_idletasks()
-        x = parent.winfo_x() + (parent.winfo_width() // 2) - (self.winfo_width() // 2)
-        y = parent.winfo_y() + (parent.winfo_height() // 2) - (self.winfo_height() // 2)
-        self.geometry(f"+{x}+{y}")
+        self.setStyleSheet("background-color: #2b2b2b;")
 
     def close(self):
-        self.destroy()
+        self.accept()

@@ -16,7 +16,15 @@ class ConfigManager:
                 print(f"Error creando directorio de config: {e}")
 
         self.default_config = {
-            c.CONFIG_KEY_BINARY_PATHS: {c.CONFIG_KEY_CLIENT: "", c.CONFIG_KEY_EXTRACT: "", c.CONFIG_KEY_ERROR: "", c.CONFIG_KEY_WEBVIEW: ""},
+            c.CONFIG_KEY_BINARY_PATHS: {
+                c.CONFIG_KEY_CLIENT: "",
+                c.CONFIG_KEY_EXTRACT: "",
+                c.CONFIG_KEY_SIGNIN_UI: "",
+                c.CONFIG_KEY_GPLAYDL: "",
+                c.CONFIG_KEY_GPLAYVER: "",
+                c.CONFIG_KEY_ERROR: "",
+                c.CONFIG_KEY_WEBVIEW: ""
+            },
             c.CONFIG_KEY_MODE: c.UI_DEFAULT_MODE,
             c.CONFIG_KEY_INSTALL_MODE: c.MODE_INSTALL_LOCAL,
             c.CONFIG_KEY_LANGUAGE: "en",
@@ -38,6 +46,10 @@ class ConfigManager:
             c.CONFIG_KEY_VERSION_TITLE_SIZE: 13,
             c.CONFIG_KEY_PROFILES: [c.UI_PROFILE_DEFAULT],
             c.CONFIG_KEY_CURRENT_PROFILE: c.UI_PROFILE_DEFAULT,
+            c.CONFIG_KEY_SECTION_OPACITY: 100,
+            c.CONFIG_KEY_VERSION_ICON_ZOOM: {},
+            c.CONFIG_KEY_VERSION_ICON_X: {},
+            c.CONFIG_KEY_VERSION_ICON_Y: {},
         }
         self.config = self.load_config()
 

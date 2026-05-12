@@ -6,22 +6,23 @@ DEPENDENCY_MAP = {
         "libcurl4", "libssl3", "libx11-6", "libxext6", "libxi6",
         "libxrandr2", "libxcursor1", "libxfixes3", "libxrender1",
         "libasound2", "libpulse0", "libsystemd0", "libgl1", "libegl1",
-        "libqt5core5a", "libqt5gui5", "libqt5widgets5", "libqt5network5",
-        "libqt5webengine5", "libqt5qml5", "libqt5quick5", "libqt5svg5",
+        "libqt6core6", "libqt6gui6", "libqt6widgets6", "libqt6network6",
+        "libqt6webengine6", "libqt6qml6", "libqt6quick6",
+        "libqt6quickcontrols2-6", "libqt6svg6",
         "zenity", "unzip"
     ],
     "DNF": [
         "libcurl", "openssl-libs", "libX11", "libXext", "libXi",
         "libXrandr", "libXcursor", "libXfixes", "libXrender", "alsa-lib",
         "pulseaudio-libs", "systemd-libs", "mesa-libGL", "mesa-libEGL",
-        "qt5-qtbase", "qt5-qtwebengine", "qt5-qtdeclarative", "qt5-qtsvg",
-        "qt5-qtquickcontrols2", "zenity", "unzip"
+        "qt6-qtbase", "qt6-qtwebengine", "qt6-qtdeclarative", "qt6-qtsvg",
+        "zenity", "unzip"
     ],
     "PACMAN": [
         "curl", "openssl", "libx11", "libxext", "libxi", "libxrandr",
         "libxcursor", "libxfixes", "libxrender", "alsa-lib", "pulseaudio",
-        "systemd-libs", "mesa", "qt5-base", "qt5-webengine",
-        "qt5-declarative", "qt5-svg", "qt5-quickcontrols2", "zenity", "unzip"
+        "systemd-libs", "mesa", "qt6-base", "qt6-webengine",
+        "qt6-declarative", "qt6-svg", "zenity", "unzip"
     ]
 }
 
@@ -33,9 +34,11 @@ import os
 
 # --- Información de la Aplicación ---
 APP_NAME = "CianovaLauncher"
-VERSION_LAUNCHER = "2.2"
-DEVELOPERS = "@PlaGaDev, @ShaggyLinux & Antigravity"
-UPDATE_NAME = "AddonManager and ProfileSystem Update"
+VERSION_LAUNCHER = "3.0"
+BINARY_VERSION_INFO = "v1.7.4-official"  # Default for Flatpak or if not found
+BINARY_VERSION_FALLBACK = "PreCompiled Binaries from mcpelauncher Github"
+DEVELOPERS = "@PlaGaDev & @ShaggyLinux"
+UPDATE_NAME = "Support for Nvidia"
 CHANGELOG = f"{UPDATE_NAME}: {APP_NAME} {VERSION_LAUNCHER}"
 CREDITOS = f"Dev: {DEVELOPERS}\nProyecto: {APP_NAME}"
 LEGAL_TEXT = """LICENCIA & TÉRMINOS Y CONDICIONES
@@ -77,6 +80,14 @@ Al utilizar CianovaLauncher, aceptas estos términos y condiciones.
 ---
 Hecho con ❤️ y 🤖 para la comunidad Linux.
 """
+
+# --- Configuración Flatpak ---
+FLATPAK_REQUIRED_RUNTIMES = [
+    "org.kde.Platform//6.9",
+    "io.qt.qtwebengine.BaseApp//6.9",
+    "org.freedesktop.Platform.GL.default",
+    "org.freedesktop.Platform.VAAPI.Intel"
+]
 
 # --- Rutas y Nombres de Archivos ---
 HOME_DIR = os.path.expanduser("~")
@@ -129,6 +140,9 @@ MODE_INSTALL_FLATPAK = "flatpak_custom"
 CONFIG_KEY_BINARY_PATHS = "binary_paths"
 CONFIG_KEY_CLIENT = "client"
 CONFIG_KEY_EXTRACT = "extract"
+CONFIG_KEY_SIGNIN_UI = "signin_ui"
+CONFIG_KEY_GPLAYDL = "gplaydl"
+CONFIG_KEY_GPLAYVER = "gplayver"
 CONFIG_KEY_WEBVIEW = "webview"
 CONFIG_KEY_ERROR = "error"
 CONFIG_KEY_WINDOW_SIZE = "window_size"
@@ -149,7 +163,30 @@ CONFIG_KEY_CUSTOM_ENV_VARS = "custom_env_vars"
 CONFIG_KEY_VERSION_LIST_STYLE = "version_list_style"
 CONFIG_KEY_VERSION_ICON_SIZE = "version_icon_size"
 CONFIG_KEY_VERSION_TITLE_SIZE = "version_title_size"
+CONFIG_KEY_VERSION_CARD_WIDTH = "version_card_width"
+CONFIG_KEY_VERSION_CARD_HEIGHT = "version_card_height"
 CONFIG_KEY_TOOLS_LAYOUT = "tools_layout"
+
+# --- Background and Sticker ---
+CONFIG_KEY_BG_PATH = "bg_path"
+CONFIG_KEY_BG_X = "bg_x"
+CONFIG_KEY_BG_Y = "bg_y"
+CONFIG_KEY_BG_OPACITY = "bg_opacity"
+CONFIG_KEY_BG_ZOOM = "bg_zoom"
+
+CONFIG_KEY_STICKER_MODE = "sticker_mode"  # "none", "image", "text"
+CONFIG_KEY_STICKER_CONTENT = "sticker_content"
+CONFIG_KEY_STICKER_CORNER = "sticker_corner"  # "top-left", "top-right", "bottom-left", "bottom-right"
+CONFIG_KEY_STICKER_X = "sticker_x"
+CONFIG_KEY_STICKER_Y = "sticker_y"
+CONFIG_KEY_STICKER_ZOOM = "sticker_zoom"
+CONFIG_KEY_STICKER_OPACITY = "sticker_opacity"
+
+CONFIG_KEY_SECTION_OPACITY = "section_opacity"
+
+CONFIG_KEY_VERSION_ICON_ZOOM = "version_icon_zoom"
+CONFIG_KEY_VERSION_ICON_X = "version_icon_x"
+CONFIG_KEY_VERSION_ICON_Y = "version_icon_y"
 
 STYLE_LIST = "list"
 STYLE_GRID = "grid"
@@ -160,19 +197,19 @@ STYLE_COLUMNS = "columns"
 COLOR_PRIMARY_GREEN = "#2cc96b"
 COLOR_PRIMARY_GREEN_HOVER = "#229e54"
 COLOR_BLUE_BUTTON = "#1f6aa5"
-COLOR_RED_BUTTON = "#e63946"
-COLOR_RED_BUTTON_HOVER = "#c92a35"
-COLOR_PURPLE_BUTTON = "#8e44ad"
-COLOR_PURPLE_BUTTON_HOVER = "#732d91"
+COLOR_RED_BUTTON = "#ef4444"
+COLOR_RED_BUTTON_HOVER = "#dc2626"
+COLOR_PURPLE_BUTTON = "#a855f7"
+COLOR_PURPLE_BUTTON_HOVER = "#9333ea"
 COLOR_YELLOW_BUTTON = "#fca311"
 COLOR_YELLOW_BUTTON_HOVER = "#d68c0e"
-COLOR_GRAY_BUTTON = "#457b9d"
-COLOR_GRAY_BUTTON_HOVER = "#36607c"
-COLOR_GREEN_BUTTON = "#16a34a"
-COLOR_GREEN_BUTTON_HOVER = "#15803d"
-COLOR_ORANGE_BUTTON = "orange"
-COLOR_ORANGE_BUTTON_HOVER = "darkorange"
-COLOR_SELECTED_GREEN = "#1e8449"
+COLOR_GRAY_BUTTON = "#64748b"
+COLOR_GRAY_BUTTON_HOVER = "#475569"
+COLOR_GREEN_BUTTON = "#22c55e"
+COLOR_GREEN_BUTTON_HOVER = "#16a34a"
+COLOR_ORANGE_BUTTON = "#f97316"
+COLOR_ORANGE_BUTTON_HOVER = "#ea580c"
+COLOR_SELECTED_GREEN = "#15803d"
 
 # --- Estilos de la Interfaz ---
 FONT_TITLE = ("Roboto", 22, "bold")
@@ -214,8 +251,9 @@ UI_INSTALL_MODES = {
 
 # Pestaña Herramientas
 UI_SECTION_MANAGEMENT = "Gestión"
-UI_BUTTON_INSTALL_APK = "Instalar APK"
+UI_BUTTON_INSTALL_APK = "Instalar Versión"
 UI_BUTTON_MOVE_DELETE_VERSION = "Mover/Borrar Versión"
+UI_BUTTON_VERSION_MANAGER = "Version Manager"
 UI_BUTTON_MIGRATE_DATA = "Migración de Datos"
 UI_SECTION_ADDONS = "Complementos"
 UI_BUTTON_ADDON_MANAGER = "Gestor de recursos"
@@ -230,7 +268,7 @@ UI_SECTION_SYSTEM = "Sistema"
 UI_BUTTON_VERIFY_DEPS = "Verificar Dependencias"
 UI_BUTTON_VERIFY_HW = "Verificar Requisitos (Hardware)"
 UI_SECTION_SHORTCUT = "Menú de Inicio"
-UI_BUTTON_MANAGE_SHORTCUT = "Gestionar Acceso Directo"
+UI_BUTTON_MANAGE_SHORTCUT = "Gestor Avanzado de Versiones"
 UI_SECTION_EXPORT = "Exportación"
 UI_BUTTON_EXPORT_WORLDS = "Exportar Mundos"
 UI_BUTTON_OPEN_SCREENSHOTS = "Abrir Capturas"
@@ -257,6 +295,43 @@ UI_LABEL_VERSION_LIST_STYLE = "Estilo de Lista:"
 UI_LABEL_TOOLS_LAYOUT = "Diseño de Herramientas:"
 UI_LABEL_ICON_SIZE = "Tamaño de Icono:"
 UI_LABEL_TITLE_SIZE = "Tamaño de Título:"
+UI_LABEL_CARD_WIDTH = "Anchura de Tarjeta:"
+UI_LABEL_CARD_HEIGHT = "Altura de Tarjeta:"
+
+UI_SECTION_BACKGROUND = "Fondo Personalizado"
+UI_LABEL_BG_PATH = "Imagen de Fondo:"
+UI_LABEL_BG_X = "Posición X:"
+UI_LABEL_BG_Y = "Posición Y:"
+UI_LABEL_BG_OPACITY = "Opacidad:"
+UI_LABEL_BG_ZOOM = "Zoom:"
+UI_LABEL_POS_X = "Pos X:"
+UI_LABEL_POS_Y = "Pos Y:"
+UI_LABEL_COMPATIBLE_RANGE = "Versiones Compatibles:"
+UI_BUTTON_RESET_ICON = "Restablecer Icono"
+
+UI_SECTION_STICKER = "Sticker / Watermark"
+UI_LABEL_STICKER_MODE = "Modo:"
+UI_LABEL_STICKER_CONTENT = "Contenido (Texto/Ruta):"
+UI_LABEL_STICKER_CORNER = "Esquina:"
+UI_LABEL_STICKER_X = "Distancia X:"
+UI_LABEL_STICKER_Y = "Distancia Y:"
+UI_LABEL_STICKER_ZOOM = "Zoom Sticker:"
+UI_LABEL_STICKER_OPACITY = "Opacidad:"
+
+UI_LABEL_SECTION_OPACITY = "Section Opacity:"
+
+UI_STICKER_MODES = {
+    "none": "Desactivado",
+    "image": "Imagen (PNG/WebP)",
+    "text": "Texto Personalizado"
+}
+
+UI_STICKER_CORNERS = {
+    "top-left": "Superior Izquierda",
+    "top-right": "Superior Derecha",
+    "bottom-left": "Inferior Izquierda",
+    "bottom-right": "Inferior Derecha"
+}
 
 UI_LIST_STYLES = {
     STYLE_LIST: "Lista",
@@ -291,6 +366,21 @@ UI_THEME_NAMES = {
     "cherry": "Cherry",
     "ocean": "Ocean"
 }
+
+THEME_COLOR_MAP = {
+    "blue": "#1f6aa5",      # Classic Blue
+    "green": "#2cc96b",     # Vibrant Green
+    "red": "#ef4444",       # Bright Red
+    "orange": "#f97316",    # Bright Orange
+    "purple": "#a855f7",    # Bright Purple
+    "yellow": "#eab308",    # Bright Yellow
+    "dark-blue": "#1e40af", # Deeper Royal Blue
+    "gray": "#64748b",      # Slate Gray
+    "cyan": "#06b6d4",      # Cyan
+    "midnight": "#334155",  # Slate Blue-Grey (Visible Midnight)
+    "cherry": "#991b1b",    # Deep Cherry Red
+    "ocean": "#0e7490"      # Deep Teal/Ocean
+}
 UI_RESTART_REQUIRED_MSG = "* El cambio de color requiere reiniciar la aplicación."
 UI_APPEARANCE_HINT = "Esto solo cambia ligeramente la IU, no la cambia radicalmente."
 UI_CONFIRM_TITLE = "Confirmar"
@@ -300,6 +390,9 @@ UI_RESTORE_DEFAULTS_SUCCESS_MSG = "Los ajustes se han restaurado. La aplicación
 UI_BUTTON_RESTORE_DEFAULTS = "Restaurar valores"
 UI_LABEL_CLIENT_GAME = "Cliente (game):"
 UI_LABEL_EXTRACTOR_APK = "Extractor APK:"
+UI_LABEL_SIGNIN_UI = "Google Login UI:"
+UI_LABEL_GPLAYDL = "Google Play Downloader:"
+UI_LABEL_GPLAYVER = "Google Play Version Check:"
 UI_LABEL_WEBVIEW_OPTIONAL = "Webview (Opcional):"
 UI_LABEL_ERROR_HANDLER_OPTIONAL = "Error Handler (Opcional):"
 UI_SECTION_COMPATIBILITY = "Compatibilidad"
@@ -453,6 +546,22 @@ UI_BUTTON_EXPORT_MCPACK = "Exportar .mcpack"
 UI_ERROR_MISSING_NAME_OR_SKINS = "Falta nombre del pack o skins."
 UI_PACK_SAVED_SUCCESS = "Pack guardado en {save_path}"
 UI_INSTALL_NEW_VERSION_TITLE = "Instalar Nueva Versión"
+UI_INSTALL_TAB_GOOGLE = "Google Play"
+UI_INSTALL_TAB_LOCAL = "APK Local"
+UI_BUTTON_LOGIN_GOOGLE = "Iniciar Sesión (Google)"
+UI_LABEL_SELECT_VERSION = "Seleccionar Versión:"
+UI_LABEL_SELECT_ARCH = "Arquitectura:"
+UI_LABEL_FILTER_VERSIONS = "Filtrar:"
+UI_FILTER_ALL = "Todas"
+UI_FILTER_STABLE = "Estables"
+UI_FILTER_BETA = "Betas"
+UI_LABEL_DOWNLOAD_PROGRESS = "Descargando: {p}%"
+UI_STATUS_GETTING_INFO = "Obteniendo información..."
+UI_STATUS_DOWNLOADING = "Descargando..."
+UI_STATUS_EXTRACTING = "Extrayendo..."
+UI_STATUS_LOGIN_REQUIRED = "Inicia sesión para continuar"
+UI_STATUS_SESSION_ACTIVE = "✓ Sesión Activa"
+UI_STATUS_SESSION_INACTIVE = "✗ Sesión no Iniciada"
 UI_APK_FILE_LABEL = "Archivo APK:"
 UI_SELECT_APK_PLACEHOLDER = "Selecciona un APK..."
 UI_VERSION_NAME_LABEL = "Nombre de la Versión:"
@@ -484,8 +593,12 @@ UI_EXTRACTING_APK_MSG = "Por favor espera, esto puede tardar unos minutos..."
 UI_EXTRACTION_SUCCESS_MSG = "Versión {ver_name} instalada correctamente."
 UI_EXTRACTION_ERROR_MSG = "El extractor falló:\n{err_msg}"
 UI_CRITICAL_ERROR_MSG = "Fallo crítico: {e}"
-UI_MANAGE_VERSION_TITLE = "Gestionar Versión"
-UI_MANAGE_VERSION_PROMPT = "¿Qué deseas hacer con la versión '{version}'?"
+VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/minecraft-linux/mcpelauncher-versiondb/master/versions.{arch}.json.min"
+UI_MANAGE_VERSION_TITLE = "Gestor Avanzado de Versiones"
+UI_MANAGE_VERSION_PROMPT = "Gestionar versión: {version}"
+UI_BUTTON_RENAME = "Renombrar"
+UI_BUTTON_CHANGE_ICON = "Cambiar Icono"
+UI_LABEL_ICON_ZOOM = "Zoom Icono:"
 UI_MOVE_TO_BACKUP = "Mover a Respaldo"
 UI_DELETE_PERMANENTLY = "Eliminar"
 UI_VERSION_MOVED_MSG = "Versión movida al respaldo."
@@ -516,8 +629,8 @@ UI_ADDON_MANAGER_TITLE = "Gestor de Addons y Recursos"
 UI_SEARCH_PLACEHOLDER = "Buscar por nombre..."
 UI_STATUS_ACTIVE = "Activo"
 UI_STATUS_DISABLED = "Desactivado"
-UI_STATUS_ENABLED_BTN = "Activado"
-UI_STATUS_DISABLED_BTN = "Desactivado"
+UI_BUTTON_ACTIVATE = "Activar"
+UI_BUTTON_DEACTIVATE = "Desactivar"
 UI_BUTTON_IMPORT_FILE = "Importar archivo"
 UI_TAB_WORLDS = "Mundos"
 UI_TAB_BP = "Behavior Packs (BP)"
@@ -589,11 +702,11 @@ por el entorno de ejecución (runtime).
 Asegúrate de tener instalados los runtimes necesarios.
 
 Para Usuarios:
-- org.kde.Platform//5.15-24.08
-- io.qt.qtwebengine.BaseApp//5.15-24.08
+- org.kde.Platform//6.9
+- io.qt.qtwebengine.BaseApp//6.9
 
 Para Desarrolladores:
-- org.kde.Sdk//5.15-24.08
+- org.kde.Sdk//6.9
 """
 UI_DEPENDENCY_CHECK_ERROR = "No se encontró '{list_file}'"
 UI_PKG_MANAGER_NOT_SUPPORTED = "Gestor de paquetes no soportado."
@@ -609,3 +722,5 @@ UI_DEPENDENCIES_OK = "✅ Requisitos instalados correctamente."
 UI_DEPENDENCIES_FLATPAK_OK = "✅ Flatpak detectado correctamente.\nID: {flatpak_id}"
 UI_FLATPAK_APP_NOT_FOUND = "La aplicación Flatpak '{flatpak_id}' no parece estar instalada."
 UI_FLATPAK_VERIFICATION_ERROR = "Error verificando Flatpak:\n{e}"
+UI_SECTION_FLATPAK_RUNTIMES = "Gestión de Runtimes (Flatpak)"
+UI_BUTTON_UPDATE_RUNTIMES = "Actualizar Runtimes Requeridos"

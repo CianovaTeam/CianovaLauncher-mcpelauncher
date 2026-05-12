@@ -1,157 +1,181 @@
-import os
-import customtkinter as ctk
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+                             QLineEdit, QPushButton, QFrame, QTabWidget, QScrollArea, QWidget)
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QPixmap, QIcon
 from src.gui import custom_dialogs as messagebox
 from src import constants as c
 from src.core import addon_manager
 from src.utils.image_manager import ImageManager
-from PIL import Image
 from src.utils import dialogs
+import os
+import threading
+from PySide6.QtCore import QThread, Signal
 
-class AddonManagerDialog(ctk.CTkToplevel):
+class AddonWorker(QThread):
+    finished = Signal(list)
+    error = Signal(str)
+
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+
+    def run(self):
+        try:
+            data = addon_manager.scan_all_addons(self.app)
+            self.finished.emit(data)
+        except Exception as e:
+            self.error.emit(str(e))
+
+class AddonActionWorker(QThread):
+    finished = Signal(object)
+    error = Signal(str)
+
+    def __init__(self, action_func, *args):
+        super().__init__()
+        self.action_func = action_func
+        self.args = args
+
+    def run(self):
+        try:
+            res = self.action_func(*self.args)
+            self.finished.emit(res)
+        except Exception as e:
+            self.error.emit(str(e))
+
+class AddonManagerDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
         self.app = parent
+        self.setWindowTitle(c.UI_ADDON_MANAGER_TITLE)
+        self.resize(950, 750)
 
-        self.title(c.UI_ADDON_MANAGER_TITLE)
-        self.geometry("950x750")
-        self.transient(parent)
+        self.addons_data = []
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.timeout.connect(self.render_filtered_list)
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.setup_ui()
+        self.refresh_list()
+
+    def setup_ui(self):
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setSpacing(15)
 
         # Header
-        self.frame_top = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_top.grid(row=0, column=0, padx=20, pady=(15, 0), sticky="ew")
+        self.header_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.header_layout)
 
         # Row 1: Search and Main buttons
-        self.row1 = ctk.CTkFrame(self.frame_top, fg_color="transparent")
-        self.row1.pack(fill="x")
+        row1 = QHBoxLayout()
+        self.entry_search = QLineEdit()
+        self.entry_search.setPlaceholderText(c.UI_SEARCH_PLACEHOLDER)
+        self.entry_search.setMinimumWidth(300)
+        self.entry_search.textChanged.connect(self.on_search_delay)
+        row1.addWidget(self.entry_search)
 
-        self.entry_search = ctk.CTkEntry(
-            self.row1,
-            placeholder_text=c.UI_LABEL_SEARCH_PLACEHOLDER,
-            width=300
-        )
-        self.entry_search.pack(side="left", padx=5)
-        self.entry_search.bind("<KeyRelease>", self.on_search_delay)
+        btn_reload = QPushButton("↻")
+        btn_reload.setMinimumSize(50, 45)
+        btn_reload.setStyleSheet("font-size: 24px; font-weight: bold; padding: 5px;")
+        btn_reload.clicked.connect(self.refresh_list)
+        row1.addWidget(btn_reload)
 
-        self.btn_reload = ctk.CTkButton(
-            self.row1, text="↻", width=40, height=35,
-            command=self.refresh_list, font=("Roboto", 20, "bold")
-        )
-        self.btn_reload.pack(side="left", padx=5)
+        row1.addStretch()
 
-        self.btn_import = ctk.CTkButton(
-            self.row1,
-            text=f"📥 {c.UI_BUTTON_IMPORT_FILE}",
-            command=self.import_file,
-            fg_color=c.COLOR_GREEN_BUTTON,
-            hover_color=c.COLOR_GREEN_BUTTON_HOVER,
-            height=35,
-            font=c.FONT_BOLD
-        )
-        self.btn_import.pack(side="right", padx=5)
+        btn_import = QPushButton(f"📥 {c.UI_BUTTON_IMPORT_FILE}")
+        btn_import.setFixedHeight(35)
+        btn_import.setStyleSheet(f"background-color: {c.COLOR_GREEN_BUTTON}; color: white; font-weight: bold;")
+        btn_import.clicked.connect(self.import_file)
+        row1.addWidget(btn_import)
+        self.header_layout.addLayout(row1)
 
         # Row 2: Status Indicators
-        self.row2 = ctk.CTkFrame(self.frame_top, fg_color="transparent")
-        self.row2.pack(fill="x", pady=(5, 0))
-
+        row2 = QHBoxLayout()
         profile = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)
         install_mode = c.UI_INSTALL_MODES.get(self.app.config.get(c.CONFIG_KEY_INSTALL_MODE), "Unknown")
 
-        self.lbl_profile_info = ctk.CTkLabel(
-            self.row2,
-            text=f"👤 {c.UI_LABEL_PROFILE} {profile}",
-            font=c.FONT_SMALL,
-            text_color=c.COLOR_PRIMARY_GREEN
-        )
-        self.lbl_profile_info.pack(side="left", padx=10)
+        lbl_profile = QLabel(f"👤 {c.UI_LABEL_PROFILE} {profile}")
+        lbl_profile.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-size: 11px;")
+        row2.addWidget(lbl_profile)
 
-        self.lbl_mode_info = ctk.CTkLabel(
-            self.row2,
-            text=f"📦 {c.UI_LABEL_INSTALLATION} {install_mode}",
-            font=c.FONT_SMALL,
-            text_color="gray"
-        )
-        self.lbl_mode_info.pack(side="left", padx=10)
+        lbl_mode = QLabel(f"📦 {c.UI_LABEL_INSTALLATION} {install_mode}")
+        lbl_mode.setStyleSheet("color: gray; font-size: 11px;")
+        row2.addWidget(lbl_mode)
+        row2.addStretch()
+        self.header_layout.addLayout(row2)
 
-        # Tabs (Worlds, RP, BP)
-        self.tabview = ctk.CTkTabview(self, corner_radius=c.CORNER_RADIUS, command=self.on_tab_change)
-        self.tabview.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
+        # Tabs
+        self.tab_widget = QTabWidget()
+        self.tab_widget.currentChanged.connect(self.render_filtered_list)
+        self.main_layout.addWidget(self.tab_widget)
 
-        self.tab_worlds = self.tabview.add(c.UI_TAB_WORLDS)
-        self.tab_rp = self.tabview.add(c.UI_TAB_RP)
-        self.tab_bp = self.tabview.add(c.UI_TAB_BP)
+        self.tabs = {}
+        tab_configs = [
+            (c.UI_TAB_WORLDS, "worlds"),
+            (c.UI_TAB_RP, "rp"),
+            (c.UI_TAB_BP, "bp")
+        ]
+        for tab_display_name, tab_id in tab_configs:
+            tab = QWidget()
+            layout = QVBoxLayout(tab)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.NoFrame)
+            scroll.setStyleSheet("background: transparent;")
 
-        # Scroll frames
-        self.scrolls = {
-            c.UI_TAB_WORLDS: ctk.CTkScrollableFrame(self.tab_worlds, fg_color="transparent"),
-            c.UI_TAB_RP: ctk.CTkScrollableFrame(self.tab_rp, fg_color="transparent"),
-            c.UI_TAB_BP: ctk.CTkScrollableFrame(self.tab_bp, fg_color="transparent")
-        }
-        for s in self.scrolls.values(): s.pack(fill="both", expand=True)
+            content = QWidget()
+            content_layout = QVBoxLayout(content)
+            content_layout.setAlignment(Qt.AlignTop)
+            scroll.setWidget(content)
+            layout.addWidget(scroll)
 
-        self.addons_data = []
-        self._search_timer = None
-        self._render_job = None
-        self._last_rendered_search = {} # Cache search string per tab
+            idx = self.tab_widget.addTab(tab, tab_display_name)
+            self.tabs[idx] = (content_layout, content, tab_id)
 
-        self.refresh_list()
-        self.grab_set()
+        self.setStyleSheet("background-color: #2b2b2b; color: white;")
 
-    def on_tab_change(self):
-        self.render_filtered_list()
-
-    def on_search_delay(self, event=None):
-        if self._search_timer: self.after_cancel(self._search_timer)
-        self._search_timer = self.after(300, self.render_filtered_list)
+    def on_search_delay(self):
+        self._search_timer.start(300)
 
     def refresh_list(self):
         from src.gui.progress_dialog import ProgressDialog
-        import threading
+        self.progress = ProgressDialog(self, c.UI_ANALYZING_TITLE, c.UI_SCANNING_RESOURCES)
+        self.progress.show()
 
-        progress = ProgressDialog(self, c.UI_ANALYZING_TITLE, c.UI_SCANNING_RESOURCES)
+        self.worker = AddonWorker(self.app)
+        self.worker.finished.connect(self.on_scan_finished)
+        self.worker.error.connect(self.on_scan_error)
+        self.worker.start()
 
-        def task():
-            try:
-                self.addons_data = addon_manager.scan_all_addons(self.app)
-                self._last_rendered_search = {} # Invalidate cache
-                self.after(0, lambda: [progress.close(), self.render_filtered_list()])
-            except Exception as e:
-                self.after(0, lambda: [progress.close(), messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))])
+    def on_scan_finished(self, data):
+        self.addons_data = data
+        self.progress.accept()
+        self.render_filtered_list()
 
-        threading.Thread(target=task, daemon=True).start()
+    def on_scan_error(self, err):
+        self.progress.accept()
+        messagebox.showerror(self, c.UI_ERROR_TITLE, err)
 
     def render_filtered_list(self):
-        if self._render_job:
-            self.after_cancel(self._render_job)
+        current_idx = self.tab_widget.currentIndex()
+        if current_idx not in self.tabs: return
+        layout, content_widget, tab_id = self.tabs[current_idx]
 
-        search_query = self.entry_search.get().lower()
-        current_tab = self.tabview.get()
-        target_scroll = self.scrolls.get(current_tab)
+        # Clear layout
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
-        if not target_scroll: return
+        search_query = self.entry_search.text().lower()
 
-        # Check cache: if search hasn't changed and we have widgets, skip
-        if self._last_rendered_search.get(current_tab) == search_query:
-            if target_scroll.winfo_children():
-                return
-
-        # Map tab to folder
         folder_map = {
-            c.UI_TAB_WORLDS: "minecraftWorlds",
-            c.UI_TAB_BP: "behavior_packs",
-            c.UI_TAB_RP: "resource_packs"
+            "worlds": "minecraftWorlds",
+            "bp": "behavior_packs",
+            "rp": "resource_packs"
         }
-        folder_filter = folder_map.get(current_tab, "")
+        folder_filter = folder_map.get(tab_id, "")
 
-        # Update cache
-        self._last_rendered_search[current_tab] = search_query
-
-        # Clear active scroll only
-        for w in target_scroll.winfo_children(): w.destroy()
-
-        # Filter logic
         filtered = [
             a for a in self.addons_data
             if (a["folder"] == folder_filter or (folder_filter == "resource_packs" and a["folder"] not in ["minecraftWorlds", "behavior_packs"]))
@@ -159,123 +183,78 @@ class AddonManagerDialog(ctk.CTkToplevel):
         ]
         filtered.sort(key=lambda x: x["name"].lower())
 
-        def render_batch(items, index=0):
-            if index >= len(items):
-                self._render_job = None
-                return
-            batch_size = 6
-            for i in range(index, min(index + batch_size, len(items))):
-                self.create_item_ui(target_scroll, items[i])
-            self._render_job = self.after(5, lambda: render_batch(items, index + batch_size))
+        for addon in filtered:
+            self.create_item_ui(layout, addon)
 
-        render_batch(filtered)
+    def create_item_ui(self, layout, addon):
+        item_frame = QFrame()
+        item_frame.setStyleSheet(f"background-color: #333333; border-radius: 12px;")
+        item_layout = QHBoxLayout(item_frame)
+        item_layout.setContentsMargins(15, 15, 15, 15)
 
-    def create_item_ui(self, scroll, addon):
-        item_frame = ctk.CTkFrame(scroll, corner_radius=12)
-        item_frame.pack(fill="x", pady=6, padx=10)
+        # Icon
+        lbl_icon = QLabel()
+        lbl_icon.setFixedSize(90, 90)
+        pixmap = None
+        if addon["icon_path"] and os.path.exists(addon["icon_path"]):
+            pixmap = QPixmap(addon["icon_path"]).scaled(90, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
-        # Icono más grande (90x90)
-        icon_size = (90, 90)
-        img = None
-        if addon["icon_path"]:
-            try:
-                img = ctk.CTkImage(light_image=Image.open(addon["icon_path"]), size=icon_size)
-            except: pass
+        if not pixmap or pixmap.isNull():
+            pixmap = ImageManager.get_image("icon.png", size=(90, 90))
 
-        if not img:
-            img = ImageManager.get_image("icon.png", size=icon_size)
-
-        lbl_icon = ctk.CTkLabel(item_frame, text="", image=img)
-        lbl_icon.pack(side="left", padx=15, pady=15)
+        lbl_icon.setPixmap(pixmap)
+        item_layout.addWidget(lbl_icon)
 
         # Info
-        info_frame = ctk.CTkFrame(item_frame, fg_color="transparent")
-        info_frame.pack(side="left", fill="both", expand=True, padx=5, pady=15)
-
+        info_layout = QVBoxLayout()
         name_text = addon["name"]
         if addon["version"]: name_text += f" (v{addon['version']})"
 
-        title_font = ctk.CTkFont(family="Roboto", size=20, weight="bold") if addon["folder"] == "minecraftWorlds" else c.FONT_BOLD
-        lbl_name = ctk.CTkLabel(info_frame, text=name_text, font=title_font, anchor="w")
-        lbl_name.pack(fill="x")
+        lbl_name = QLabel(name_text)
+        lbl_name.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {'white' if addon['enabled'] else '#888888'};")
+        info_layout.addWidget(lbl_name)
 
-        # Tipo y estado
         if addon["folder"] != "minecraftWorlds":
             status_text = c.UI_STATUS_ACTIVE if addon["enabled"] else c.UI_STATUS_DISABLED
             type_str = f"[{addon['type_label']}] - {status_text}"
-            lbl_type = ctk.CTkLabel(info_frame, text=type_str, font=c.FONT_SMALL, text_color="gray", anchor="w")
-            lbl_type.pack(fill="x")
+            lbl_type = QLabel(type_str)
+            lbl_type.setStyleSheet(f"font-size: 11px; color: {c.COLOR_PRIMARY_GREEN if addon['enabled'] else 'gray'};")
+            info_layout.addWidget(lbl_type)
 
         if addon["description"]:
-            lbl_desc = ctk.CTkLabel(info_frame, text=addon["description"], font=c.FONT_NORMAL, text_color="gray", anchor="w", wraplength=480, justify="left")
-            lbl_desc.pack(fill="x", pady=(2, 0))
+            lbl_desc = QLabel(addon["description"])
+            lbl_desc.setWordWrap(True)
+            lbl_desc.setStyleSheet("font-size: 12px; color: gray;")
+            info_layout.addWidget(lbl_desc)
 
-        # Acciones
-        actions = ctk.CTkFrame(item_frame, fg_color="transparent")
-        actions.pack(side="right", padx=20)
+        item_layout.addLayout(info_layout, 1)
 
+        # Actions
+        actions_layout = QHBoxLayout()
         if addon["folder"] != "minecraftWorlds":
-            btn_text = c.UI_STATUS_ENABLED_BTN if addon["enabled"] else c.UI_STATUS_DISABLED_BTN
-            btn_color = c.COLOR_GREEN_BUTTON if addon["enabled"] else c.COLOR_RED_BUTTON
-            btn_hover = c.COLOR_GREEN_BUTTON_HOVER if addon["enabled"] else c.COLOR_RED_BUTTON_HOVER
+            btn_text = c.UI_BUTTON_DEACTIVATE if addon["enabled"] else c.UI_BUTTON_ACTIVATE
+            btn_color = c.COLOR_RED_BUTTON if addon["enabled"] else c.COLOR_GREEN_BUTTON
 
-            btn_toggle = ctk.CTkButton(
-                actions, text=btn_text, width=130, height=40,
-                fg_color=btn_color, hover_color=btn_hover,
-                command=lambda a=addon: self.toggle(a),
-                font=c.FONT_BOLD
-            )
-            btn_toggle.pack(side="left", padx=5)
+            btn_toggle = QPushButton(btn_text)
+            btn_toggle.setFixedSize(130, 40)
+            btn_toggle.setStyleSheet(f"background-color: {btn_color}; color: white; font-weight: bold; border-radius: 8px;")
+            btn_toggle.clicked.connect(lambda checked=False, a=addon: self.toggle(a))
+            actions_layout.addWidget(btn_toggle)
         else:
-            btn_exp = ctk.CTkButton(
-                actions, text=c.UI_BUTTON_EXPORT, width=130, height=40,
-                command=lambda a=addon: self.export_world(a),
-                font=c.FONT_BOLD
-            )
-            btn_exp.pack(side="left", padx=5)
+            btn_exp = QPushButton(c.UI_BUTTON_EXPORT)
+            btn_exp.setFixedSize(130, 40)
+            btn_exp.setStyleSheet(f"background-color: {c.COLOR_BLUE_BUTTON}; color: white; font-weight: bold; border-radius: 8px;")
+            btn_exp.clicked.connect(lambda: self.export_world(addon))
+            actions_layout.addWidget(btn_exp)
 
-        btn_del = ctk.CTkButton(
-            actions, text="🗑️", width=45, height=38,
-            fg_color=c.COLOR_RED_BUTTON, hover_color=c.COLOR_RED_BUTTON_HOVER,
-            command=lambda a=addon: self.delete(a)
-        )
-        btn_del.pack(side="left", padx=5)
+        btn_del = QPushButton("🗑️")
+        btn_del.setFixedSize(45, 38)
+        btn_del.setStyleSheet(f"background-color: {c.COLOR_RED_BUTTON}; color: white; border-radius: 8px;")
+        btn_del.clicked.connect(lambda: self.delete(addon))
+        actions_layout.addWidget(btn_del)
 
-    def toggle(self, addon):
-        from src.gui.progress_dialog import ProgressDialog
-        import threading
-
-        progress = ProgressDialog(self, c.UI_INFO_TITLE, c.UI_TOGGLING_STATUS)
-
-        def task():
-            try:
-                new_path = addon_manager.toggle_addon(self.app, addon)
-                addon["enabled"] = not addon["enabled"]
-                addon["path"] = new_path
-                self._last_rendered_search = {} # Invalidate cache
-                self.after(0, lambda: [progress.close(), self.render_filtered_list()])
-            except Exception as e:
-                self.after(0, lambda: [progress.close(), messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))])
-
-        threading.Thread(target=task, daemon=True).start()
-
-    def delete(self, addon):
-        if messagebox.askyesno(self, c.UI_CONFIRM_DELETE_TITLE, f"{c.UI_BUTTON_DELETE} {addon['name']}?"):
-            from src.gui.progress_dialog import ProgressDialog
-            import threading
-
-            progress = ProgressDialog(self, c.UI_INFO_TITLE, c.UI_DELETING_RESOURCE)
-
-            def task():
-                try:
-                    if addon_manager.delete_addon(addon["path"]):
-                        if addon in self.addons_data: self.addons_data.remove(addon)
-                        self._last_rendered_search = {} # Invalidate cache
-                    self.after(0, lambda: [progress.close(), self.render_filtered_list()])
-                except Exception as e:
-                    self.after(0, lambda: [progress.close(), messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))])
-
-            threading.Thread(target=task, daemon=True).start()
+        item_layout.addLayout(actions_layout)
+        layout.addWidget(item_frame)
 
     def export_world(self, addon):
         dest_dir = dialogs.ask_directory_native(self, title=c.UI_SELECT_DEST_FOLDER_TITLE)
@@ -285,6 +264,47 @@ class AddonManagerDialog(ctk.CTkToplevel):
                 messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_WORLD_EXPORTED_SUCCESS.format(path=msg))
             else:
                 messagebox.showerror(self, c.UI_ERROR_TITLE, msg)
+
+    def toggle(self, addon):
+        from src.gui.progress_dialog import ProgressDialog
+        self.progress_action = ProgressDialog(self, c.UI_INFO_TITLE, c.UI_TOGGLING_STATUS)
+        self.progress_action.show()
+
+        def on_finished(new_path):
+            addon["enabled"] = not addon["enabled"]
+            addon["path"] = new_path
+            self.progress_action.accept()
+            self.render_filtered_list()
+
+        def on_error(err):
+            self.progress_action.accept()
+            messagebox.showerror(self, c.UI_ERROR_TITLE, str(err))
+
+        self.action_worker = AddonActionWorker(addon_manager.toggle_addon, self.app, addon)
+        self.action_worker.finished.connect(on_finished)
+        self.action_worker.error.connect(on_error)
+        self.action_worker.start()
+
+    def delete(self, addon):
+        if messagebox.askyesno(self, c.UI_CONFIRM_DELETE_TITLE, f"{c.UI_BUTTON_DELETE} {addon['name']}?"):
+            from src.gui.progress_dialog import ProgressDialog
+            self.progress_action = ProgressDialog(self, c.UI_INFO_TITLE, c.UI_DELETING_RESOURCE)
+            self.progress_action.show()
+
+            def on_finished(success):
+                if success and addon in self.addons_data:
+                    self.addons_data.remove(addon)
+                self.progress_action.accept()
+                self.render_filtered_list()
+
+            def on_error(err):
+                self.progress_action.accept()
+                messagebox.showerror(self, c.UI_ERROR_TITLE, str(err))
+
+            self.action_worker = AddonActionWorker(addon_manager.delete_addon, addon["path"])
+            self.action_worker.finished.connect(on_finished)
+            self.action_worker.error.connect(on_error)
+            self.action_worker.start()
 
     def import_file(self):
         file_path = dialogs.ask_open_filename_native(
@@ -297,16 +317,23 @@ class AddonManagerDialog(ctk.CTkToplevel):
 
     def _install_task(self, file_paths):
         from src.gui.progress_dialog import ProgressDialog
-        import threading
+        self.progress_action = ProgressDialog(self, c.UI_INFO_TITLE, c.UI_INSTALLING_PACK)
+        self.progress_action.show()
 
-        progress = ProgressDialog(self, c.UI_INFO_TITLE, c.UI_INSTALLING_PACK)
+        def run_install(paths):
+            for f in paths:
+                addon_manager.install_addon_file(self.app.active_path, f)
+            return True
 
-        def task():
-            try:
-                for f in file_paths:
-                    addon_manager.install_addon_file(self.app.active_path, f)
-                self.after(0, lambda: [progress.close(), self.refresh_list()])
-            except Exception as e:
-                self.after(0, lambda: [progress.close(), messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))])
+        def on_finished(res):
+            self.progress_action.accept()
+            self.refresh_list()
 
-        threading.Thread(target=task, daemon=True).start()
+        def on_error(err):
+            self.progress_action.accept()
+            messagebox.showerror(self, c.UI_ERROR_TITLE, str(err))
+
+        self.action_worker = AddonActionWorker(run_install, file_paths)
+        self.action_worker.finished.connect(on_finished)
+        self.action_worker.error.connect(on_error)
+        self.action_worker.start()

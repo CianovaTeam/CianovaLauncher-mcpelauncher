@@ -15,16 +15,17 @@ sudo apt install \
     libsystemd0 \
     libgl1 \
     libegl1 \
-    libqt5core5a \
-    libqt5gui5 \
-    libqt5widgets5 \
-    libqt5network5 \
-    libqt5webengine5 \
-    libqt5qml5 \
-    libqt5quick5 \
-    libqt5svg5
+    libqt6core6 \
+    libqt6gui6 \
+    libqt6widgets6 \
+    libqt6network6 \
+    libqt6webengine6 \
+    libqt6qml6 \
+    libqt6quick6 \
+    libqt6quickcontrols2-6 \
+    libqt6svg6
 
-(Si "libasound2" falla en la instalación usar "libasound2t64")
+(Si paquetes como "libqt6core6" o "libasound2" fallan, intentar añadir el sufijo "t64", ej: "libqt6core6t64")
 
 DNF:
 sudo dnf install \
@@ -42,11 +43,10 @@ sudo dnf install \
     systemd-libs \
     mesa-libGL \
     mesa-libEGL \
-    qt5-qtbase \
-    qt5-qtwebengine \
-    qt5-qtdeclarative \
-    qt5-qtsvg \
-    qt5-qtquickcontrols2
+    qt6-qtbase \
+    qt6-qtwebengine \
+    qt6-qtdeclarative \
+    qt6-qtsvg
 
 PACMAN:
 sudo pacman -Sy --needed \
@@ -63,8 +63,7 @@ sudo pacman -Sy --needed \
     pulseaudio \
     systemd-libs \
     mesa \
-    qt5-base \
-    qt5-webengine \
-    qt5-declarative \
-    qt5-svg \
-    qt5-quickcontrols2
+    qt6-base \
+    qt6-webengine \
+    qt6-declarative \
+    qt6-svg

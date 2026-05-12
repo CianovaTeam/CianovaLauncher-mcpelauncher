@@ -1,58 +1,32 @@
-import customtkinter as ctk
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QTextEdit
+from PySide6.QtCore import Qt
 from src import constants as c
 from src.utils.image_manager import ImageManager
 
-class CustomDialog(ctk.CTkToplevel):
+class CustomDialog(QDialog):
     def __init__(self, parent, title, message, icon_type="info", options=["OK"]):
         super().__init__(parent)
-        self.parent = parent
-        self.title(title)
-        self.result = None
+        self.setWindowTitle(title)
+        self.result_value = None
 
-        # Determine if we need a scrollbar (long message)
-        is_long = len(message) > 250 or message.count('\n') > 4
+        # Base size and layout
+        self.setMinimumWidth(450)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(15, 15, 15, 15)
+        self.layout.setSpacing(10)
 
-        # Dynamic height calculation
-        width = 500
-        if is_long:
-            estimated_lines = (len(message) // 45) + message.count('\n') + 1
-            text_height = max(100, min(250, estimated_lines * 24))
-            height = 140 + text_height
-        else:
-            # For short messages, calculate height based on wrapped lines
-            estimated_lines = (len(message) // 40) + message.count('\n') + 1
-            height = 160 + (estimated_lines * 22)
-            height = min(height, 350) # Cap it
+        # Main frame to mimic CTk appearance
+        self.main_frame = QFrame()
+        self.main_frame.setObjectName("MainFrame")
+        self.main_layout = QVBoxLayout(self.main_frame)
+        self.main_layout.setContentsMargins(15, 15, 15, 15)
+        self.layout.addWidget(self.main_frame)
 
-        try:
-            parent.update_idletasks()
-            x = parent.winfo_x() + (parent.winfo_width() // 2) - (width // 2)
-            y = parent.winfo_y() + (parent.winfo_height() // 2) - (height // 2)
-            self.geometry(f"{width}x{int(height)}+{x}+{y}")
-        except:
-            self.geometry(f"{width}x{int(height)}")
-
-        self.resizable(False, False)
-        self.transient(parent)
-
-        self.wait_visibility()
-        self.grab_set()
-
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
-
-        # Main frame
-        self.frame = ctk.CTkFrame(self, corner_radius=c.CORNER_RADIUS)
-        self.frame.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
-
-        self.frame.grid_rowconfigure(0, weight=1)
-        self.frame.grid_columnconfigure(0, weight=1)
-
-        # Content Subframe
-        self.content_frame = ctk.CTkFrame(self.frame, fg_color="transparent")
-        self.content_frame.grid(row=0, column=0, padx=25, pady=(20, 10), sticky="nsew")
-        self.content_frame.grid_columnconfigure(1, weight=1)
-        self.content_frame.grid_rowconfigure(0, weight=1) # Crucial for vertical centering
+        # Content layout (Icon + Text)
+        self.content_layout = QHBoxLayout()
+        self.content_layout.setSpacing(25)
+        self.content_layout.setAlignment(Qt.AlignCenter)
+        self.main_layout.addLayout(self.content_layout)
 
         # Icon mapping
         icon_map = {
@@ -63,94 +37,118 @@ class CustomDialog(ctk.CTkToplevel):
         }
         color, icon_char = icon_map.get(icon_type, icon_map["info"])
 
-        # Icon label - Centered vertically (removed sticky="n")
-        self.lbl_icon = ctk.CTkLabel(self.content_frame, text=icon_char, font=("Roboto", 55), text_color=color)
-        self.lbl_icon.grid(row=0, column=0, padx=(0, 25))
+        # Icon Label
+        self.icon_label = QLabel(icon_char)
+        self.icon_label.setFixedSize(70, 70)
+        self.icon_label.setStyleSheet(f"""
+            font-size: 45px;
+            color: white;
+            background-color: {color};
+            border-radius: 15px;
+        """)
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        self.content_layout.addWidget(self.icon_label)
 
+        # Message Container (to allow better centering)
+        msg_container = QFrame()
+        msg_layout = QVBoxLayout(msg_container)
+        msg_layout.setContentsMargins(0, 0, 0, 0)
+        msg_layout.setAlignment(Qt.AlignVCenter)
+
+        # Message (Label or TextEdit if long)
+        is_long = len(message) > 250 or message.count('\n') > 4
         if is_long:
-            # Long text: Use Textbox with scrollbar
-            self.txt_msg = ctk.CTkTextbox(
-                self.content_frame,
-                font=c.FONT_NORMAL,
-                fg_color="transparent",
-                wrap="word",
-                activate_scrollbars=True,
-                height=text_height
-            )
-            self.txt_msg.grid(row=0, column=1, sticky="nsew")
-            self.txt_msg.insert("0.0", message)
-            self.txt_msg.configure(state="disabled")
+            self.msg_widget = QTextEdit()
+            self.msg_widget.setPlainText(message)
+            self.msg_widget.setReadOnly(True)
+            self.msg_widget.setFrameStyle(QFrame.NoFrame)
+            self.msg_widget.setStyleSheet("background: transparent; font-size: 13px; color: white;")
+            self.msg_widget.setMinimumHeight(150)
         else:
-            # Short text: Use Label for better vertical centering and no unnecessary space
-            self.lbl_msg = ctk.CTkLabel(
-                self.content_frame,
-                text=message,
-                font=c.FONT_NORMAL,
-                wraplength=320,
-                justify="left",
-                anchor="w"
-            )
-            self.lbl_msg.grid(row=0, column=1, sticky="ew")
+            self.msg_widget = QLabel(message)
+            self.msg_widget.setWordWrap(True)
+            self.msg_widget.setStyleSheet("font-size: 14px; color: white;")
+            self.msg_widget.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
 
-        # Buttons frame - Centered horizontally
-        self.btn_frame = ctk.CTkFrame(self.frame, fg_color="transparent")
-        self.btn_frame.grid(row=1, column=0, pady=(0, 20), padx=20, sticky="s")
+        msg_layout.addWidget(self.msg_widget)
+        self.content_layout.addWidget(msg_container, 1)
 
-        self.btn_inner = ctk.CTkFrame(self.btn_frame, fg_color="transparent")
-        self.btn_inner.pack()
+        # Buttons Frame
+        self.btn_layout = QHBoxLayout()
+        self.btn_layout.setSpacing(10)
+        self.btn_layout.setAlignment(Qt.AlignCenter)
+        self.main_layout.addLayout(self.btn_layout)
 
         for i, opt in enumerate(options):
-            btn_color = c.COLOR_BLUE_BUTTON
+            btn = QPushButton(opt)
+            btn.setMinimumHeight(38)
+            btn.setMinimumWidth(115)
+
+            # Apply styles based on option text
             opt_low = opt.lower()
             is_positive = any(word in opt_low for word in ["sí", "yes", "ok", "confirm", "instalar", "play", "jugar"])
             is_negative = any(word in opt_low for word in ["no", "cancel", "borrar", "delete", "eliminar"])
 
+            bg_color = c.COLOR_BLUE_BUTTON
             if is_positive:
-                btn_color = c.COLOR_PRIMARY_GREEN
+                bg_color = c.COLOR_PRIMARY_GREEN
             elif is_negative:
-                btn_color = c.COLOR_RED_BUTTON
+                bg_color = c.COLOR_RED_BUTTON
 
-            btn = ctk.CTkButton(
-                self.btn_inner,
-                text=opt,
-                width=115,
-                height=38,
-                fg_color=btn_color,
-                command=lambda val=opt: self.close(val),
-                font=c.FONT_BOLD
-            )
-            btn.pack(side="left", padx=10)
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {bg_color};
+                    color: white;
+                    border-radius: 8px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{
+                    background-color: {bg_color}bb;
+                }}
+            """)
 
-            if i == 0:
-                self.bind("<Return>", lambda e: self.close(options[0]))
+            btn.clicked.connect(lambda checked=False, val=opt: self.close_with_result(val))
+            self.btn_layout.addWidget(btn)
 
-        self.bind("<Escape>", lambda e: self.close(None))
+        # Styling the dialog itself (Dark mode by default to match ctk)
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: #333333;
+            }}
+            #MainFrame {{
+                background-color: #333333;
+            }}
+            QLabel, QTextEdit {{
+                color: white;
+                background-color: transparent;
+            }}
+        """)
 
-    def close(self, value):
-        self.result = value
-        self.destroy()
+    def close_with_result(self, value):
+        self.result_value = value
+        self.accept()
 
 # Helper functions to mimic messagebox
 def showinfo(parent, title, message):
     dialog = CustomDialog(parent, title, message, icon_type="info", options=["OK"])
-    parent.wait_window(dialog)
+    dialog.exec()
 
 def showwarning(parent, title, message):
     dialog = CustomDialog(parent, title, message, icon_type="warning", options=["OK"])
-    parent.wait_window(dialog)
+    dialog.exec()
 
 def showerror(parent, title, message):
     dialog = CustomDialog(parent, title, message, icon_type="error", options=["OK"])
-    parent.wait_window(dialog)
+    dialog.exec()
 
 def askyesno(parent, title, message):
     options = [getattr(c, "UI_YES", "Sí"), getattr(c, "UI_NO", "No")]
     dialog = CustomDialog(parent, title, message, icon_type="question", options=options)
-    parent.wait_window(dialog)
-    return dialog.result == options[0]
+    result = dialog.exec()
+    return dialog.result_value == options[0]
 
 def askokcancel(parent, title, message):
     options = ["OK", getattr(c, "UI_CANCEL", "Cancelar")]
     dialog = CustomDialog(parent, title, message, icon_type="question", options=options)
-    parent.wait_window(dialog)
-    return dialog.result == options[0]
+    result = dialog.exec()
+    return dialog.result_value == options[0]

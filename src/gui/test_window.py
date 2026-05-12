@@ -1,169 +1,138 @@
-import customtkinter as ctk
-import time
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                             QPushButton, QTabWidget, QScrollArea, QFrame, QCheckBox,
+                             QRadioButton, QProgressBar, QSlider, QComboBox, QButtonGroup, QLineEdit)
+from PySide6.QtCore import Qt, QTimer
 import threading
+import time
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
 from src.gui.progress_dialog import ProgressDialog
 from src.utils.image_manager import ImageManager
 
-class TestWindow(ctk.CTk):
+class TestWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__()
-        self.title(f"{c.APP_NAME} - UI Test Mode")
-        self.geometry("1100x950")
+        self.setWindowTitle(f"{c.APP_NAME} - UI Test Mode (PySide6)")
+        self.resize(1100, 900)
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.tabview = ctk.CTkTabview(self, corner_radius=c.CORNER_RADIUS)
-        self.tabview.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        self.tab_widget = QTabWidget()
+        self.main_layout.addWidget(self.tab_widget)
 
-        self.tab_widgets = self.tabview.add("Standard Widgets")
-        self.tab_dialogs = self.tabview.add("Dialogs & Mockups")
-        self.tab_stress = self.tabview.add("Stress Test & Colors")
+        self.tab_widgets = QWidget()
+        self.tab_dialogs = QWidget()
+        self.tab_stress = QWidget()
+
+        self.tab_widget.addTab(self.tab_widgets, "Standard Widgets")
+        self.tab_widget.addTab(self.tab_dialogs, "Dialogs & Mockups")
+        self.tab_widget.addTab(self.tab_stress, "Stress Test & Colors")
 
         self.setup_widgets_tab()
         self.setup_dialogs_tab()
         self.setup_stress_tab()
 
-    def create_section(self, parent, title):
-        ctk.CTkLabel(parent, text=title, font=c.FONT_SUBTITLE, text_color=c.COLOR_BLUE_BUTTON).pack(anchor="w", pady=(20, 10), padx=10)
+        self.setStyleSheet("background-color: #242424; color: white;")
+
+    def create_section(self, layout, title):
+        lbl = QLabel(title)
+        lbl.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {c.COLOR_BLUE_BUTTON}; margin-top: 20px;")
+        layout.addWidget(lbl)
 
     def setup_widgets_tab(self):
-        scroll = ctk.CTkScrollableFrame(self.tab_widgets, fg_color="transparent")
-        scroll.pack(fill="both", expand=True)
+        layout = QVBoxLayout(self.tab_widgets)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        content = QWidget()
+        scroll_layout = QVBoxLayout(content)
+        scroll_layout.setAlignment(Qt.AlignTop)
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
 
-        self.create_section(scroll, "Standard Buttons")
-        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=10)
-        ctk.CTkButton(btn_frame, text="Normal Button").pack(side="left", padx=5, pady=5)
-        ctk.CTkButton(btn_frame, text="Success (Green)", fg_color=c.COLOR_PRIMARY_GREEN).pack(side="left", padx=5, pady=5)
-        ctk.CTkButton(btn_frame, text="Danger (Red)", fg_color=c.COLOR_RED_BUTTON).pack(side="left", padx=5, pady=5)
-        ctk.CTkButton(btn_frame, text="Warning (Orange)", fg_color=c.COLOR_ORANGE_BUTTON).pack(side="left", padx=5, pady=5)
+        self.create_section(scroll_layout, "Standard Buttons")
+        btn_frame = QHBoxLayout()
+        for text, color in [("Normal Button", None), ("Success", c.COLOR_PRIMARY_GREEN),
+                           ("Danger", c.COLOR_RED_BUTTON), ("Warning", c.COLOR_ORANGE_BUTTON)]:
+            btn = QPushButton(text)
+            if color: btn.setStyleSheet(f"background-color: {color}; color: white; border-radius: 6px;")
+            btn_frame.addWidget(btn)
+        scroll_layout.addLayout(btn_frame)
 
-        self.create_section(scroll, "Toggles & Selectors")
-        toggle_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        toggle_frame.pack(fill="x", padx=10)
-        ctk.CTkCheckBox(toggle_frame, text="Checkbox", font=c.FONT_NORMAL).pack(side="left", padx=20)
-        ctk.CTkSwitch(toggle_frame, text="Switch", font=c.FONT_NORMAL).pack(side="left", padx=20)
+        self.create_section(scroll_layout, "Toggles & Selectors")
+        toggle_layout = QHBoxLayout()
+        toggle_layout.addWidget(QCheckBox("Checkbox"))
+        toggle_layout.addWidget(QCheckBox("Switch (using CheckBox for now)"))
+        scroll_layout.addLayout(toggle_layout)
 
-        radio_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        radio_frame.pack(fill="x", padx=10, pady=10)
-        r_var = ctk.StringVar(value="1")
-        ctk.CTkRadioButton(radio_frame, text="Option 1", variable=r_var, value="1", font=c.FONT_NORMAL).pack(side="left", padx=10)
-        ctk.CTkRadioButton(radio_frame, text="Option 2", variable=r_var, value="2", font=c.FONT_NORMAL).pack(side="left", padx=10)
+        self.create_section(scroll_layout, "Inputs & Menus")
+        input_layout = QHBoxLayout()
+        input_layout.addWidget(QLineEdit("Entry field"))
+        cb = QComboBox()
+        cb.addItems(["Choice 1", "Choice 2"])
+        input_layout.addWidget(cb)
+        scroll_layout.addLayout(input_layout)
 
-        seg_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        seg_frame.pack(fill="x", padx=10, pady=10)
-        ctk.CTkSegmentedButton(seg_frame, values=["Value A", "Value B", "Value C"]).pack(side="left", padx=10)
-
-        self.create_section(scroll, "Inputs & Menus")
-        input_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        input_frame.pack(fill="x", padx=10)
-        ctk.CTkEntry(input_frame, placeholder_text="Entry field", width=200).pack(side="left", padx=5)
-        ctk.CTkComboBox(input_frame, values=["Choice 1", "Choice 2", "Choice 3"]).pack(side="left", padx=5)
-        ctk.CTkOptionMenu(input_frame, values=["Option X", "Option Y"]).pack(side="left", padx=5)
-
-        self.create_section(scroll, "Sliders & Progress")
-        s_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        s_frame.pack(fill="x", padx=10, pady=10)
-        ctk.CTkSlider(s_frame).pack(fill="x", expand=True, side="left", padx=5)
-        ctk.CTkProgressBar(s_frame, mode="indeterminate").pack(fill="x", expand=True, side="left", padx=5)
+        self.create_section(scroll_layout, "Sliders & Progress")
+        s_layout = QHBoxLayout()
+        slider = QSlider(Qt.Horizontal)
+        s_layout.addWidget(slider)
+        pb = QProgressBar()
+        pb.setRange(0, 0)
+        s_layout.addWidget(pb)
+        scroll_layout.addLayout(s_layout)
 
     def setup_dialogs_tab(self):
-        scroll = ctk.CTkScrollableFrame(self.tab_dialogs, fg_color="transparent")
-        scroll.pack(fill="both", expand=True)
+        layout = QVBoxLayout(self.tab_dialogs)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        scroll_layout = QVBoxLayout(content)
+        scroll_layout.setAlignment(Qt.AlignTop)
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
 
-        self.create_section(scroll, "Custom Dialogs (Perfect Centering)")
-        diag_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        diag_frame.pack(fill="x", padx=10)
-        ctk.CTkButton(diag_frame, text="Info Dialog", command=self.test_info).pack(side="left", padx=5, pady=5)
-        ctk.CTkButton(diag_frame, text="Warning Dialog", command=self.test_warning).pack(side="left", padx=5, pady=5)
-        ctk.CTkButton(diag_frame, text="Error Dialog", command=self.test_error).pack(side="left", padx=5, pady=5)
-        ctk.CTkButton(diag_frame, text="Confirmation (Yes/No)", command=self.test_ask).pack(side="left", padx=5, pady=5)
-        ctk.CTkButton(diag_frame, text="Long Text Info", command=self.test_long_info).pack(side="left", padx=5, pady=5)
+        self.create_section(scroll_layout, "Custom Dialogs")
+        diag_layout = QHBoxLayout()
+        btn_info = QPushButton("Info")
+        btn_info.clicked.connect(lambda: messagebox.showinfo(self, "Test", "This is an info dialog."))
+        diag_layout.addWidget(btn_info)
 
-        self.create_section(scroll, "Special Dialogs")
-        special_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        special_frame.pack(fill="x", padx=10)
-        ctk.CTkButton(special_frame, text="Show Progress Dialog (5s)", command=self.test_progress).pack(side="left", padx=5, pady=5)
+        btn_err = QPushButton("Error")
+        btn_err.clicked.connect(lambda: messagebox.showerror(self, "Test", "This is an error dialog."))
+        diag_layout.addWidget(btn_err)
+        scroll_layout.addLayout(diag_layout)
 
-        self.create_section(scroll, "Launcher Mockups")
-
-        # Profile Selector
-        prof_frame = ctk.CTkFrame(scroll, fg_color="transparent")
-        prof_frame.pack(fill="x", padx=10, pady=5)
-        ctk.CTkLabel(prof_frame, text="👤 Perfil:", font=c.FONT_NORMAL).pack(side="left", padx=5)
-        ctk.CTkOptionMenu(prof_frame, values=["default", "test-profile-1", "survival"]).pack(side="left", padx=5)
-        ctk.CTkButton(prof_frame, text="+", width=30).pack(side="left", padx=5)
-
-        # Version Card
-        v_card = ctk.CTkFrame(scroll, corner_radius=c.CORNER_RADIUS, fg_color=("gray85", "gray25"))
-        v_card.pack(fill="x", pady=5, padx=10)
-        img = ImageManager.get_image("icon.png", size=(32, 32))
-        ctk.CTkLabel(v_card, text="", image=img).pack(side="left", padx=10, pady=10)
-        ctk.CTkLabel(v_card, text="Minecraft v1.21.0 (Mock)", font=c.FONT_BOLD).pack(side="left", padx=10)
-        ctk.CTkButton(v_card, text="Play", width=60, height=25).pack(side="right", padx=10)
-
-        # Addon Card
-        a_card = ctk.CTkFrame(scroll, corner_radius=12)
-        a_card.pack(fill="x", pady=5, padx=10)
-        ctk.CTkLabel(a_card, text="", image=ImageManager.get_image("icon.png", size=(64, 64))).pack(side="left", padx=15, pady=15)
-        a_info = ctk.CTkFrame(a_card, fg_color="transparent")
-        a_info.pack(side="left", fill="both", expand=True, padx=5, pady=15)
-        ctk.CTkLabel(a_info, text="Faithful 32x", font=c.FONT_BOLD, anchor="w").pack(fill="x")
-        ctk.CTkLabel(a_info, text="[Resources] - Active", font=c.FONT_SMALL, text_color="gray", anchor="w").pack(fill="x")
-        ctk.CTkLabel(a_info, text="High definition resource pack for Minecraft PE.", font=c.FONT_NORMAL, text_color="gray", anchor="w").pack(fill="x")
-        a_btns = ctk.CTkFrame(a_card, fg_color="transparent")
-        a_btns.pack(side="right", padx=15)
-        ctk.CTkButton(a_btns, text="Enabled", fg_color=c.COLOR_PRIMARY_GREEN, width=100).pack(side="left", padx=2)
-        ctk.CTkButton(a_btns, text="🗑️", fg_color=c.COLOR_RED_BUTTON, width=35).pack(side="left", padx=2)
+        self.create_section(scroll_layout, "Special Dialogs")
+        btn_prog = QPushButton("Show Progress (5s)")
+        btn_prog.clicked.connect(self.test_progress)
+        scroll_layout.addWidget(btn_prog)
 
     def setup_stress_tab(self):
-        scroll = ctk.CTkScrollableFrame(self.tab_stress, fg_color="transparent")
-        scroll.pack(fill="both", expand=True)
+        layout = QVBoxLayout(self.tab_stress)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        scroll_layout = QVBoxLayout(content)
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
 
-        self.create_section(scroll, "Color Theme Palette")
-        palette = ctk.CTkFrame(scroll, fg_color="transparent")
-        palette.pack(fill="x", padx=10)
-        colors = [
-            ("COLOR_BLUE_BUTTON", c.COLOR_BLUE_BUTTON),
-            ("COLOR_PRIMARY_GREEN", c.COLOR_PRIMARY_GREEN),
-            ("COLOR_RED_BUTTON", c.COLOR_RED_BUTTON),
-            ("COLOR_ORANGE_BUTTON", c.COLOR_ORANGE_BUTTON),
-        ]
-        for name, color in colors:
-            f = ctk.CTkFrame(palette, fg_color=color, width=150, height=50)
-            f.pack(side="left", padx=5)
-            ctk.CTkLabel(f, text=name, text_color="white", font=c.FONT_SMALL).place(relx=0.5, rely=0.5, anchor="center")
-
-        self.create_section(scroll, "Dynamic Layout Stress (50 items)")
-        stress_frame = ctk.CTkFrame(scroll, fg_color=("gray95", "gray15"))
-        stress_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        for i in range(50):
-            l = ctk.CTkLabel(stress_frame, text=f"Dynamic Item #{i+1}", font=c.FONT_NORMAL)
-            l.pack(pady=2)
-
-    def test_info(self):
-        messagebox.showinfo(self, "Test Info", "This is a custom themed information dialog with perfect horizontal and vertical centering.")
-
-    def test_warning(self):
-        messagebox.showwarning(self, "Test Warning", "This is a custom themed warning dialog.")
-
-    def test_error(self):
-        messagebox.showerror(self, "Test Error", "This is a custom themed error dialog.")
-
-    def test_ask(self):
-        res = messagebox.askyesno(self, "Test Confirmation", "¿Deseas confirmar esta acción de prueba?")
-        print(f"User selected: {res}")
-
-    def test_long_info(self):
-        long_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. " * 3
-        messagebox.showinfo(self, "Long Text Test", long_text)
+        self.create_section(scroll_layout, "Color Palette")
+        palette = QHBoxLayout()
+        for name, color in [("BLUE", c.COLOR_BLUE_BUTTON), ("GREEN", c.COLOR_PRIMARY_GREEN)]:
+            f = QFrame()
+            f.setFixedSize(150, 50)
+            f.setStyleSheet(f"background-color: {color}; border-radius: 8px;")
+            l = QLabel(name, f)
+            l.setAlignment(Qt.AlignCenter)
+            palette.addWidget(f)
+        scroll_layout.addLayout(palette)
 
     def test_progress(self):
-        p = ProgressDialog(self, "Task in progress", "Simulating a long task...")
+        p = ProgressDialog(self, "Task", "Working...")
+        p.show()
         def work():
             time.sleep(5)
-            self.after(0, p.close)
+            QTimer.singleShot(0, p.accept)
         threading.Thread(target=work).start()

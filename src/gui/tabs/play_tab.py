@@ -1,52 +1,46 @@
-import customtkinter as ctk
-
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                             QComboBox, QScrollArea, QCheckBox, QPushButton, QFrame)
+from PySide6.QtCore import Qt, Signal
 from src import constants as c
 
-
-class PlayTab(ctk.CTkFrame):
+class PlayTab(QWidget):
     def __init__(self, parent, app):
-        super().__init__(parent, fg_color="transparent")
+        super().__init__(parent)
         self.app = app
 
-        self.pack(fill="both", expand=True)
+        # Layout principal
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(c.SECTION_PADDING, 5, c.SECTION_PADDING, c.SECTION_PADDING)
+        self.main_layout.setSpacing(5)
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        # 1. Cabecera (Status y Selectores)
+        self.header_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.header_layout)
 
-        # Cabecera
-        self.frame_header = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_header.grid(row=0, column=0, pady=(5, 5), sticky="ew")
+        self.lbl_status = QLabel(c.UI_LABEL_SEARCHING)
+        self.lbl_status.setObjectName("FloatingLabel")
+        self.lbl_status.setStyleSheet(f"font-size: 12px; font-weight: bold;")
+        self.header_layout.addWidget(self.lbl_status)
 
-        self.lbl_status = ctk.CTkLabel(
-            self.frame_header,
-            text=c.UI_LABEL_SEARCHING,
-            font=c.FONT_MODO,
-        )
-        self.lbl_status.pack(side="left", padx=10)
+        self.header_layout.addStretch()
 
-        # Contenedor para selectores (Derecha)
-        self.frame_selectors = ctk.CTkFrame(self.frame_header, fg_color="transparent")
-        self.frame_selectors.pack(side="right", padx=10)
+        # Frame para selectores
+        self.selectors_layout = QHBoxLayout()
+        self.header_layout.addLayout(self.selectors_layout)
 
-        # 1. Indicador de Perfil
-        self.lbl_profile_indicator = ctk.CTkLabel(
-            self.frame_selectors,
-            text="",
-            text_color=c.COLOR_PRIMARY_GREEN,
-            font=c.FONT_SMALL,
-        )
-        self.lbl_profile_indicator.pack(side="left", padx=(0, 15))
+        self.lbl_profile_indicator = QLabel("")
+        self.lbl_profile_indicator.setObjectName("FloatingLabel")
+        self.lbl_profile_indicator.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-size: 11px;")
+        self.selectors_layout.addWidget(self.lbl_profile_indicator)
+
         self.update_profile_indicator()
 
-        # 2. Instalación
-        ctk.CTkLabel(
-            self.frame_selectors,
-            text=c.UI_LABEL_INSTALLATION,
-            text_color="gray",
-            font=c.FONT_SMALL,
-        ).pack(side="left", padx=2)
+        self.lbl_install = QLabel(c.UI_LABEL_INSTALLATION)
+        self.lbl_install.setObjectName("FloatingLabel")
+        self.lbl_install.setStyleSheet("color: gray; font-size: 11px;")
+        self.selectors_layout.addWidget(self.lbl_install)
 
-        # Selector de modo con opciones según contexto
+        # Selector de modo
         if self.app.running_in_flatpak:
             mode_keys = [c.MODE_INSTALL_OWN, c.MODE_INSTALL_SHARED, c.MODE_INSTALL_FLATPAK]
         else:
@@ -54,83 +48,97 @@ class PlayTab(ctk.CTkFrame):
 
         mode_values = [c.UI_INSTALL_MODES[k] for k in mode_keys]
 
-        self.combo_mode = ctk.CTkComboBox(
-            self.frame_selectors,
-            values=mode_values,
-            command=lambda mode: self.app.logic.change_mode_ui(self.app, mode),
-            width=170,
-            height=28,
-            corner_radius=8,
-            font=c.FONT_NORMAL,
-        )
-        self.combo_mode.pack(side="left", padx=2)
+        self.combo_mode = QComboBox()
+        self.combo_mode.addItems(mode_values)
+        self.combo_mode.setFixedWidth(170)
+        self.combo_mode.setFixedHeight(28)
+        self.combo_mode.currentTextChanged.connect(lambda mode: self.app.logic.change_mode_ui(self.app, mode))
+        self.selectors_layout.addWidget(self.combo_mode)
 
-        # Lista (Card Style)
-        self.version_listbox = ctk.CTkScrollableFrame(
-            self, label_text=c.UI_LABEL_INSTALLED_VERSIONS, corner_radius=c.CORNER_RADIUS
-        )
-        self.version_listbox.grid(row=2, column=0, padx=15, pady=5, sticky="nsew")
-        self.version_var = ctk.StringVar(value="")
+        # 2. Lista de Versiones
+        version_title_container = QHBoxLayout()
+        version_title_container.addStretch()
+        self.lbl_version_title = QLabel(c.UI_LABEL_INSTALLED_VERSIONS)
+        self.lbl_version_title.setObjectName("FloatingLabel")
+        self.lbl_version_title.setStyleSheet("font-weight: bold; color: #DCE4EE;")
+        version_title_container.addWidget(self.lbl_version_title)
+        version_title_container.addStretch()
+        self.main_layout.addLayout(version_title_container)
 
-        # Opciones
-        self.frame_launch_opts = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_launch_opts.grid(row=3, column=0, pady=5)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setStyleSheet("border: none; background-color: transparent;")
 
-        self.var_close_on_launch = ctk.BooleanVar(
-            value=self.app.config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH, False)
-        )
-        self.check_close_on_launch = ctk.CTkCheckBox(
-            self.frame_launch_opts,
-            text=c.UI_CHECKBOX_CLOSE_ON_LAUNCH,
-            variable=self.var_close_on_launch,
-            corner_radius=15,
-            font=c.FONT_NORMAL,
-            command=self.save_quick_opts
-        )
-        self.check_close_on_launch.pack(side="left", padx=10)
+        self.version_list_widget = QWidget()
+        self.version_list_widget.setObjectName("VersionList")
+        self.version_list_layout = QVBoxLayout(self.version_list_widget)
+        self.version_list_layout.setContentsMargins(5, 5, 5, 5)
+        self.version_list_layout.setSpacing(10)
+        self.version_list_layout.setAlignment(Qt.AlignTop)
 
-        self.var_gamemode = ctk.BooleanVar(
-            value=self.app.config.get(c.CONFIG_KEY_GAMEMODE_ENABLED, False)
-        )
-        self.check_gamemode = ctk.CTkCheckBox(
-            self.frame_launch_opts,
-            text=c.UI_CHECKBOX_GAMEMODE,
-            variable=self.var_gamemode,
-            corner_radius=15,
-            font=c.FONT_NORMAL,
-            command=self.save_quick_opts
-        )
-        self.check_gamemode.pack(side="left", padx=10)
+        self.scroll_area.setWidget(self.version_list_widget)
+        self.main_layout.addWidget(self.scroll_area, 1) # Expandir
 
-        self.var_debug_log = ctk.BooleanVar(value=self.app.config.get(c.CONFIG_KEY_DEBUG_LOG, False))
+        # 3. Opciones de Lanzamiento
+        self.opts_layout = QHBoxLayout()
+        self.opts_layout.setAlignment(Qt.AlignCenter)
+        self.main_layout.addLayout(self.opts_layout)
 
-        # Ocultar la opción de log en Flatpak
+        self.check_close_on_launch = QCheckBox(c.UI_CHECKBOX_CLOSE_ON_LAUNCH)
+        self.check_close_on_launch.setChecked(self.app.config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH, False))
+        self.check_close_on_launch.stateChanged.connect(lambda: self.save_quick_opts())
+        self.opts_layout.addWidget(self.check_close_on_launch)
+
+        self.check_gamemode = QCheckBox(c.UI_CHECKBOX_GAMEMODE)
+        self.check_gamemode.setChecked(self.app.config.get(c.CONFIG_KEY_GAMEMODE_ENABLED, False))
+        self.check_gamemode.stateChanged.connect(lambda state: self.app.sync_gamemode_ui(state == Qt.Checked))
+        self.opts_layout.addWidget(self.check_gamemode)
+
         if not self.app.running_in_flatpak:
-            self.check_debug_log = ctk.CTkCheckBox(
-                self.frame_launch_opts,
-                text=c.UI_CHECKBOX_DEBUG_LOG,
-                variable=self.var_debug_log,
-                corner_radius=15,
-                font=c.FONT_NORMAL,
-            )
-            self.check_debug_log.pack(side="left", padx=10)
+            self.check_debug_log = QCheckBox(c.UI_CHECKBOX_DEBUG_LOG)
+            self.check_debug_log.setChecked(self.app.config.get(c.CONFIG_KEY_DEBUG_LOG, False))
+            self.check_debug_log.stateChanged.connect(lambda: self.save_quick_opts())
+            self.opts_layout.addWidget(self.check_debug_log)
+        else:
+            self.check_debug_log = None
 
-        # Botón
-        self.btn_launch = ctk.CTkButton(
-            self,
-            text=c.UI_BUTTON_PLAY_NOW,
-            height=50,
-            corner_radius=15,
-            font=c.FONT_TITLE,
-            command=lambda: self.app.logic.launch_game(self.app),
-        )
-        self.btn_launch.grid(row=4, column=0, padx=30, pady=15, sticky="ew")
+        # 4. Botón Jugar
+        self.btn_launch = QPushButton(c.UI_BUTTON_PLAY_NOW)
+        self.btn_launch.setObjectName("PlayButton")
+        self.btn_launch.setFixedHeight(50)
+        self.btn_launch.clicked.connect(lambda: self.app.logic.launch_game(self.app))
+        self.main_layout.addWidget(self.btn_launch)
+
+        # Mock version_var for compatibility
+        self._selected_version = ""
+
+    @property
+    def version_var(self):
+        return self
+
+    def get(self):
+        return self._selected_version
+
+    def set(self, value):
+        self._selected_version = value
 
     def update_profile_indicator(self):
         current = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)
-        self.lbl_profile_indicator.configure(text=f"👤 {c.UI_LABEL_PROFILE} {current}")
+        self.lbl_profile_indicator.setText(f"👤 {c.UI_LABEL_PROFILE} {current}")
 
     def save_quick_opts(self):
-        self.app.sync_close_on_launch_ui(self.var_close_on_launch.get())
-        self.app.sync_gamemode_ui(self.var_gamemode.get())
+        # Sync values to app config
+        self.app.config[c.CONFIG_KEY_CLOSE_ON_LAUNCH] = self.check_close_on_launch.isChecked()
+        if self.check_debug_log:
+            self.app.config[c.CONFIG_KEY_DEBUG_LOG] = self.check_debug_log.isChecked()
+
+        # Sync with main app logic for consistency across tabs
+        self.app.sync_close_on_launch_ui(self.check_close_on_launch.isChecked())
+
         self.app.config_manager.save_config()
+
+    # Helpers to clean children (replacement for winfo_children)
+    @property
+    def version_listbox(self):
+        return self.version_list_widget

@@ -56,5 +56,10 @@ def get_available_languages():
     """
     return {
         "en": "English",
-        "es": "Español"
+        "es": "Español",
+        "fr": "Français",
+        "it": "Italiano",
+        "pt": "Português",
+        "ca": "Català",
+        "de": "Deutsch"
     }

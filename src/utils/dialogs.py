@@ -1,28 +1,32 @@
 import subprocess
-from tkinter import filedialog
 import shutil
+from PySide6.QtWidgets import QFileDialog
 from src import constants as c
 
 def ask_open_filename_native(parent, title=None, filetypes=None):
     """
-    Intenta usar Zenity para un diálogo de archivo nativo, con fallback a Tkinter.
-    Refactorizado para usar check_output y evitar cuelgues del sistema.
+    Intenta usar Zenity para un diálogo de archivo nativo, con fallback a PySide6.
     """
     if title is None: title = c.UI_OPEN_FILE_TITLE
-    if filetypes is None: filetypes = [(c.UI_ALL_FILES_TYPE, "*")]
-    if hasattr(parent, 'force_flatpak_ui') and parent.force_flatpak_ui:
-        return filedialog.askopenfilename(title=title, filetypes=filetypes)
+    # Convert filetypes to QFileDialog format
+    # Tkinter format: [("Name", "*.ext")]
+    # PySide6 format: "Name (*.ext);;Other (*.other)"
+    qt_file_filter = ""
+    if filetypes:
+        qt_file_filter = ";;".join([f"{name} ({pattern})" for name, pattern in filetypes])
+    else:
+        qt_file_filter = f"{c.UI_ALL_FILES_TYPE} (*)"
 
     if shutil.which("zenity"):
-        parent.grab_release()
         try:
             cmd = [
                 "zenity",
                 "--file-selection",
                 f"--title={title}",
             ]
-            for name, pattern in filetypes:
-                cmd.append(f"--file-filter={name}|{pattern}")
+            if filetypes:
+                for name, pattern in filetypes:
+                    cmd.append(f"--file-filter={name}|{pattern}")
 
             selected_file = subprocess.check_output(cmd, text=True)
             return selected_file.strip()
@@ -30,25 +34,18 @@ def ask_open_filename_native(parent, title=None, filetypes=None):
             return ""
         except Exception as e:
             print(f"Error al usar Zenity, usando fallback: {e}")
-            # Retornar None puede ser una opción para indicar un error inesperado
-            return None
-        finally:
-            parent.grab_set()
 
-    # Fallback a Tkinter solo si Zenity no está instalado o falla catastróficamente
-    return filedialog.askopenfilename(title=title, filetypes=filetypes)
+    # Fallback a PySide6
+    filename, _ = QFileDialog.getOpenFileName(parent, title, "", qt_file_filter)
+    return filename
 
 def ask_directory_native(parent, title=None):
     """
-    Intenta usar Zenity para un diálogo de directorio nativo, con fallback a Tkinter.
-    Refactorizado para usar check_output y evitar cuelgues del sistema.
+    Intenta usar Zenity para un diálogo de directorio nativo, con fallback a PySide6.
     """
     if title is None: title = c.UI_SELECT_FOLDER_TITLE
-    if hasattr(parent, 'force_flatpak_ui') and parent.force_flatpak_ui:
-        return filedialog.askdirectory(title=title)
 
     if shutil.which("zenity"):
-        parent.grab_release()
         try:
             cmd = [
                 "zenity",
@@ -62,24 +59,22 @@ def ask_directory_native(parent, title=None):
             return ""
         except Exception as e:
             print(f"Error al usar Zenity, usando fallback: {e}")
-            return None
-        finally:
-            parent.grab_set()
 
-    # Fallback a Tkinter solo si Zenity no está instalado o falla catastróficamente
-    return filedialog.askdirectory(title=title)
+    # Fallback a PySide6
+    return QFileDialog.getExistingDirectory(parent, title)
 
 def ask_open_filenames_native(parent, title=None, filetypes=None):
     """
     Intenta usar Zenity para un diálogo de selección de múltiples archivos.
     """
     if title is None: title = c.UI_OPEN_FILES_TITLE
-    if filetypes is None: filetypes = [(c.UI_ALL_FILES_TYPE, "*")]
-    if hasattr(parent, 'force_flatpak_ui') and parent.force_flatpak_ui:
-        return filedialog.askopenfilenames(title=title, filetypes=filetypes)
+    qt_file_filter = ""
+    if filetypes:
+        qt_file_filter = ";;".join([f"{name} ({pattern})" for name, pattern in filetypes])
+    else:
+        qt_file_filter = f"{c.UI_ALL_FILES_TYPE} (*)"
 
     if shutil.which("zenity"):
-        parent.grab_release()
         try:
             cmd = [
                 "zenity",
@@ -87,17 +82,21 @@ def ask_open_filenames_native(parent, title=None, filetypes=None):
                 "--multiple",
                 f"--title={title}",
             ]
-            for name, pattern in filetypes:
-                cmd.append(f"--file-filter={name}|{pattern}")
+            if filetypes:
+                for name, pattern in filetypes:
+                    cmd.append(f"--file-filter={name}|{pattern}")
 
             selected_files = subprocess.check_output(cmd, text=True)
             # Zenity devuelve los archivos separados por un separador, por defecto '|' o '\n'
+            # Usualmente usa '|' si no se especifica --separator
+            if "|" in selected_files:
+                return selected_files.strip().split("|")
             return selected_files.strip().splitlines()
         except subprocess.CalledProcessError:
-            return []  # Devolver lista vacía si el usuario cancela
+            return []
         except Exception as e:
             print(f"Error al usar Zenity, usando fallback: {e}")
-        finally:
-            parent.grab_set()
 
-    return filedialog.askopenfilenames(title=title, filetypes=filetypes)
+    # Fallback a PySide6
+    filenames, _ = QFileDialog.getOpenFileNames(parent, title, "", qt_file_filter)
+    return filenames

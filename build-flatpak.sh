@@ -48,9 +48,9 @@ echo -e "${GREEN}✓ Flathub configurado${NC}"
 echo -e "${YELLOW}[3/6]${NC} Instalando runtime KDE y dependencias..."
 echo "Esto puede tomar varios minutos la primera vez..."
 
-flatpak install -y flathub org.kde.Platform//5.15-24.08 || echo "Runtime ya instalado"
-flatpak install -y flathub org.kde.Sdk//5.15-24.08 || echo "SDK ya instalado"
-flatpak install -y flathub io.qt.qtwebengine.BaseApp//5.15-24.08 || echo "BaseApp ya instalado"
+flatpak install -y flathub org.kde.Platform//6.9 || echo "Runtime ya instalado"
+flatpak install -y flathub org.kde.Sdk//6.9 || echo "SDK ya instalado"
+flatpak install -y flathub io.qt.qtwebengine.BaseApp//6.9 || echo "BaseApp ya instalado"
 
 echo -e "${GREEN}✓ Runtime instalado${NC}"
 

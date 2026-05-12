@@ -1,49 +1,56 @@
-import customtkinter as ctk
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                             QPushButton, QScrollArea, QFrame, QGridLayout)
+from PySide6.QtCore import Qt
 from src import constants as c
 
-class ToolsTab(ctk.CTkFrame):
+class ToolsTab(QWidget):
     def __init__(self, parent, app):
-        super().__init__(parent, fg_color="transparent")
+        super().__init__(parent)
         self.app = app
-        self.pack(fill="both", expand=True)
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(5, 5, 5, 5)
 
-        # Cabecera para el indicador de modo
-        self.frame_tools_header = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_tools_header.grid(row=0, column=0, pady=(5, 0), padx=10, sticky="ew")
+        # Header
+        self.header_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.header_layout)
 
-        self.lbl_tools_status = ctk.CTkLabel(
-            self.frame_tools_header,
-            text="",
-            font=c.FONT_MODO,
-        )
-        self.lbl_tools_status.pack(side="left")
+        self.lbl_tools_status = QLabel("")
+        self.lbl_tools_status.setObjectName("FloatingLabel")
+        self.lbl_tools_status.setStyleSheet("font-weight: bold;")
+        self.header_layout.addWidget(self.lbl_tools_status)
 
-        self.lbl_current_profile = ctk.CTkLabel(
-            self.frame_tools_header,
-            text="",
-            font=c.FONT_SMALL,
-            text_color=c.COLOR_PRIMARY_GREEN
-        )
-        self.lbl_current_profile.pack(side="right", padx=10)
+        self.header_layout.addStretch()
 
-        # Usar ScrollableFrame
-        self.scroll_tools = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.scroll_tools.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        self.lbl_current_profile = QLabel("")
+        self.lbl_current_profile.setObjectName("FloatingLabel")
+        self.lbl_current_profile.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-size: 11px;")
+        self.header_layout.addWidget(self.lbl_current_profile)
 
+        # Scroll Area
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setStyleSheet("border: none;")
+
+        self.scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setAlignment(Qt.AlignTop)
+
+        self.scroll_area.setWidget(self.scroll_content)
+        self.main_layout.addWidget(self.scroll_area)
+
+        self.lbl_shader_status = None
         self.refresh_tools_ui()
 
     def get_tools_data(self):
-        # Definir las herramientas agrupadas
         groups = [
             {
                 "title": c.UI_SECTION_MANAGEMENT,
                 "icon": "⚙️",
                 "tools": [
                     {"text": c.UI_BUTTON_INSTALL_APK, "icon": "📥", "cmd": self.app.install_apk_dialog, "color": None},
-                    {"text": c.UI_BUTTON_MOVE_DELETE_VERSION, "icon": "🗑️", "cmd": lambda: self.app.logic.delete_version_dialog(self.app), "color": c.COLOR_RED_BUTTON},
+                    {"text": c.UI_BUTTON_MANAGE_SHORTCUT, "icon": "🗑️", "cmd": self.app.open_version_manager, "color": None},
                     {"text": c.UI_BUTTON_MIGRATE_DATA, "icon": "🚀", "cmd": self.app.open_migration_tool, "color": None},
                 ]
             },
@@ -74,176 +81,153 @@ class ToolsTab(ctk.CTkFrame):
                         "icon": "📦", "cmd": lambda: self.app.logic.verify_dependencies(self.app), "color": None
                     },
                     {"text": c.UI_BUTTON_VERIFY_HW, "icon": "🔍", "cmd": lambda: self.app.logic.check_requirements_dialog(self.app), "color": None},
-                    {"text": c.UI_BUTTON_MANAGE_SHORTCUT, "icon": "🔗", "cmd": self.app.manage_desktop_shortcut, "color": None},
+                    {"text": c.UI_LABEL_COMPATIBLE_RANGE, "icon": "✅", "cmd": None, "show_compat": True}
                 ]
             }
         ]
         return groups
 
     def refresh_tools_ui(self):
-        # Limpiar scroll
-        for child in self.scroll_tools.winfo_children():
-            child.destroy()
+        # Clear layout safely
+        from src.core.app_logic import clear_layout
+        clear_layout(self.scroll_layout)
 
-        layout = self.app.config.get(c.CONFIG_KEY_TOOLS_LAYOUT, c.STYLE_COLUMNS)
+        layout_style = self.app.config.get(c.CONFIG_KEY_TOOLS_LAYOUT, c.STYLE_COLUMNS)
         groups = self.get_tools_data()
 
-        if layout == c.STYLE_LIST:
+        if layout_style == c.STYLE_LIST:
             self._render_list(groups)
-        elif layout == c.STYLE_COLUMNS:
+        elif layout_style == c.STYLE_COLUMNS:
             self._render_columns(groups)
-        else: # STYLE_GRID
+        else: # GRID
             self._render_grid(groups)
 
-        # Footer Créditos
-        footer_row = 100 # Un número grande para que siempre esté al final
-        if layout == c.STYLE_LIST:
-            ctk.CTkLabel(
-                self.scroll_tools, text=c.CREDITOS, text_color="gray", font=c.FONT_SMALL
-            ).grid(row=footer_row, column=0, pady=20)
-        elif layout == c.STYLE_COLUMNS:
-            ctk.CTkLabel(
-                self.scroll_tools, text=c.CREDITOS, text_color="gray", font=c.FONT_SMALL
-            ).grid(row=footer_row, column=0, columnspan=2, pady=20)
-        else: # GRID
-            ctk.CTkLabel(
-                self.scroll_tools, text=c.CREDITOS, text_color="gray", font=c.FONT_SMALL
-            ).grid(row=footer_row, column=0, columnspan=3, pady=20)
+        # Footer Credits
+        footer = QLabel(c.CREDITOS)
+        footer.setStyleSheet("color: gray; font-size: 11px;")
+        footer.setAlignment(Qt.AlignCenter)
+        self.scroll_layout.addWidget(footer)
 
-    def _create_tool_button(self, parent, tool):
-        if tool.get("hide_if_flatpak") and self.app.running_in_flatpak:
-            return None
+    def _create_tool_button(self, parent_layout, tool):
+        if tool.get("show_compat"):
+            container = QWidget()
+            l = QVBoxLayout(container)
+            l.setContentsMargins(0, 5, 0, 5)
+            l.setSpacing(2)
 
-        btn_text = f"{tool['icon']} {tool['text']}"
-        btn = ctk.CTkButton(
-            parent,
-            text=btn_text,
-            height=c.BTN_HEIGHT + 4,
-            corner_radius=8,
-            command=tool["cmd"],
-            font=c.FONT_NORMAL,
-        )
+            t1 = QLabel(tool["text"])
+            t1.setStyleSheet("font-weight: bold; font-size: 11px; color: gray;")
+            t1.setAlignment(Qt.AlignCenter)
+            l.addWidget(t1)
+
+            range_val_text = self.app.logic.get_compatibility_range(self.app)
+            t2 = QLabel(range_val_text)
+            t2.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-weight: bold; font-size: 14px;")
+            t2.setAlignment(Qt.AlignCenter)
+            l.addWidget(t2)
+
+            parent_layout.addWidget(container)
+            return
+
+        btn = QPushButton(f"{tool['icon']} {tool['text']}")
+        btn.setFixedHeight(c.BTN_HEIGHT + 4)
+
         if tool.get("color"):
-            btn.configure(fg_color=tool["color"])
-            # Si el color es una constante con HOVER, intentar usarla
-            hover_key = tool["color"] + "_HOVER"
-            if hasattr(c, hover_key):
-                btn.configure(hover_color=getattr(c, hover_key))
+            btn.setStyleSheet(f"background-color: {tool['color']}; color: white; border-radius: 8px; font-size: 13px; font-weight: bold;")
+        else:
+            btn.setObjectName("ToolButton")
 
-        btn.pack(pady=c.ELEMENT_SPACING, padx=15, fill="x")
+        if tool["cmd"]:
+            btn.clicked.connect(tool["cmd"])
+        else:
+            btn.setEnabled(False)
+        parent_layout.addWidget(btn)
 
         if tool.get("show_status"):
-            self.lbl_shader_status = ctk.CTkLabel(
-                parent, text=c.UI_LABEL_SHADERS_STATUS, font=c.FONT_SMALL
-            )
-            self.lbl_shader_status.pack(pady=(0, 5))
-            # Actualizar estado inmediatamente
+            self.lbl_shader_status = QLabel(c.UI_LABEL_SHADERS_STATUS)
+            self.lbl_shader_status.setStyleSheet("font-size: 11px; color: gray;")
+            self.lbl_shader_status.setAlignment(Qt.AlignCenter)
+            parent_layout.addWidget(self.lbl_shader_status)
             self.app.logic.update_shader_status_label(self.app)
 
-        return btn
-
     def _render_list(self, groups):
-        self.scroll_tools.grid_columnconfigure(0, weight=1)
-        self.scroll_tools.grid_columnconfigure(1, weight=0)
+        for group in groups:
+            frame = QFrame()
+            frame.setObjectName("GroupFrame")
+            layout = QVBoxLayout(frame)
+            layout.setContentsMargins(15, 15, 15, 15)
+            layout.setSpacing(10)
 
-        for i, group in enumerate(groups):
-            frame = ctk.CTkFrame(self.scroll_tools, corner_radius=c.CORNER_RADIUS)
-            frame.grid(row=i, column=0, padx=20, pady=10, sticky="ew")
-
-            ctk.CTkLabel(
-                frame, text=f"{group['icon']} {group['title']}", font=c.FONT_SUBTITLE
-            ).pack(pady=(10, 5))
+            title = QLabel(f"{group['icon']} {group['title']}")
+            title.setObjectName("HeaderLabel")
+            title.setAlignment(Qt.AlignCenter)
+            layout.addWidget(title)
 
             for tool in group["tools"]:
-                self._create_tool_button(frame, tool)
+                self._create_tool_button(layout, tool)
+
+            self.scroll_layout.addWidget(frame)
 
     def _render_columns(self, groups):
-        self.scroll_tools.grid_columnconfigure(0, weight=1)
-        self.scroll_tools.grid_columnconfigure(1, weight=1)
+        grid = QGridLayout()
+        self.scroll_layout.addLayout(grid)
 
         for i, group in enumerate(groups):
-            col = i % 2
-            frame = ctk.CTkFrame(self.scroll_tools, corner_radius=c.CORNER_RADIUS)
-            frame.grid(row=i // 2, column=col, padx=10, pady=10, sticky="new")
+            frame = QFrame()
+            frame.setObjectName("GroupFrame")
+            frame.setMinimumHeight(200)
+            layout = QVBoxLayout(frame)
+            layout.setContentsMargins(15, 15, 15, 15)
+            layout.setSpacing(10)
 
-            ctk.CTkLabel(
-                frame, text=f"{group['icon']} {group['title']}", font=c.FONT_SUBTITLE
-            ).pack(pady=(10, 5))
+            title = QLabel(f"{group['icon']} {group['title']}")
+            title.setObjectName("HeaderLabel")
+            title.setAlignment(Qt.AlignCenter)
+            layout.addWidget(title)
 
             for tool in group["tools"]:
-                self._create_tool_button(frame, tool)
+                self._create_tool_button(layout, tool)
+
+            grid.addWidget(frame, i // 2, i % 2)
 
     def _render_grid(self, groups):
-        # Renderizar cada herramienta como una tarjeta individual en un grid
-        self.scroll_tools.grid_columnconfigure((0, 1, 2), weight=1)
+        grid = QGridLayout()
+        self.scroll_layout.addLayout(grid)
 
         all_tools = []
         for group in groups:
             for tool in group["tools"]:
-                if tool.get("hide_if_flatpak") and self.app.running_in_flatpak:
-                    continue
                 all_tools.append(tool)
 
-        # Obtener el color primario del tema actual
-        try:
-            theme_color = ctk.ThemeManager.theme["CTkButton"]["fg_color"]
-            hover_color = ctk.ThemeManager.theme["CTkButton"]["hover_color"]
-        except:
-            theme_color = ("#3B8ED0", "#1F6AA5")
-            hover_color = ("#3276AD", "#144870")
-
         for i, tool in enumerate(all_tools):
-            row = i // 3
-            col = i % 3
+            card = QFrame()
+            card.setObjectName("ToolCard")
+            card.setFixedSize(180, 145)
+            layout = QVBoxLayout(card)
+            layout.setAlignment(Qt.AlignCenter)
 
-            # Tarjetas con fondo gris por defecto
-            card = ctk.CTkFrame(
-                self.scroll_tools,
-                corner_radius=c.CORNER_RADIUS,
-                width=180,
-                height=145,
-                fg_color=("gray85", "gray25"),
-                border_width=0
-            )
-            card.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
-            card.grid_propagate(False)
+            icon = QLabel(tool["icon"])
+            icon.setStyleSheet("font-size: 42px;")
+            icon.setAlignment(Qt.AlignCenter)
+            layout.addWidget(icon)
 
-            # Icono grande
-            lbl_icon = ctk.CTkLabel(card, text=tool["icon"], font=("Roboto", 42))
-            lbl_icon.pack(pady=(18, 5))
+            text = QLabel(tool["text"])
+            text.setWordWrap(True)
+            text.setAlignment(Qt.AlignCenter)
+            text.setStyleSheet("font-weight: bold; font-size: 12px; color: white;")
+            layout.addWidget(text)
 
-            # Texto descriptivo
-            lbl_text = ctk.CTkLabel(
-                card,
-                text=tool["text"],
-                font=ctk.CTkFont(family="Roboto", size=12, weight="bold"),
-                wraplength=150
-            )
-            lbl_text.pack(padx=10, pady=2)
+            # Make the card clickable (simplified for now, ideally use a custom class)
+            btn = QPushButton()
+            btn.setParent(card)
+            btn.setGeometry(0, 0, 180, 145)
+            btn.setStyleSheet("background: transparent; border: none;")
+            btn.clicked.connect(tool["cmd"])
 
-            # Toda la tarjeta es clicable y reacciona al hover visualmente
-            def on_enter(e, target_card=card, h_color=theme_color, t_icon=lbl_icon, t_text=lbl_text):
-                try:
-                    target_card.configure(fg_color=h_color)
-                    t_icon.configure(text_color="white")
-                    t_text.configure(text_color="white")
-                except: pass
-            def on_leave(e, target_card=card, t_icon=lbl_icon, t_text=lbl_text):
-                try:
-                    target_card.configure(fg_color=("gray85", "gray25"))
-                    t_icon.configure(text_color=("black", "white"))
-                    t_text.configure(text_color=("black", "white"))
-                except: pass
+            grid.addWidget(card, i // 3, i % 3)
 
-            for w in [card, lbl_icon, lbl_text]:
-                w.bind("<Button-1>", lambda e, cmd=tool["cmd"]: cmd())
-                w.bind("<Enter>", on_enter)
-                w.bind("<Leave>", on_leave)
-
-            # Indicador de estado si es necesario
             if tool.get("show_status"):
-                self.lbl_shader_status = ctk.CTkLabel(
-                    card, text="...", font=("Roboto", 9)
-                )
-                self.lbl_shader_status.pack(side="bottom")
+                self.lbl_shader_status = QLabel("...")
+                self.lbl_shader_status.setStyleSheet("font-size: 9px; color: gray;")
+                layout.addWidget(self.lbl_shader_status)
                 self.app.logic.update_shader_status_label(self.app)
