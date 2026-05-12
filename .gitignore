@@ -16,3 +16,4 @@ venv
 CianovaLauncherMCPE.spec
 COMMAND.txt
 TEMPLATE_RELEASE.md
+bin/*
