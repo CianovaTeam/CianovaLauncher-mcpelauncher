@@ -1339,15 +1339,40 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             t_err = threading.Thread(target=drain_stderr, daemon=True)
             t_err.start()
 
-            for line in process.stdout:
-                stdout_tail.append(line)
-                if len(stdout_tail) > 40:
-                    stdout_tail.pop(0)
-                # Parse progress: "Downloaded 45% [123/270 MiB]"
-                match = re.search(r"Downloaded (\d+)%", line)
-                if match:
-                    p_val = int(match.group(1))
-                    QTimer.singleShot(0, lambda p=p_val: progress_callback(p))
+            # gplaydl uses \r (not \n) for the progress line:
+            #   printf("\rDownloaded %i%% [%lli/%lli MiB]", ...);
+            # iter_lines on \n alone never yields → no progress in UI.
+            # Read raw chunks and split on both \r and \n manually.
+            buf = ""
+            last_pct = -1
+            while True:
+                chunk = process.stdout.read(256)
+                if not chunk:
+                    break
+                buf += chunk
+                # Split on either CR or LF
+                parts = re.split(r"[\r\n]", buf)
+                buf = parts[-1]  # keep incomplete tail for next read
+                for line in parts[:-1]:
+                    if not line:
+                        continue
+                    stdout_tail.append(line + "\n")
+                    if len(stdout_tail) > 40:
+                        stdout_tail.pop(0)
+                    m = re.search(r"Downloaded (\d+)%", line)
+                    if m:
+                        p_val = int(m.group(1))
+                        if p_val != last_pct:
+                            last_pct = p_val
+                            QTimer.singleShot(0, lambda p=p_val: progress_callback(p))
+                # Also scan trailing incomplete buf in case the percent landed
+                # right before EOF without a separator.
+                m = re.search(r"Downloaded (\d+)%", buf)
+                if m:
+                    p_val = int(m.group(1))
+                    if p_val != last_pct:
+                        last_pct = p_val
+                        QTimer.singleShot(0, lambda p=p_val: progress_callback(p))
 
             process.wait()
             t_err.join(timeout=2)
