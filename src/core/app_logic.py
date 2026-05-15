@@ -1313,13 +1313,14 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
 
             # Keep stderr separate so structured errors don't get drowned in
             # binary protobuf noise from stdout. stdin=DEVNULL avoids hangs.
-            # errors='replace' is required: gplaydl prints raw protobuf bytes
-            # and gzip-compressed payloads to stdout (debug build), which
-            # contain invalid UTF-8 sequences (e.g. 0x8b gzip magic).
+            # Binary stdout: gplaydl emits raw protobuf bytes and gzip blobs
+            # (0x8b gzip magic etc.) which break text-mode decoding. Also,
+            # progress is printed with '\r' (carriage return), so we cannot
+            # iterate by line; we read whatever bytes are available with
+            # read1() and decode each chunk lossy.
             process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                       encoding="utf-8", errors="replace",
-                                       bufsize=1, cwd=signin_cwd)
+                                       bufsize=0, cwd=signin_cwd)
             dbg("gplaydl pid=%s", process.pid)
 
             stdout_tail = []
@@ -1327,13 +1328,18 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
 
             # Drain stderr in a background thread (gplaydl prints structured
             # errors there; reading only stdout would block on a full stderr
-            # pipe for large protobuf debug dumps).
+            # pipe for large protobuf debug dumps). Binary mode + decode.
             def drain_stderr():
                 try:
-                    for line in process.stderr:
-                        stderr_tail.append(line)
-                        if len(stderr_tail) > 40:
-                            stderr_tail.pop(0)
+                    while True:
+                        chunk = process.stderr.read1(4096)
+                        if not chunk:
+                            break
+                        text = chunk.decode("utf-8", errors="replace")
+                        for line in text.splitlines(keepends=True):
+                            stderr_tail.append(line)
+                            if len(stderr_tail) > 40:
+                                stderr_tail.pop(0)
                 except Exception:
                     pass
             t_err = threading.Thread(target=drain_stderr, daemon=True)
@@ -1342,15 +1348,15 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             # gplaydl uses \r (not \n) for the progress line:
             #   printf("\rDownloaded %i%% [%lli/%lli MiB]", ...);
             # iter_lines on \n alone never yields → no progress in UI.
-            # Read raw chunks and split on both \r and \n manually.
+            # Read whatever bytes are available with read1() (non-line-buffered)
+            # and split on both \r and \n manually. Binary mode → decode lossy.
             buf = ""
             last_pct = -1
             while True:
-                chunk = process.stdout.read(256)
-                if not chunk:
+                raw = process.stdout.read1(4096)
+                if not raw:
                     break
-                buf += chunk
-                # Split on either CR or LF
+                buf += raw.decode("utf-8", errors="replace")
                 parts = re.split(r"[\r\n]", buf)
                 buf = parts[-1]  # keep incomplete tail for next read
                 for line in parts[:-1]:
@@ -1364,6 +1370,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                         p_val = int(m.group(1))
                         if p_val != last_pct:
                             last_pct = p_val
+                            dbg("progress %d%%", p_val)
                             QTimer.singleShot(0, lambda p=p_val: progress_callback(p))
                 # Also scan trailing incomplete buf in case the percent landed
                 # right before EOF without a separator.
@@ -1372,6 +1379,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                     p_val = int(m.group(1))
                     if p_val != last_pct:
                         last_pct = p_val
+                        dbg("progress %d%%", p_val)
                         QTimer.singleShot(0, lambda p=p_val: progress_callback(p))
 
             process.wait()
@@ -1428,8 +1436,21 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             else:
                 extract_cmd = ["mcpelauncher-extract", *apk_inputs, target_dir]
 
+            # Ensure bundled libs (libzip.so.5) are found even if user invoked
+            # the launcher without run.sh.
+            extract_env = os.environ.copy()
+            bundled_lib = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                       "..", "..", "bin", "lib")
+            bundled_lib = os.path.normpath(bundled_lib)
+            if os.path.isdir(bundled_lib):
+                extract_env["LD_LIBRARY_PATH"] = (
+                    bundled_lib + os.pathsep + extract_env.get("LD_LIBRARY_PATH", "")
+                )
+
             dbg("extract cmd=%s", " ".join(extract_cmd))
-            extract_proc = subprocess.run(extract_cmd, capture_output=True, text=True)
+            dbg("extract LD_LIBRARY_PATH=%s", extract_env.get("LD_LIBRARY_PATH", ""))
+            extract_proc = subprocess.run(extract_cmd, capture_output=True, text=True,
+                                          env=extract_env)
             dbg("extract exit=%s stdout_tail=%r stderr_tail=%r",
                 extract_proc.returncode,
                 extract_proc.stdout[-300:] if extract_proc.stdout else "",

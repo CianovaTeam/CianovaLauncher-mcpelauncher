@@ -13,6 +13,8 @@ export PYTHONPATH="$PYTHONPATH:$(pwd)"
 export PYTHONUNBUFFERED=1
 export PYTHONFAULTHANDLER=1
 export CIANOVA_DEBUG="${CIANOVA_DEBUG:-1}"
+# Bundled libs (libzip.so.5 for mcpelauncher-extract, etc.)
+export LD_LIBRARY_PATH="$(pwd)/bin/lib:${LD_LIBRARY_PATH}"
 
 mkdir -p logs
 LOG="logs/cianova-$(date +%Y%m%d-%H%M%S).log"
