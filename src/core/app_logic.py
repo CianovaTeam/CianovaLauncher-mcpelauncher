@@ -1317,7 +1317,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             # (0x8b gzip magic etc.) which break text-mode decoding. Also,
             # progress is printed with '\r' (carriage return), so we cannot
             # iterate by line; we read whatever bytes are available with
-            # read1() and decode each chunk lossy.
+            # read() and decode each chunk lossy.
             process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        bufsize=0, cwd=signin_cwd)
@@ -1332,7 +1332,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             def drain_stderr():
                 try:
                     while True:
-                        chunk = process.stderr.read1(4096)
+                        chunk = process.stderr.read(4096)
                         if not chunk:
                             break
                         text = chunk.decode("utf-8", errors="replace")
@@ -1348,12 +1348,12 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             # gplaydl uses \r (not \n) for the progress line:
             #   printf("\rDownloaded %i%% [%lli/%lli MiB]", ...);
             # iter_lines on \n alone never yields → no progress in UI.
-            # Read whatever bytes are available with read1() (non-line-buffered)
+            # Read whatever bytes are available with read() (non-line-buffered)
             # and split on both \r and \n manually. Binary mode → decode lossy.
             buf = ""
             last_pct = -1
             while True:
-                raw = process.stdout.read1(4096)
+                raw = process.stdout.read(4096)
                 if not raw:
                     break
                 buf += raw.decode("utf-8", errors="replace")
