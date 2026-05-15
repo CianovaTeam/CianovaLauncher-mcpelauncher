@@ -202,6 +202,7 @@ class GooglePlayTab(QWidget):
               flush=True)
 
         self.btn_download.setEnabled(False)
+        self.btn_download.setText(c.UI_STATUS_DOWNLOADING)
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         self.status_label.setText(c.UI_STATUS_DOWNLOADING)
@@ -220,6 +221,7 @@ class GooglePlayTab(QWidget):
 
     def on_finished(self, success, message):
         self.btn_download.setEnabled(True)
+        self.btn_download.setText(c.UI_BUTTON_INSTALL_NOW)
         self.progress_bar.setVisible(False)
         if success:
             messagebox.showinfo(self, c.UI_SUCCESS_TITLE, message)

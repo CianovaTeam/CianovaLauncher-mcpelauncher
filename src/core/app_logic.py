@@ -644,6 +644,13 @@ class LogicWorker(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
+from PySide6.QtCore import QObject
+class InstallSignals(QObject):
+    progress = Signal(int)
+    status = Signal(str)
+    finished = Signal(bool, str)
+
+
 def verify_dependencies(app):
     if app.running_in_flatpak:
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QLabel, QHBoxLayout
@@ -1249,12 +1256,18 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
     """
     dbg("download_and_install_google: vcode=%s vname=%s arch=%s target_root=%s flatpak=%s id=%s",
         vcode, vname, arch, target_root, is_target_flatpak, flatpak_id)
+        
+    signals = InstallSignals()
+    signals.progress.connect(progress_callback)
+    signals.status.connect(status_callback)
+    signals.finished.connect(finished_callback)
+
     def run_flow():
         temp_apk = os.path.join(tempfile.gettempdir(), f"minecraft_{vcode}.apk")
         dbg("run_flow: temp_apk=%s", temp_apk)
         try:
             # 1. Download
-            QTimer.singleShot(0, lambda: status_callback(c.UI_STATUS_DOWNLOADING))
+            signals.status.emit(c.UI_STATUS_DOWNLOADING)
 
             bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYDL, "gplaydl")
             signin_cwd = get_signin_workdir(app)
@@ -1371,7 +1384,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                         if p_val != last_pct:
                             last_pct = p_val
                             dbg("progress %d%%", p_val)
-                            QTimer.singleShot(0, lambda p=p_val: progress_callback(p))
+                            signals.progress.emit(p_val)
                 # Also scan trailing incomplete buf in case the percent landed
                 # right before EOF without a separator.
                 m = re.search(r"Downloaded (\d+)%", buf)
@@ -1380,7 +1393,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                     if p_val != last_pct:
                         last_pct = p_val
                         dbg("progress %d%%", p_val)
-                        QTimer.singleShot(0, lambda p=p_val: progress_callback(p))
+                        signals.progress.emit(p_val)
 
             process.wait()
             t_err.join(timeout=2)
@@ -1396,14 +1409,14 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                 combined = "".join(stderr_tail) + "\n" + "".join(stdout_tail)
                 err_msg = _map_gplaydl_error(process.returncode, combined)
                 dbg("download FAILED → mapped msg:\n%s", err_msg)
-                QTimer.singleShot(0, lambda m=err_msg: finished_callback(False, m))
+                signals.finished.emit(False, err_msg)
                 return
 
             # 2. Extract. Minecraft Bedrock is delivered as split APKs:
             # <name>.apk (main) + <name>.config.<id>.apk (per-ABI / locale /
             # density / install_pack). mcpelauncher-extract accepts multiple
             # input APKs (`<apk> [<apk>+] <destination>`) and merges them.
-            QTimer.singleShot(0, lambda: status_callback(c.UI_STATUS_EXTRACTING))
+            signals.status.emit(c.UI_STATUS_EXTRACTING)
 
             target_dir = os.path.join(target_root, c.VERSIONS_DIR, vname)
             if os.path.exists(target_dir): shutil.rmtree(target_dir)
@@ -1482,9 +1495,9 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                 if target_root == app.active_path:
                     # Refresh UI in main thread
                     QTimer.singleShot(0, lambda: refresh_version_list(app))
-                QTimer.singleShot(0, lambda fn=final_vname: finished_callback(True, c.UI_EXTRACTION_SUCCESS_MSG.format(ver_name=fn)))
+                signals.finished.emit(True, c.UI_EXTRACTION_SUCCESS_MSG.format(ver_name=final_vname))
             else:
-                QTimer.singleShot(0, lambda err=extract_proc.stderr: finished_callback(False, c.UI_EXTRACTION_ERROR_MSG.format(err_msg=err)))
+                signals.finished.emit(False, c.UI_EXTRACTION_ERROR_MSG.format(err_msg=extract_proc.stderr))
 
         except Exception as e:
             import traceback as _tb
@@ -1494,6 +1507,6 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                 try: os.remove(temp_apk)
                 except OSError: pass
             err_msg = f"{type(e).__name__}: {e}"
-            QTimer.singleShot(0, lambda msg=err_msg: finished_callback(False, msg))
+            signals.finished.emit(False, err_msg)
 
     threading.Thread(target=run_flow, daemon=True).start()
