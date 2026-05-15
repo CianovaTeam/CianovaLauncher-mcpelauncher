@@ -7,12 +7,28 @@ import zipfile
 import shlex
 import threading
 from src.gui import custom_dialogs as messagebox
-from PySide6.QtCore import QTimer, Qt, QThread, Signal
+from PySide6.QtCore import QTimer, Qt, QThread, Signal, QProcess
 from PySide6.QtWidgets import QLabel, QFrame, QVBoxLayout, QHBoxLayout, QPushButton
 from PySide6.QtGui import QPixmap
 import tempfile
 import time
 import re
+import glob
+import urllib.request
+import urllib.parse
+import urllib.error
+import sys as _sys
+
+# Debug logger gated by CIANOVA_DEBUG=1 (set by run.sh).
+_CIANOVA_DEBUG = os.environ.get("CIANOVA_DEBUG", "") not in ("", "0", "false", "False")
+def dbg(msg, *args):
+    if not _CIANOVA_DEBUG:
+        return
+    try:
+        formatted = msg % args if args else msg
+    except Exception:
+        formatted = f"{msg} {args}"
+    print(f"[cianova] {formatted}", flush=True, file=_sys.stderr)
 
 from src.gui.progress_dialog import ProgressDialog
 from src import constants as c
@@ -882,74 +898,451 @@ def export_screenshots_dialog(app):
             if os.path.exists(com_mojang): subprocess.Popen(["xdg-open", com_mojang])
             else: messagebox.showerror(app, c.UI_ERROR_TITLE, "Folder com.mojang not found.")
 
+def get_signin_workdir(app):
+    """
+    Directorio fijo donde signin-ui-qt y gplaydl escriben/leen playdl.conf.
+    Garantiza que ambos binarios compartan la misma sesión y que
+    check_google_session pueda encontrarla siempre.
+    """
+    d = os.path.join(app.home, ".local", "share", "mcpelauncher")
+    try:
+        os.makedirs(d, exist_ok=True)
+    except Exception as e:
+        print(f"Could not create signin workdir: {e}")
+    return d
+
 def check_google_session(app):
     """
     Verifica si hay una sesión activa de Google Play.
-    Busca playdl.conf o token_cache.conf en las rutas estándar.
+    Busca playdl.conf / token_cache.conf en el workdir fijo y en rutas legacy
+    por compatibilidad con sesiones creadas antes del fix.
     """
-    # En Flatpak, los archivos suelen estar en el sandbox o expuestos si se compiló así
-    # Generalmente se guardan en el CWD o GenericDataLocation (~/.local/share/mcpelauncher)
+    workdir = get_signin_workdir(app)
     search_paths = [
+        workdir,
         os.getcwd(),
-        os.path.join(app.home, ".local/share/mcpelauncher"),
-        os.path.join(app.home, ".config/mcpelauncher"),
-        app.active_path if app.active_path else ""
+        os.path.join(app.home, ".config", "mcpelauncher"),
+        app.active_path if app.active_path else "",
     ]
 
+    seen = set()
     for p in search_paths:
-        if not p: continue
-        if os.path.exists(os.path.join(p, "playdl.conf")) or os.path.exists(os.path.join(p, "token_cache.conf")):
-            return True
+        if not p or p in seen:
+            continue
+        seen.add(p)
+        for fname in ("playdl.conf", "token_cache.conf"):
+            full = os.path.join(p, fname)
+            try:
+                if os.path.exists(full) and os.path.getsize(full) > 0:
+                    return True
+            except OSError:
+                continue
+    return False
 
-    # Intento de verificación vía binario si está disponible
+GOOGLE_AUTH_URL = "https://android.clients.google.com/auth"
+
+def _exchange_access_token(email, access_token):
+    """
+    Convierte el access_token (oauth_token de un solo uso) entregado por
+    playdl-signin-ui-qt en un master Token reutilizable via /auth con
+    ACCESS_TOKEN=1. Equivale a playapi::login_api::perform_with_access_token.
+    Devuelve dict parseado de la respuesta (al menos 'Token') o None.
+    """
+    body = {
+        "accountType": "HOSTED_OR_GOOGLE",
+        "Token": access_token,
+        "ACCESS_TOKEN": "1",
+        "Email": email or "",
+        "add_account": "1",
+        "has_permission": "1",
+        "service": "ac2dm",
+        "source": "android",
+        "app": "com.google.android.gsf",
+        "device_country": "us",
+        "lang": "en_US",
+        "sdk_version": "36",
+        "client_sig": "38918a453d07199354f8b19af05ec6562ced5788",
+        "system_partition": "1",
+        "droidguard_results": "null",
+    }
+    if not email:
+        body.pop("Email", None)
+        body.pop("add_account", None)
+
+    data = urllib.parse.urlencode(body).encode("utf-8")
+    req = urllib.request.Request(
+        GOOGLE_AUTH_URL,
+        data=data,
+        headers={
+            "User-Agent": "GoogleAuth/1.4 (desktop DSKTOP); gzip",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "app": "com.google.android.gsf",
+        },
+        method="POST",
+    )
     try:
-        bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYVER, "gplayver")
-        cmd = [bin_path, "-nv", "-a", "com.mojang.minecraftpe"]
-        if app.running_in_flatpak:
-            fs = shutil.which("flatpak-spawn")
-            if fs: cmd = [fs, "--host"] + cmd
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            text = resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as e:
+        try:
+            text = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            text = ""
+        print(f"OAuth exchange HTTP {e.code}: {text[:300]}")
+    except Exception as e:
+        print(f"OAuth exchange request failed: {e}")
+        return None
 
-        # -nv (no verify) pero perform_auth fallará si no hay nada
-        res = subprocess.run(cmd, capture_output=True, timeout=3)
-        return res.returncode == 0
-    except:
+    parsed = {}
+    for line in text.splitlines():
+        if "=" in line:
+            k, v = line.split("=", 1)
+            parsed[k.strip()] = v.strip()
+
+    if "Error" in parsed:
+        print(f"OAuth exchange error: {parsed.get('Error')} (full: {parsed})")
+        return None
+    if "Token" not in parsed:
+        print(f"OAuth exchange: no Token in response: {parsed}")
+        return None
+    return parsed
+
+def _parse_signin_output(text):
+    """
+    Extrae user_email / user_id / user_token de la salida stdout del binario
+    playdl-signin-ui-qt. El binario imprime líneas con formato 'clave = valor'.
+    Devuelve dict con las claves encontradas (token, id, email).
+    """
+    fields = {}
+    for line in text.splitlines():
+        for key in ("user_token", "user_id", "user_email"):
+            prefix = key + " = "
+            if line.startswith(prefix):
+                fields[key] = line[len(prefix):].strip()
+    return fields
+
+def _write_playdl_conf(workdir, fields):
+    """
+    Escribe playdl.conf en workdir con los campos obtenidos.
+    Formato compatible con playapi::file_login_cache (clave = valor).
+    Devuelve True si se escribió un token no vacío.
+    """
+    token = fields.get("user_token", "").strip()
+    if not token:
+        return False
+    conf_path = os.path.join(workdir, "playdl.conf")
+    lines = []
+    for key in ("user_email", "user_id", "user_token"):
+        val = fields.get(key, "").strip()
+        if val:
+            lines.append(f"{key} = {val}")
+    try:
+        with open(conf_path, "w") as f:
+            f.write("\n".join(lines) + "\n")
+        os.chmod(conf_path, 0o600)
+        return True
+    except Exception as e:
+        print(f"Error escribiendo playdl.conf: {e}")
         return False
 
-def launch_google_login(app):
-    """Lanza el binario playdl-signin-ui-qt."""
-    try:
-        bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_SIGNIN_UI, "playdl-signin-ui-qt")
-        if app.running_in_flatpak:
-            fs = shutil.which("flatpak-spawn")
-            if fs:
-                subprocess.Popen([fs, "--host", bin_path])
-            else:
-                subprocess.Popen([bin_path])
+def launch_google_login(app, on_finished=None):
+    """
+    Lanza playdl-signin-ui-qt como QProcess capturando stdout.
+    - Fija cwd al workdir compartido.
+    - Al terminar, parsea stdout (user_email/user_id/user_token) y escribe
+      playdl.conf en el workdir para que gplaydl lo consuma.
+    - Invoca on_finished(exit_code) si se proporciona.
+    Devuelve el QProcess (None si falla el lanzamiento).
+    """
+    bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_SIGNIN_UI, "playdl-signin-ui-qt")
+    workdir = get_signin_workdir(app)
+    dbg("launch_google_login: bin=%s workdir=%s flatpak=%s", bin_path, workdir, app.running_in_flatpak)
+
+    proc = QProcess(app)
+    proc.setWorkingDirectory(workdir)
+    # Stdout separate, stderr ignored (kept on its own channel)
+    proc.setProcessChannelMode(QProcess.SeparateChannels)
+
+    if app.running_in_flatpak:
+        fs = shutil.which("flatpak-spawn")
+        if fs:
+            proc.setProgram(fs)
+            proc.setArguments(["--host", bin_path])
         else:
-            subprocess.Popen([bin_path])
+            proc.setProgram(bin_path)
+    else:
+        proc.setProgram(bin_path)
+
+    # Accumulator for stdout chunks
+    state = {"stdout": b""}
+    def _drain():
+        try:
+            data = bytes(proc.readAllStandardOutput())
+            if data:
+                state["stdout"] += data
+        except Exception as e:
+            print(f"Signin stdout read error: {e}")
+    proc.readyReadStandardOutput.connect(_drain)
+
+    def _on_done(code, _status):
+        _drain()  # flush any remaining buffered output
+        try:
+            text = state["stdout"].decode("utf-8", errors="replace")
+        except Exception:
+            text = ""
+        fields = _parse_signin_output(text)
+        dbg("signin-ui finished code=%s stdout_len=%d fields=%s",
+            code, len(text), {k: (len(v) if v else 0) for k, v in fields.items()})
+
+        # Exchange single-use access_token for a long-lived master Token.
+        access_token = fields.get("user_token", "").strip()
+        email = fields.get("user_email", "").strip()
+        wrote = False
+        if access_token:
+            dbg("exchanging access_token (len=%d) email=%s", len(access_token), email)
+            exchanged = _exchange_access_token(email, access_token)
+            dbg("exchange result: %s", "OK" if exchanged else "FAIL")
+            if exchanged:
+                master_fields = {
+                    "user_email": exchanged.get("Email") or email,
+                    "user_id": fields.get("user_id", ""),
+                    "user_token": exchanged["Token"],
+                }
+                wrote = _write_playdl_conf(workdir, master_fields)
+                dbg("playdl.conf written=%s path=%s", wrote, os.path.join(workdir, "playdl.conf"))
+            else:
+                try:
+                    messagebox.showerror(
+                        app, c.UI_ERROR_TITLE,
+                        "El token de Google no pudo ser canjeado.\n\n"
+                        "Posibles causas:\n"
+                        "• La sesión expiró antes del intercambio.\n"
+                        "• Google rechazó la autenticación (cuenta restringida o sin Play).\n\n"
+                        "Vuelve a iniciar sesión sin contraseña de cifrado y completa el flujo rápido."
+                    )
+                except Exception:
+                    pass
+
+        if not wrote and code == 0 and not access_token:
+            try:
+                messagebox.showwarning(
+                    app, c.UI_ERROR_TITLE,
+                    "El proceso de inicio de sesión terminó sin entregar un token. "
+                    "Vuelve a intentar y completa el flujo en la ventana de Google."
+                )
+            except Exception:
+                pass
+
+        if on_finished is not None:
+            on_finished(code)
+
+    proc.finished.connect(_on_done)
+
+    def _on_error(err):
+        try:
+            messagebox.showerror(app, c.UI_ERROR_TITLE, f"Error al lanzar login: {err}")
+        except Exception:
+            print(f"Signin launch error: {err}")
+    proc.errorOccurred.connect(_on_error)
+
+    app._signin_proc = proc  # keep reference; QProcess parented to app
+    proc.start()
+    if not proc.waitForStarted(3000):
+        messagebox.showerror(app, c.UI_ERROR_TITLE,
+                             f"No se pudo iniciar '{bin_path}'. Verifica la ruta en Ajustes.")
+        return None
+    return proc
+
+ABI_PROFILES = {
+    "x86_64": ["x86_64", "x86"],
+    "x86": ["x86"],
+    "arm64-v8a": ["arm64-v8a", "armeabi-v7a"],
+    "armeabi-v7a": ["armeabi-v7a"],
+}
+
+def _detect_country_locale():
+    """Detecta country/locale del entorno. Cae a us/en_US si no se puede."""
+    import locale as _l
+    try:
+        loc, _enc = _l.getdefaultlocale()
+        if loc and "_" in loc:
+            lang, region = loc.split("_", 1)
+            region = region.split(".")[0].lower()
+            return region, loc
+    except Exception:
+        pass
+    return "us", "en_US"
+
+def _write_device_conf(workdir, arch):
+    """
+    Genera un device.conf que sobrescribe los campos críticos del device_info
+    interno de gplaydl. El default trae un typo ('armeabi-x7a'), solo x86 y
+    country=us, locale=en_US → Google rechaza descargas de apps pagadas
+    cuando la cuenta es de otra región. Aquí declaramos las ABIs reales y
+    derivamos country/locale del entorno del usuario.
+    """
+    abis = ABI_PROFILES.get(arch, ["x86_64", "x86"])
+    array_lines = ",\n".join(f'    "{a}"' for a in abis)
+    country, locale_id = _detect_country_locale()
+    body = (
+        f"config.native_platforms = [\n{array_lines}\n]\n"
+        "build.sdk_version = 36\n"
+        f"country = {country}\n"
+        f"locale = {locale_id}\n"
+    )
+    path = os.path.join(workdir, "cianova-device.conf")
+    try:
+        with open(path, "w") as f:
+            f.write(body)
     except Exception as e:
-        messagebox.showerror(app, c.UI_ERROR_TITLE, f"Error al lanzar login: {e}")
+        print(f"device.conf write error: {e}")
+        return None
+    return path
+
+# gplaydl delivery error code → friendly Spanish message.
+_DELIVERY_STATUS_MESSAGES = {
+    "2": ("Google Play no entregó esta versión específica. Causas comunes:\n"
+          "• La versión seleccionada ya no está en el catálogo activo de Google\n"
+          "  (Google retira versiones antiguas y solo ofrece las del release plan).\n"
+          "• La cuenta no tiene Minecraft Bedrock comprado.\n\n"
+          "Soluciones:\n"
+          "1. Marca la casilla 'Última versión (auto)' y reintenta.\n"
+          "2. Verifica la compra en:\n"
+          "   https://play.google.com/store/apps/details?id=com.mojang.minecraftpe\n"
+          "3. Usa la pestaña 'APK Local' para instalar un APK que ya tengas."),
+    "3": ("La versión seleccionada no está disponible para esta arquitectura.\n\n"
+          "Intenta cambiar la arquitectura (x86_64 / x86) o elige otra versión."),
+    "5": "App no encontrada en Google Play.",
+}
+
+def _map_gplaydl_error(returncode, tail_text):
+    """
+    Convierte la salida de gplaydl en un mensaje amigable. Detecta los
+    errores estructurados emitidos por nuestros parches (status, no-cookie).
+    """
+    # status=N error path (added by our gplaydl patch)
+    m = re.search(r"delivery status=(\d+)", tail_text)
+    if m:
+        msg = _DELIVERY_STATUS_MESSAGES.get(m.group(1))
+        if msg:
+            return msg
+        return f"Google Play rechazó la descarga (delivery status={m.group(1)})."
+
+    if "no downloadauthcookie" in tail_text:
+        return _DELIVERY_STATUS_MESSAGES["2"]
+    if "bad token" in tail_text or "BadAuthentication" in tail_text:
+        return ("La sesión de Google expiró. Cierra esta ventana, vuelve a "
+                "iniciar sesión y reintenta la descarga.")
+    if "MissingDroidguard" in tail_text:
+        return ("Google requiere DroidGuard para esta cuenta/dispositivo. "
+                "Intenta con otra cuenta o desde otra red.")
+
+    return ("Error en la descarga (código {code}).\n\n"
+            "Salida de gplaydl:\n{tail}").format(
+        code=returncode, tail=tail_text[-600:] or "(vacía)"
+    )
 
 def download_and_install_google(app, vcode, vname, arch, target_root, is_target_flatpak, flatpak_id,
                                 progress_callback, status_callback, finished_callback):
     """
     Inicia el proceso de descarga con gplaydl y luego extrae usando el método actual.
     """
+    dbg("download_and_install_google: vcode=%s vname=%s arch=%s target_root=%s flatpak=%s id=%s",
+        vcode, vname, arch, target_root, is_target_flatpak, flatpak_id)
     def run_flow():
         temp_apk = os.path.join(tempfile.gettempdir(), f"minecraft_{vcode}.apk")
+        dbg("run_flow: temp_apk=%s", temp_apk)
         try:
             # 1. Download
             QTimer.singleShot(0, lambda: status_callback(c.UI_STATUS_DOWNLOADING))
 
             bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYDL, "gplaydl")
-            cmd = [bin_path, "-a", "com.mojang.minecraftpe", "-v", str(vcode), "-o", temp_apk]
+            signin_cwd = get_signin_workdir(app)
+
+            # Read token + email from playdl.conf written by launch_google_login.
+            # gplaydl's checkin.cpp asserts `user.email.length() > 0` after
+            # fetch_service_auth_cookie, so we MUST pass -u together with -t.
+            token = ""
+            user_email = ""
+            try:
+                with open(os.path.join(signin_cwd, "playdl.conf"), "r") as f:
+                    for line in f:
+                        if line.startswith("user_token = "):
+                            token = line[len("user_token = "):].strip()
+                        elif line.startswith("user_email = "):
+                            user_email = line[len("user_email = "):].strip()
+            except FileNotFoundError:
+                pass
+
+            # Generate device.conf with correct ABIs for the selected arch.
+            # The internal default in gplaydl has a typo ('armeabi-x7a') and
+            # is missing x86_64, which causes Google to refuse delivery.
+            dev_conf = _write_device_conf(signin_cwd, arch)
+
+            # Auth flags: -sa saves auth (skips "store the token? [Y/n]" prompt),
+            # -tos auto-accepts ToS, -t passes the token explicitly so gplaydl
+            # doesn't fall back to interactive login. -d overrides device profile.
+            cmd = [bin_path, "-sa", "-tos"]
+            if user_email:
+                cmd += ["-u", user_email]
+            if token:
+                cmd += ["-t", token]
+            if dev_conf:
+                cmd += ["-d", dev_conf]
+            cmd += ["-a", "com.mojang.minecraftpe"]
+            # vcode==0 / None / "latest" → omit -v so gplaydl uses Google's
+            # currently-offered version (most reliable; older vcodes get
+            # rejected with status=2 even on owning accounts).
+            try:
+                vcode_int = int(vcode)
+            except (TypeError, ValueError):
+                vcode_int = 0
+            if vcode_int > 0:
+                cmd += ["-v", str(vcode_int)]
+            cmd += ["-o", temp_apk]
+
             if app.running_in_flatpak:
                 fs = shutil.which("flatpak-spawn")
                 if fs: cmd = [fs, "--host"] + cmd
 
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            dbg("gplaydl cwd=%s", signin_cwd)
+            dbg("gplaydl cmd=%s", " ".join(cmd))
+            dbg("device.conf=%s exists=%s", dev_conf, os.path.exists(dev_conf) if dev_conf else False)
+            dbg("playdl.conf exists=%s token_len=%d email=%s",
+                os.path.exists(os.path.join(signin_cwd, "playdl.conf")), len(token), user_email)
+
+            # Keep stderr separate so structured errors don't get drowned in
+            # binary protobuf noise from stdout. stdin=DEVNULL avoids hangs.
+            # errors='replace' is required: gplaydl prints raw protobuf bytes
+            # and gzip-compressed payloads to stdout (debug build), which
+            # contain invalid UTF-8 sequences (e.g. 0x8b gzip magic).
+            process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                       encoding="utf-8", errors="replace",
+                                       bufsize=1, cwd=signin_cwd)
+            dbg("gplaydl pid=%s", process.pid)
+
+            stdout_tail = []
+            stderr_tail = []
+
+            # Drain stderr in a background thread (gplaydl prints structured
+            # errors there; reading only stdout would block on a full stderr
+            # pipe for large protobuf debug dumps).
+            def drain_stderr():
+                try:
+                    for line in process.stderr:
+                        stderr_tail.append(line)
+                        if len(stderr_tail) > 40:
+                            stderr_tail.pop(0)
+                except Exception:
+                    pass
+            t_err = threading.Thread(target=drain_stderr, daemon=True)
+            t_err.start()
 
             for line in process.stdout:
+                stdout_tail.append(line)
+                if len(stdout_tail) > 40:
+                    stdout_tail.pop(0)
                 # Parse progress: "Downloaded 45% [123/270 MiB]"
                 match = re.search(r"Downloaded (\d+)%", line)
                 if match:
@@ -957,50 +1350,104 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                     QTimer.singleShot(0, lambda p=p_val: progress_callback(p))
 
             process.wait()
+            t_err.join(timeout=2)
+            dbg("gplaydl exit=%s temp_apk_exists=%s",
+                process.returncode, os.path.exists(temp_apk))
+            if stderr_tail:
+                dbg("gplaydl stderr tail:\n%s", "".join(stderr_tail).strip())
+            if _CIANOVA_DEBUG and stdout_tail:
+                dbg("gplaydl stdout last 5 lines:\n%s",
+                    "".join(stdout_tail[-5:]).strip())
 
             if process.returncode != 0 or not os.path.exists(temp_apk):
-                QTimer.singleShot(0, lambda: finished_callback(False, "Error en la descarga. Asegúrate de haber iniciado sesión y tener el juego comprado."))
+                combined = "".join(stderr_tail) + "\n" + "".join(stdout_tail)
+                err_msg = _map_gplaydl_error(process.returncode, combined)
+                dbg("download FAILED → mapped msg:\n%s", err_msg)
+                QTimer.singleShot(0, lambda m=err_msg: finished_callback(False, m))
                 return
 
-            # 2. Extract (Reuse process_apk logic but as a function here to wait for it)
+            # 2. Extract. Minecraft Bedrock is delivered as split APKs:
+            # <name>.apk (main) + <name>.config.<id>.apk (per-ABI / locale /
+            # density / install_pack). mcpelauncher-extract accepts multiple
+            # input APKs (`<apk> [<apk>+] <destination>`) and merges them.
             QTimer.singleShot(0, lambda: status_callback(c.UI_STATUS_EXTRACTING))
 
             target_dir = os.path.join(target_root, c.VERSIONS_DIR, vname)
             if os.path.exists(target_dir): shutil.rmtree(target_dir)
             os.makedirs(target_dir, exist_ok=True)
 
+            # Collect main + every split component sitting next to temp_apk.
+            base_no_ext = temp_apk[:-len(".apk")] if temp_apk.endswith(".apk") else temp_apk
+            apk_inputs = [temp_apk]
+            for split_path in sorted(glob.glob(base_no_ext + ".*.apk")):
+                if split_path != temp_apk:
+                    apk_inputs.append(split_path)
+            dbg("extract inputs (%d): %s",
+                len(apk_inputs),
+                ", ".join(f"{os.path.basename(p)}({os.path.getsize(p)//1024}K)"
+                          for p in apk_inputs if os.path.exists(p)))
+
             use_flatpak_logic = is_target_flatpak
             extract_cmd = []
             custom_extract = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_EXTRACT)
 
             if custom_extract and os.path.exists(custom_extract):
-                extract_cmd = [custom_extract, temp_apk, target_dir]
+                extract_cmd = [custom_extract, *apk_inputs, target_dir]
             elif use_flatpak_logic:
                 app_id = flatpak_id if flatpak_id else app.config.get(c.CONFIG_KEY_FLATPAK_ID, c.MCPELAUNCHER_FLATPAK_ID)
-                base_cmd = ["flatpak", "run", "--command=mcpelauncher-extract", app_id, temp_apk, target_dir]
+                base_cmd = ["flatpak", "run", "--command=mcpelauncher-extract", app_id, *apk_inputs, target_dir]
                 if app.running_in_flatpak:
                     fs = shutil.which("flatpak-spawn")
-                    extract_cmd = [fs, "--host"] + base_cmd if fs else ["mcpelauncher-extract", temp_apk, target_dir]
+                    extract_cmd = [fs, "--host"] + base_cmd if fs else ["mcpelauncher-extract", *apk_inputs, target_dir]
                 else: extract_cmd = base_cmd
             else:
-                extract_cmd = ["mcpelauncher-extract", temp_apk, target_dir]
+                extract_cmd = ["mcpelauncher-extract", *apk_inputs, target_dir]
 
+            dbg("extract cmd=%s", " ".join(extract_cmd))
             extract_proc = subprocess.run(extract_cmd, capture_output=True, text=True)
+            dbg("extract exit=%s stdout_tail=%r stderr_tail=%r",
+                extract_proc.returncode,
+                extract_proc.stdout[-300:] if extract_proc.stdout else "",
+                extract_proc.stderr[-300:] if extract_proc.stderr else "")
 
-            # Cleanup temp APK
-            if os.path.exists(temp_apk): os.remove(temp_apk)
+            # Cleanup all temp APKs (main + splits)
+            for p in apk_inputs:
+                try:
+                    if os.path.exists(p): os.remove(p)
+                except OSError:
+                    pass
+
+            # When user picked "Latest (auto)", vname was a placeholder.
+            # Read manifest from extracted dir and rename folder to real version.
+            final_vname = vname
+            if extract_proc.returncode == 0 and vname == "latest":
+                real = resolve_version(target_dir)
+                if real:
+                    new_target = os.path.join(target_root, c.VERSIONS_DIR, real)
+                    if not os.path.exists(new_target):
+                        try:
+                            os.rename(target_dir, new_target)
+                            target_dir = new_target
+                            final_vname = real
+                        except OSError as e:
+                            print(f"Rename latest→{real} failed: {e}")
 
             if extract_proc.returncode == 0:
                 if target_root == app.active_path:
                     # Refresh UI in main thread
                     QTimer.singleShot(0, lambda: refresh_version_list(app))
-                QTimer.singleShot(0, lambda: finished_callback(True, c.UI_EXTRACTION_SUCCESS_MSG.format(ver_name=vname)))
+                QTimer.singleShot(0, lambda fn=final_vname: finished_callback(True, c.UI_EXTRACTION_SUCCESS_MSG.format(ver_name=fn)))
             else:
                 QTimer.singleShot(0, lambda err=extract_proc.stderr: finished_callback(False, c.UI_EXTRACTION_ERROR_MSG.format(err_msg=err)))
 
         except Exception as e:
-            if os.path.exists(temp_apk): os.remove(temp_apk)
-            err_msg = str(e)
+            import traceback as _tb
+            tb_text = _tb.format_exc()
+            dbg("run_flow EXCEPTION:\n%s", tb_text)
+            if os.path.exists(temp_apk):
+                try: os.remove(temp_apk)
+                except OSError: pass
+            err_msg = f"{type(e).__name__}: {e}"
             QTimer.singleShot(0, lambda msg=err_msg: finished_callback(False, msg))
 
-    threading.Thread(target=run_flow).start()
+    threading.Thread(target=run_flow, daemon=True).start()

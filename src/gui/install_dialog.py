@@ -80,9 +80,53 @@ class GooglePlayTab(QWidget):
         layout.addWidget(self.btn_download)
 
     def do_login(self):
-        self.app.logic.launch_google_login(self.app)
-        # Check status again after a while as the login window is external
-        QTimer.singleShot(5000, self.update_session_status)
+        # Avoid double-launch
+        if getattr(self, "_login_poll_timer", None) and self._login_poll_timer.isActive():
+            return
+
+        self.btn_login.setEnabled(False)
+        self.lbl_session_status.setText(c.UI_STATUS_LOGIN_IN_PROGRESS)
+        self.lbl_session_status.setStyleSheet(
+            f"color: {c.COLOR_PRIMARY_GREEN}; font-weight: bold; font-size: 11px;"
+        )
+
+        def on_signin_finished(exit_code):
+            # Re-enable login and refresh session immediately when signin window closes
+            self.btn_login.setEnabled(True)
+            if getattr(self, "_login_poll_timer", None):
+                self._login_poll_timer.stop()
+            self.update_session_status()
+
+        proc = self.app.logic.launch_google_login(self.app, on_finished=on_signin_finished)
+        if proc is None:
+            self.btn_login.setEnabled(True)
+            self.update_session_status()
+            return
+
+        # Backup poll: check every 2s up to 60s in case `finished` fails
+        # to fire (e.g. detached child) or token is written before window closes.
+        self._login_poll_count = 0
+        self._login_poll_max = 30  # 30 * 2s = 60s
+        self._login_poll_timer = QTimer(self)
+        self._login_poll_timer.timeout.connect(self._poll_login_status)
+        self._login_poll_timer.start(2000)
+
+    def _poll_login_status(self):
+        self._login_poll_count += 1
+        if self.app.logic.check_google_session(self.app):
+            self._login_poll_timer.stop()
+            self.btn_login.setEnabled(True)
+            self.update_session_status()
+            return
+
+        self.lbl_session_status.setText(
+            c.UI_STATUS_LOGIN_WAITING.format(s=self._login_poll_count * 2)
+        )
+
+        if self._login_poll_count >= self._login_poll_max:
+            self._login_poll_timer.stop()
+            self.btn_login.setEnabled(True)
+            self.update_session_status()
 
     def update_session_status(self):
         is_active = self.app.logic.check_google_session(self.app)
@@ -118,6 +162,12 @@ class GooglePlayTab(QWidget):
         self.combo_versions.setEnabled(True)
         filter_type = self.combo_filter.currentText()
 
+        # "Latest (auto)" — vcode=0 → app_logic omits -v so Google picks
+        # whichever version is currently being offered. Most reliable path:
+        # specific old vcodes from the manifest are often rejected with
+        # status=2 even on accounts that own the app.
+        self.combo_versions.addItem(c.UI_VERSION_LATEST_LABEL, (0, "latest"))
+
         # data is list of lists [[vcode, vname, isbeta], ...]
         for ver in self.all_versions_data:
             is_beta = len(ver) > 2 and ver[2]
@@ -134,7 +184,9 @@ class GooglePlayTab(QWidget):
 
     def start_download_flow(self):
         version_data = self.combo_versions.currentData()
-        if not version_data: return
+        if not version_data:
+            print("[cianova] start_download_flow: no version selected", flush=True)
+            return
 
         version_code, version_name = version_data
         arch = self.combo_arch.currentText()
@@ -144,6 +196,10 @@ class GooglePlayTab(QWidget):
         is_target_flatpak = (mode_key == c.MODE_INSTALL_FLATPAK)
         target_root = self.dialog.get_target_root()
         flatpak_id = self.dialog.entry_flatpak_id.text().strip() if is_target_flatpak else None
+
+        print(f"[cianova] start_download_flow: vcode={version_code} vname={version_name} "
+              f"arch={arch} mode={mode_key} target_root={target_root} flatpak_id={flatpak_id}",
+              flush=True)
 
         self.btn_download.setEnabled(False)
         self.progress_bar.setVisible(True)
