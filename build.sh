@@ -5,7 +5,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 echo "Installing dependencies..."
-pip install customtkinter Pillow pyinstaller
+pip install PySide6 Pillow pyinstaller
 
 echo "Dependencies installed."
 echo "Building executable..."

@@ -35,6 +35,11 @@ class PlayTab(QWidget):
 
         self.update_profile_indicator()
 
+        # Disable profiles if not supported
+        if not getattr(self.app, "profiles_supported", True):
+            self.lbl_profile_indicator.setStyleSheet("color: #ff9800; font-size: 11px;")
+            self.lbl_profile_indicator.setToolTip(c.UI_SYMLINK_NOT_SUPPORTED_MSG)
+
         self.lbl_install = QLabel(c.UI_LABEL_INSTALLATION)
         self.lbl_install.setObjectName("FloatingLabel")
         self.lbl_install.setStyleSheet("color: gray; font-size: 11px;")

@@ -1,2 +1,2 @@
-customtkinter
+PySide6
 Pillow

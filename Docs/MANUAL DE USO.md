@@ -1,317 +1,134 @@
-# 📘 MANUAL DE USO - CianovaLauncher
+# 📘 MANUAL DE USO - CianovaLauncher v3.0
 
-**Versión:** 2.2
+**Versión:** 3.0 (Edición PySide6)
 **Desarrollador:** @PlaGaDev
 
 ---
-## 🌟 Introducción
-CianovaLauncher es una interfaz gráfica moderna diseñada para facilitar la gestión, instalación y personalización de Minecraft: Bedrock Edition en Linux. Esta herramienta trabaja en conjunto con la base del proyecto **MCPELauncher-manifest**, proporcionando una experiencia de usuario amigable y potente.
+
+## 🌟 1. Introducción
+**CianovaLauncher** es una interfaz gráfica diseñada para facilitar la gestión de Minecraft: Bedrock Edition en sistemas Linux. Este proyecto nace con la intención de ofrecer una herramienta visual amigable que trabaje en conjunto con el proyecto **MCPELauncher-manifest**, centralizando funciones de instalación, ejecución y personalización en un solo lugar.
+
+Originalmente desarrollado con *CustomTkinter*, esta versión 3.0 ha sido migrada a **PySide6 (Qt6)** para mejorar la estabilidad general, el manejo de procesos y ofrecer una interfaz más fluida y adaptable a diferentes pantallas. Este launcher no busca competir, sino sumar una opción más a la comunidad, respetando y valorando siempre el trabajo de otros desarrolladores del ecosistema.
 
 ---
 
-## 🚀 Primeros Pasos
+## 🚀 2. Primeros Pasos: Instalación
 
-### 1. Instalación y Ejecución
-#### Opción A - Ejecución de una versión compilada
-Descarga de la ultima **RELEASE** el archivo `CianovaLauncher-vX.Y.tar.gz` donde `X.Y.Z` es el numero de la versión y lo extraes en alguna carpeta que desees y también compila o descarga algún paquete de binarios del **MCPELAUNCHER-MANIFEST** del proyecto oficial; o algún algún pack Pre-compilado disponible de confianza llamado `BIN X.Y.Z (DATE) + <NOTES>.tar.gz` que vas a extraer y te dejara una carpeta llamada `bin` que la colocaras dentro de la carpeta raíz del launcher (Recomendado) o donde mejor te parezca.
+### Opción A: Instalación por Flatpak (Recomendado)
+Flatpak ofrece un entorno aislado y seguro, ideal para asegurar que todas las librerías de Qt6 funcionen correctamente.
 
-Para iniciar el launcher, simplemente haz doble clic en el script `CianovaLauncher.sh` o ejecútalo desde la terminal:
+#### Método 1: Repositorio Oficial (Recomendado para actualizaciones)
+Al usar el repositorio, recibirás las actualizaciones automáticamente desde tu gestor de software.
+1. **Añade el repositorio:**
+   ```bash
+   flatpak remote-add --user --if-not-exists CianovaLauncher https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo
+   ```
+2. **Instala el Launcher:**
+   ```bash
+   flatpak install --user CianovaLauncher org.cianova.Launcher
+   ```
 
-```bash
-./CianovaLauncher.sh
-```
-
-**(NOTA: Dentro de la version compilada fuera de Flatpak estan los libs necesarios precompilados de menera local en la raíz)**
-
-Luego ve a Ajustes y completa la configuración de binarios y guarda la config.
-#### Opción B - Instalación para Flatpak
-
-**NOTA:** Antes de cualquier instalación por Flatpak recuerda instalarlo en el caso de que no lo tengas.
-Link para configurar Flatpak la primera vez según tu distro: [FLATPAK SETUP](https://flathub.org/en/setup)
-
-**NOTA 2** Si tu distro es muy estricto con permisos y no tiene `flatpak-spawn` va a hacer un subproceso local o reemplazar el proceso del launcher (Solo usara los binarios disponibles en el Flatpak. Si no es muy estricto tipo Ubuntu, Mint, Debian, Arch, ZorinOS funcionara completamente.)
-
-##### Metodo 1 (Recomendado) - Actualizaciones
-
-Descarga el archivo `CianovaLauncher.flatpakrepo` en **RELEASE** o **EXTRA** para instalar y recibir actualizaciones desde tu gestor de software. (Esto descarga automáticamente las ultimas actualizaciones y runtimes necesarios).
-
-O añade manualmente con:
-- Añade el repositorio
-```bash
-flatpak remote-add --user --if-not-exists CianovaLauncher https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo
-```
-
-- Instalar el Launcher :
-```bash
-flatpak install --user CianovaLauncher org.cianova.Launcher
-```
-
-Esto hará que se instale el launcher con sus runtimes necesarios, pero puedes instalarlos manualmente con:
-
-```bash
-flatpak install org.kde.Platform//6.9 io.qt.qtwebengine.BaseApp//6.9
-```
-##### Metodo 2 - Bundle
-
- Descarga e instala `CianovaLauncher.flatpak` en **RELEASE** publicado en el GitHub oficial del launcher y ábrelo con algún **gestor de software** que tengas o usando el comando:
-
-```bash
-flatpak install --user CianovaLauncher.flatpak
-```
-*(NOTA: El nombre del archivo también puede incluir el numero de la versión).*
-
-Eh instala los runtimes necesarios con:
-```bash
-flatpak install org.kde.Platform//6.9 io.qt.qtwebengine.BaseApp//6.9
-```
-
-#### Metodo 3 - Compilado local
-
-Descarga un pack de binarios precompilados y colocandolos en la carpeta `bin` y compila mediante PyInstaller usando `./build.sh` y luego ejecuta `./build-flatpak.sh` y se van a descargar los runtimes necesarios y automatizara la instalación en tu sistema como `--user`.
-
-*(NOTA: Adicional se usara `org.kde.Sdk//6.9` para el empaquetado).*
-
-### Opcion C - Ejecutar de source code
-
-Clona el repositorio e instala con `pip` las librerías `Pillow` y `customtkinter` en tu sistema o un entorno virtual y luego ejecuta con `run.sh` para ejecutar desde el archivo `.py`
-
-## PostInstalación ⚙️
-
-**NO FLATPAK VER:** 
-	- Verifica tus requisitos en la herramienta `Verificador de requisitos` para ver el rango de versiones compatibles aproximados y `Verificador de dependencias` para tener las ultimas librerías necesarias dependiendo de tu Distro.
-	- Ve a ajustes y guarda la configuración de los binarios tal y como hayas descargado `mcpelauncher-client, extractor, webview, error`
-
-**FLATPAK VER:**
-	- Verifica que tengas los runtimes instalados explicados arriba
-	- Ajusta y guarda los binarios que vayas a usar (Por defecto en Sistema "Propio").
-
-**AMBOS:**
-	- Instala una APK conseguida por sus propios medios en la herramienta `Instalación de APK`
-	- Si tienes algún error durante la carga al 75% aproximadamente usa la herramienta `Desactivar Shaders` para que cambie la calidad de gráficos.
-
----
-## Documentación del Launcher
-### 2. Detección Automática
-Al abrirse, la herramienta buscará automáticamente tu instalación de Minecraft en dos ubicaciones estándar:
-En versión fuera de Flatpak:
-* **Local:** `~/.local/share/mcpelauncher/...
-* **Flatpak (Custom):** `~/.var/app/<ID FLATPAK APP>/...`
-
-En versión dentro de Flatpak:
-* **Local (Compartido):** `~/.local/share/mcpelauncher/...
-* **Local (Propio):** `~/.var/app/org.cianova.Launcher/data/mcpelauncher/...
-* **Flatpak (Custom):** `~/.var/app/com.mcpelauncher.MCPELauncher/...
-
-Si se encuentran todas o una parte, el modo se establecerá en **"Automático"** (preferencia Local), pero puedes cambiarlo manualmente en el selector de la esquina superior derecha.
+#### Método 2: Archivo Bundle (.flatpak)
+Si has descargado el archivo `.flatpak` directamente desde **Releases**:
+1. **Instala el archivo:**
+   ```bash
+   flatpak install --user CianovaLauncher.flatpak
+   ```
+2. **Importante (Runtimes):** Si instalas por este método, asegúrate de tener los runtimes necesarios ejecutando:
+   ```bash
+   flatpak install org.kde.Platform//6.9 io.qt.qtwebengine.BaseApp//6.9
+   ```
 
 ---
 
-## 🎮 Pestaña: JUGAR
-
-Esta es la pantalla principal donde gestionas tus sesiones de juego.
-
-* **Gestión de Perfiles:**
-    * **Selector de Perfiles:** Ubicado en la parte superior, permite cambiar entre diferentes perfiles de usuario. Cada perfil aísla sus mundos, recursos y configuraciones mediante enlaces simbólicos (symlinks).
-    * **Botón de Ajustes (⚙️):** Abre el **Gestor de Perfiles** donde puedes añadir nuevos perfiles, renombrarlos o eliminarlos (El perfil `default` no puede ser eliminado por seguridad).
-
-* **Selector de Versiones:**
-    * Verás una lista de tarjetas con el icono del juego y el nombre de la versión (ej. `1.20.50`).
-    * Se puede colocar una versión por defecto.
-    * Haz clic en una tarjeta para seleccionarla (se iluminará en verde).
-
-* **Opciones de Lanzamiento:**
-    * **Cerrar al jugar:** Si marcas esta casilla, CianovaLauncher se cerrará automáticamente cuando inicies el juego para ahorrar recursos.
-	- **Mostrar log:** Al marcar esta casilla va a intentar ejecutar el juego dentro de una terminal compatible.
-		> NOTA: Dentro de flatpak debido a las limitaciones del sandbox no esta garantizado su correcto funcionamiento. Puedes intentar ejecutarlo con: `flatpak run org.cianova.Launcher` dentro de una terminal para ver su log.
-
-* **Botón JUGAR AHORA:**
-    * Lanza la versión seleccionada.
-    * En modo Flatpak, utiliza el comando optimizado para asegurar que las variables de entorno se carguen correctamente.
+### Opción B: Versión Compilada (Ejecución Portátil)
+Ideal para quienes no desean instalar paquetes en el sistema y prefieren mantener todo en una carpeta.
+1. Descarga el archivo `CianovaLauncher-vX.Y.tar.gz` de la última **RELEASE** y extráelo.
+2. **Preparación de Binarios:** Consigue los binarios del proyecto oficial **MCPELauncher-manifest** (puedes compilarlos o usar packs de confianza).
+3. **Ubicación:** Crea una carpeta llamada `bin/` dentro de la raíz del launcher y coloca allí los ejecutables (`mcpelauncher-client`, `extractor`, etc.).
+4. **Ejecución:** Haz doble clic en `CianovaLauncher.sh` o ejecútalo desde la terminal:
+   ```bash
+   ./CianovaLauncher.sh
+   ```
+   *Nota: En esta versión, las librerías necesarias suelen estar pre-incluidas localmente en la raíz.*
 
 ---
 
-## 🛠️ Pestaña: HERRAMIENTAS
-
-Aquí encontrarás utilidades avanzadas divididas en cuatro secciones:
-
-### 1. Gestión
-* **Instalar APK:**
-    * Te permite instalar una nueva versión del juego desde un archivo `.apk`.
-    * **Verificación Inteligente:** Antes de instalar, la herramienta analiza el APK para ver si es compatible con tu PC (x86/x64). Si el APK es solo para móviles ARM y tu PC no lo soporta, te avisará en <mark style="background: #FF5582A6;">ROJO</mark> y bloqueará la instalación para evitar errores.
-    * Puedes seleccionar el destino de la extracción, ya sea en local o por Flatpak ID
-    * Usara el binario `mcpelauncher-extract` seleccionado en **Ajustes**.
-* **Mover/Borrar Versión:**
-    * Te permite gestionar la versión seleccionada actualmente.
-    * **Mover a Respaldo:** Mueve la carpeta de la versión a `~/MCPELauncher-OLD` ubicado en (**./HOME**) por seguridad.
-    * **Eliminar:** Borra permanentemente la versión del disco.
-*  **Migrar Datos:** 
-	* Una herramienta que ayuda a usar tus archivos de datos de un launcher que hayas tenido local o Flatpak mediante su `ID` (Por ejemplo los usuarios del Launcher CCMC) ofreciendo diferentes opciones:
-		* **Copiar (Duplicar):** Copia tus datos del origen a la carpeta de destino. Ideal si quieres independizar tus datos a coste de gastar espacio adicional.
-		* **Mover (Cortar y Pegar):** Mueve tus datos a la carpeta de destino. Ideal si lo que deseas es mudarte completamente de launcher sin gastar espacio adicional.
-		* **Enlazar (Symlink) (*Recomendado*)**: Enlaza tus datos a la carpeta destino mediante un enlace simbólico para mantener sincronizados ambos datos sin gastar espacio adicional.
-	* Puedes seleccionar varios tipos de datos:
-		* **Versiones**
-		* **Mundos**
-		* **Paquetes de recursos**
-		* **Toda la data**
-
-### 2. Personalización
-* **Creador de Skin Packs:**
-    * Abre una sub-herramienta para crear paquetes de skins (`.mcpack`) a partir de tus imágenes `.png`.
-* **Desactivar Shaders:**
-    * Si tienes la pantalla negra o errores gráficos por activar shaders incompatibles (Vibrant Visuals), este botón edita el archivo `options.txt` para desactivarlos y devolver el juego a la normalidad.
-
-
-### 3. Archivos
-* **Gestor de recursos:**
-    * Una herramienta completa para administrar tus complementos de Minecraft. Se divide en tres secciones:
-        * **Mundos:** Gestiona tus partidas. Incluye la función de **Exportar** para crear archivos `.mcworld`.
-        * **Resource Packs (RP):** Gestiona tus texturas y recursos visuales.
-        * **Behavior Packs (BP):** Gestiona los packs de comportamiento.
-    * **Funciones:**
-        * **Importar:** Permite añadir archivos `.mcpack`, `.mcaddon` y `.mcworld` usando el selector nativo del sistema.
-        * **Activar/Desactivar:** Los packs se pueden habilitar o deshabilitar moviéndolos a una carpeta aislada sin borrarlos.
-        * **Eliminar:** Borra permanentemente el recurso del disco.
-        * **Traducción Inteligente:** Si un pack usa claves internas (ej: `pack.name`), el gestor las resuelve automáticamente leyendo los archivos `.lang` para mostrar el nombre real.
-        * **Optimización:** Utiliza un sistema de carga por lotes y caché para que la navegación y búsqueda sean instantáneas incluso con cientos de archivos.
-    * **Botón Recargar (↻):** Permite refrescar la lista manualmente si has hecho cambios externos en las carpetas.
-
--   **Abrir carpeta de datos:** 
-	-   Abre la carpeta raíz (Data) del modo que tengas activo actualmente.
-
-### 4. Sistema
-- **Verificardor de requisitos:**
-	-  Fuera de Flatpak: Analizara las instrucciones de tu CPU y te dará un rango estimado de versiones compatibles según el proyecto oficial de **MCPELAUNCHER-MANIFEST**.
-	- Dentro de Flatpak: Va a intentar hacer el análisis pero no garantizado debido a limitaciones del sandbox.
-
-- **Verificar Dependencias:**
-    - **Fuera de Flatpak:**
-		- **Modo local:** Mostrara los requisitos de dependencias y librerias necesarias. Si falta alguna te dará la opción de instalarlos usando el PKG_Manager de tu distribución.
-		- **Modo Flatpak:** Buscara si tienes instalados los runtimes necesarios.
-	- **Dentro de Flatpak:**
-		- Dará una nota de los runtimes que se suponen que debes tener.
-
-### 5. Menú de inicio
-- **Gestionar Acceso directo:**
-	- Opción para colocar un enlace del launcher directamente en tu menú de inicio en la categoría de juegos (Se puede activar y desactivar).
-	- Permite crear y eliminar accesos directos a versiones especificas en tu menú de inicio.
-### 6. Exportación
-* **Abrir Capturas:**
-    * Abre directamente la carpeta de capturas de pantalla (`Screenshots`) del juego en tu explorador de archivos.
+### Opción C: Ejecución desde el Código Fuente
+Para usuarios avanzados o desarrolladores que deseen colaborar con el proyecto.
+1. **Clonar y Entorno:** Clona el repositorio e instala las dependencias de Python:
+   ```bash
+   pip install PySide6 Pillow
+   ```
+2. **Ejecutar:** Inicia el launcher usando el script de desarrollo:
+   ```bash
+   ./run.sh
+   ```
+   *(Este script activa el entorno virtual si existe y ejecuta src/main.py)*
 
 ---
-## ⚙️ Pestaña: AJUSTES
-Aquí se encuentran parámetros y ajustes para el launcher.
 
-- **Ruta de Binarios:**
-	- Carga los binarios compilados del manifest para la ejecución, extracción, etc del juego. Se puede personalizar la ruta de los binarios:
-		- **Sistema:** Este carga los binarios instalados dentro del PATH del sistema normalmente en `/usr/local/bin/` (Dentro de Flatpak sera Sistema "Propio" usando los binarios por defecto).
-		- **Local:** Busca dentro de la carpeta `./bin` al lado del script **(SOLO FUERA DE FLATPAK)**
-		- **Flatpak (Personalizado):** Busca dentro de una APP Flatpak los binarios de ejecución, por defecto esta (`org.cianova.Launcher`).
-		- **Personalizado:** Selecciona manualmente los binarios con su propia ruta e intentara agregarlos a PATH.
-	- Los binarios necesarios son:
-		- `mcpelauncher-client` Que es la encargada de ejecutar el juego
-		- `mcpelauncher-extractor` Es la encargada de extraer y parchear los archivos APK
-		- `mcpelauncher-webview` para la vista en navegador (Inicio de sesión en cuenta Microsoft por ejemplo) y `mcpelauncher-error`
-- **Apariencia:**
-	- Modifica ligeramente el color del launcher en sus botones y demás por ahora estan: **Blue, Green y Dark Blue**. (Requiere reiniciar el launcher para aplicar los cambios.)
+## ⚙️ Post-Instalación
+Independientemente del método elegido, se recomienda:
+- Usar el **Verificador de requisitos** para conocer tu rango de compatibilidad.
+- Revisar el **Verificador de dependencias** (especialmente en versiones No-Flatpak) para asegurar que tu distribución (Ubuntu, Mint, Debian, Arch, etc.) tenga las librerías necesarias.
+- Configurar y guardar las rutas de tus binarios en la pestaña **Ajustes**.
 
 ---
-## ℹ️ Pestaña - Acerca
-Muestra los términos y condiciones del launcher para aclarar la naturaleza del launcher y evitar 
-inconvenientes éticos y legales.
+## 🎮 3. Pestaña Principal: JUGAR
 
-**Para ver todos los términos y condiciones vaya a [LICENCE AND TERMS](LICENCE%&%TERMINOS%y%CONDICIONES.md)**
+### 👤 Gestión de Perfiles
+Para ayudar a mantener tus datos organizados, CianovaLauncher permite crear perfiles independientes. Esto es útil para separar, por ejemplo, un mundo de supervivencia de uno con muchos packs de texturas.
+- **¿Cómo funciona?** Cada perfil tiene su propia carpeta que se conecta automáticamente cuando lo seleccionas. Esto mantiene aislados tus mundos, servidores y el archivo de configuración `options.txt`.
+- **Nota:** Al usar perfiles por primera vez, el launcher moverá tus datos actuales al perfil `default` de forma segura.
 
----
-## ⚠️ Solución de Problemas
-
-* **"No se encontró versión":** Asegúrate de haber extraído al menos una versión del juego y haberlo ejecutado la primera vez para crear todas las carpetas base.
-* **El juego no inicia:** Prueba a usar el botón "Desactivar Shaders" si modificaste los gráficos recientemente.
-* **Error de Arquitectura en APK:** Si el instalador dice "Incompatible", necesitas buscar un APK que sea `x86` o `x86_64`. Los APKs estándar de la Play Store suelen ser solo ARM64.
-
----
-## ESTRUCTURA
-
-.
-├── scripts/
-│   ├── verify_migration.py
-│   └── verify_restore.py
-├── src/
-│   ├── core/
-│   │   ├── __init__.py
-│   │   ├── addon_manager.py
-│   │   ├── app_logic.py
-│   │   ├── config_manager.py
-│   │   └── language_manager.py
-│   ├── gui/
-│   │   ├── __init__.py
-│   │   ├── addon_manager_dialog.py
-|   │   ├── custom_dialogs.py
-│   │   ├── profile_manager_dialog.py
-|   │   ├── test_window.py
-│   │   ├── game_config_dialog.py
-│   │   ├── install_dialog.py
-│   │   ├── main_window.py
-│   │   ├── migration_dialog.py
-│   │   ├── progress_dialog.py
-│   │   ├── skin_pack_tool.py
-│   │   └── tabs/
-│   │       ├── __init__.py
-│   │       ├── about_tab.py
-│   │       ├── play_tab.py
-│   │       ├── settings_tab.py
-│   │       └── tools_tab.py
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   ├── dialogs.py
-│   │   └── resource_path.py
-│   ├── __init__.py
-│   ├── constants.py
-│   └── main.py
-├── .gitignore
-├── cianova-launcher.sh
-├── icon.png
-├── README.md
-└── run.sh
-
-Descripción de la Estructura de Carpetas
-
-scripts/: Contiene scripts de utilidad para el desarrollo y la verificación.
-
-verify_*.py: Scripts diseñados para probar funcionalidades específicas (como la restauración de ajustes o la migración) de forma aislada, sin necesidad de interactuar con la interfaz gráfica.
-src/: Es el corazón del proyecto, donde reside todo el código fuente de la aplicación.
-
-core/: Contiene la lógica central y el manejo de datos, separado de la interfaz de usuario.
-
-app_logic.py: Maneja las operaciones principales de la aplicación (detectar versiones, lanzar el juego, verificar dependencias, etc.).
-config_manager.py: Gestiona la carga, guardado y restauración de la configuración del usuario desde el archivo cianovalauncher-config.json.
-gui/: Contiene todos los componentes relacionados con la interfaz gráfica de usuario (UI).
-
-main_window.py: Define la ventana principal de la aplicación (CianovaLauncherApp), inicializa el TabView y crea las instancias de cada pestaña.
-tabs/: Cada archivo aquí define una de las pestañas principales de la UI, encapsulando su diseño y elementos.
-play_tab.py: Define la pestaña "Jugar".
-tools_tab.py: Define la pestaña "Herramientas".
-settings_tab.py: Define la pestaña "Ajustes".
-about_tab.py: Define la pestaña "Acerca de".
-install_dialog.py, migration_dialog.py, etc.: Definen las ventanas de diálogo secundarias que se abren desde la aplicación principal.
-utils/: Almacena funciones de ayuda y utilidades que pueden ser usadas en cualquier parte del código.
-
-dialogs.py: Funciones para mostrar diálogos nativos del sistema (ej. selector de archivos).
-resource_path.py: Utilidad para encontrar la ruta correcta de los recursos, especialmente cuando la aplicación está empaquetada.
-constants.py: Un archivo crucial que centraliza todas las constantes del proyecto: textos de la UI, rutas de archivos, claves de configuración, colores, etc.
-
-main.py: Es el punto de entrada de la aplicación. Su única responsabilidad es iniciar y ejecutar la ventana principal.
-
-icon.png: Es el icono principal utilizado para la ventana de la aplicación y los accesos directos.
-
-run.sh: Script principal para ejecutar la aplicación en un entorno de desarrollo. Activa el entorno virtual e inicia main.py.
-
-cianova-launcher.sh: Script de lanzamiento pensado para la instalación final en el sistema del usuario.
-
-.gitignore: Especifica qué archivos y carpetas (como venv/ o __pycache__/) deben ser ignorados por el control de versiones Git.
-
-README.md: El archivo principal de documentación con la descripción del proyecto.
+### 🗂️ Selector de Versiones
+- **Vistas:** Puedes elegir entre ver tus versiones como una lista sencilla o como una cuadrícula de tarjetas en la pestaña de Ajustes.
+- **Orden:** Por comodidad, las versiones instaladas más recientemente aparecerán al principio de la lista.
+- **Detección:** El indicador flotante te ayudará a saber en todo momento si el launcher está leyendo los datos de tu carpeta local o de la instalación de Flatpak.
 
 ---
-*Disfruta de tu experiencia en Minecraft Bedrock en Linux.*
+
+## 🛠️ 4. Pestaña: HERRAMIENTAS
+
+Aquí encontrarás pequeñas utilidades para facilitar el mantenimiento del juego:
+
+### 1. Instalación y Gestión
+*   **Instalar Versión (Google Play):** Permite descargar APKs oficiales de forma directa. Para usarlo, primero utiliza el botón de login; una vez que tu sesión esté activa, podrás elegir la versión que desees bajar.
+*   **Instalar APK Local:** Útil si ya tienes el archivo `.apk`. El launcher verificará si es compatible con la arquitectura de tu PC (x86_64) para evitar errores de instalación.
+*   **Gestor Avanzado de Versiones (Icono 🗑️):** Desde aquí puedes renombrar carpetas, eliminar versiones que ya no uses o incluso subir un icono personalizado para que cada versión se vea única en el launcher.
+
+### 2. Personalización y Archivos
+*   **Gestor de recursos:** Una herramienta para importar archivos `.mcpack` o `.mcworld` y activar/desactivar complementos (Addons) sin necesidad de borrarlos.
+*   **Configurador de Juego:** Un pequeño editor para cambiar ajustes básicos (como el campo de visión o la sincronización vertical) de forma visual antes de abrir el juego.
+*   **Disable Shaders:** Si el juego no inicia por algún problema con los gráficos, este botón restablece los ajustes de video a un modo compatible.
+
+---
+
+## ⚙️ 5. Pestaña: AJUSTES
+
+### ⚡ Compatibilidad y Rendimiento
+*   **Nvidia Prime / Modo Zink:** Opciones diseñadas para mejorar la experiencia en equipos con tarjetas Nvidia, ayudando a evitar errores gráficos comunes en Linux (como el parpadeo o cierres inesperados).
+*   **GameMode:** Si tienes instalado `gamemode` en tu sistema, el launcher puede activarlo automáticamente para dar prioridad al proceso del juego.
+
+### 🎨 Personalización Visual
+Gracias a la base en Qt6, puedes ajustar el launcher a tu gusto:
+- **Temas:** Dispones de 12 combinaciones de colores.
+- **Fondo:** Puedes poner una imagen de fondo y ajustar qué tan transparente quieres que se vea la interfaz sobre ella.
+- **Marcas de agua:** Opción para añadir un pequeño texto o imagen de tu elección en las esquinas.
+
+---
+
+## ℹ️ 6. Ayuda y Sistema
+*   **Verificador de Requisitos:** Te indica qué versiones de Minecraft podrían funcionar mejor según las capacidades de tu procesador y tarjeta gráfica.
+*   **Verificador de Dependencias:** Te avisa si faltan librerías en tu sistema para que todo funcione correctamente.
+
+---
+
+## ⚠️ 7. Solución de Problemas
+-   **¿La lista de versiones no carga?** Verifica tu conexión a internet o intenta cambiar el filtro (Estable/Beta).
+-   **¿El juego parpadea o se cierra?** Prueba activando el **Modo Zink** en la pestaña de Ajustes.
+-   **¿No inicia la sesión de Google?** Asegúrate de tener configurado el binario de login correctamente en los Ajustes.
+
+---
+*Hecho con ❤️ por y para la comunidad de Linux.*

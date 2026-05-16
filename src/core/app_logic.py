@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import platform
 import shutil
 import subprocess
@@ -18,6 +19,7 @@ from src.gui.progress_dialog import ProgressDialog
 from src import constants as c
 from src.utils.dialogs import ask_directory_native
 from src.utils.image_manager import ImageManager
+from src.utils.logger import logger
 
 def get_installed_versions(app):
     if not app.active_path:
@@ -26,13 +28,18 @@ def get_installed_versions(app):
         return []
     versions_dir = os.path.join(app.active_path, c.VERSIONS_DIR)
     if not os.path.exists(versions_dir):
+        logger.debug(f"Versions folder not found in: {app.active_path}")
         return []
     try:
-        return sorted(
+        vers = sorted(
             [d for d in os.listdir(versions_dir) if os.path.isdir(os.path.join(versions_dir, d))],
             reverse=True,
         )
-    except: return []
+        logger.debug(f"Installed versions found: {len(vers)}")
+        return vers
+    except Exception as e: 
+        logger.error(f"Error listing versions: {e}")
+        return []
 
 def launch_from_args(app, version):
     versions = get_installed_versions(app)
@@ -144,6 +151,7 @@ def open_data_folder(app):
 
 def ensure_profile_system(app):
     if not app.active_path: return
+    app.profiles_supported = True # Default
     pdir = os.path.join(app.active_path, c.PROFILES_DIR)
     gdir = os.path.join(app.active_path, "games")
     def_path = os.path.join(pdir, c.UI_PROFILE_DEFAULT)
@@ -158,12 +166,17 @@ def ensure_profile_system(app):
             if c.CONFIG_KEY_PROFILES not in app.config: app.config[c.CONFIG_KEY_PROFILES] = [c.UI_PROFILE_DEFAULT]
             if c.CONFIG_KEY_CURRENT_PROFILE not in app.config: app.config[c.CONFIG_KEY_CURRENT_PROFILE] = c.UI_PROFILE_DEFAULT
             app.config_manager.save_config()
-            apply_profile_symlink(app, app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT))
-        except Exception as e: print(f"Profile migration error: {e}")
-    else: apply_profile_symlink(app, app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT))
+            if not apply_profile_symlink(app, app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)):
+                app.profiles_supported = False
+        except Exception as e: 
+            logger.error(f"Profile migration error: {e}")
+            app.profiles_supported = False
+    else: 
+        if not apply_profile_symlink(app, app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)):
+            app.profiles_supported = False
 
 def apply_profile_symlink(app, profile):
-    if not app.active_path: return
+    if not app.active_path: return False
     link = os.path.join(app.active_path, "games")
     target_rel = os.path.join(c.PROFILES_DIR, profile, "games")
     target_abs = os.path.join(app.active_path, target_rel)
@@ -181,8 +194,9 @@ def apply_profile_symlink(app, profile):
 
         # Create symlink (using relative path for portability within the data folder)
         os.symlink(target_rel, link)
+        return True
     except Exception as e:
-        print(f"Symlink error: {e}")
+        logger.error(f"Symlink error: {e}")
         # Fallback: Move folder if symlinks fail (usually on FAT32/exFAT or restricted environments)
         try:
             if os.path.exists(link) and not os.path.islink(link):
@@ -195,7 +209,9 @@ def apply_profile_symlink(app, profile):
                 os.makedirs(link, exist_ok=True)
 
             messagebox.showwarning(app, c.UI_SYMLINK_NOT_SUPPORTED_TITLE, c.UI_SYMLINK_NOT_SUPPORTED_MSG)
+            app.profiles_supported = False
         except: pass
+        return False
 
 def get_profiles(app): return app.config.get(c.CONFIG_KEY_PROFILES, [c.UI_PROFILE_DEFAULT])
 
@@ -598,6 +614,10 @@ def launch_game(app):
         app.config[c.CONFIG_KEY_LAST_VERSION] = version
         app.config_manager.save_config()
 
+        logger.info(f"Launching version: {version}")
+        logger.info(f"Command: {' '.join(cmd)}")
+        logger.debug(f"Environment variables added: {extra_env}")
+
         debug_log = app.config.get(c.CONFIG_KEY_DEBUG_LOG, False)
         if debug_log and not app.running_in_flatpak:
             terms = ["gnome-terminal", "konsole", "xfce4-terminal", "xterm"]
@@ -611,8 +631,12 @@ def launch_game(app):
         else:
             subprocess.Popen(cmd, env=env, cwd=app.active_path)
 
-        if app.config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH): app.close()
-    except Exception as e: messagebox.showerror(app, c.UI_ERROR_TITLE, f"Launch error: {e}")
+        if app.config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH): 
+            logger.info("Closing launcher as requested on launch.")
+            app.close()
+    except Exception as e: 
+        logger.error(f"Launch error: {e}")
+        messagebox.showerror(app, c.UI_ERROR_TITLE, f"Launch error: {e}")
 
 class LogicWorker(QThread):
     finished = Signal(object)
@@ -789,7 +813,20 @@ def create_version_shortcut(app, version):
         shortcut_path = os.path.join(apps_dir, f"cianova-{version}.desktop")
         vpath = os.path.join(app.active_path, c.VERSIONS_DIR, version)
 
-        # Encontrar el icono si existe
+        # Determinar el comando de ejecución (Usar el propio launcher con --version es lo más seguro)
+        if app.running_in_flatpak:
+            app_id = app.our_flatpak_id if app.our_flatpak_id else c.DEFAULT_FLATPAK_ID
+            exec_cmd = f"flatpak run {app_id} --version {shlex.quote(version)}"
+        else:
+            # Intentar obtener la ruta absoluta al script/ejecutable actual
+            exe_path = os.path.abspath(sys.argv[0])
+            if exe_path.endswith(".py"):
+                # Si es un script .py, necesitamos llamar a python
+                exec_cmd = f"python3 {shlex.quote(exe_path)} --version {shlex.quote(version)}"
+            else:
+                exec_cmd = f"{shlex.quote(exe_path)} --version {shlex.quote(version)}"
+
+        # Find the icon
         from src.utils.resource_path import resource_path
         icon_path = resource_path("icon.png") # Default icon
         for ext in [".png", ".jpg", ".jpeg", ".webp"]:
@@ -797,23 +834,6 @@ def create_version_shortcut(app, version):
             if os.path.exists(v_icon):
                 icon_path = v_icon
                 break
-
-        # Determinar comando de ejecución
-        mode = app.config.get(c.CONFIG_KEY_MODE, c.UI_DEFAULT_MODE)
-        fid = app.config.get(c.CONFIG_KEY_FLATPAK_ID, c.MCPELAUNCHER_FLATPAK_ID)
-
-        # Comando base (el mismo que en launch_game pero como string para .desktop)
-        if mode == c.MODE_BIN_CUSTOM:
-            exe = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_CLIENT, "mcpelauncher-client")
-            exec_cmd = f"{shlex.quote(exe)} -dg {shlex.quote(vpath)}"
-        elif mode == c.MODE_BIN_FLATPAK:
-            exec_cmd = f"flatpak run {shlex.quote(fid)} -dg {shlex.quote(vpath)}"
-        else: # System
-            exec_cmd = f"mcpelauncher-client -dg {shlex.quote(vpath)}"
-
-        # Si estamos en flatpak y no es comando flatpak, necesitamos flatpak-spawn
-        if is_running_in_flatpak() and mode != c.MODE_BIN_FLATPAK:
-            exec_cmd = f"flatpak-spawn --host {exec_cmd}"
 
         content = f"""[Desktop Entry]
 Type=Application
@@ -825,12 +845,31 @@ Terminal=false
 Categories=Game;
 Keywords=minecraft;mcpe;bedrock;
 """
+        # 1. Create in Start Menu (Applications)
         with open(shortcut_path, "w") as f:
             f.write(content)
-
         os.chmod(shortcut_path, 0o755)
+        logger.info(f"Start menu shortcut created for version {version} at {shortcut_path}")
+
+        # 2. Optional: Desktop shortcut
+        if messagebox.askyesno(app, c.UI_CONFIRM_TITLE, c.UI_PROMPT_DESKTOP_SHORTCUT):
+            desktop_dir = os.path.join(app.home, "Desktop")
+            try:
+                xdg_desktop = subprocess.check_output(["xdg-user-dir", "DESKTOP"], text=True).strip()
+                if os.path.exists(xdg_desktop):
+                    desktop_dir = xdg_desktop
+            except: pass
+
+            if os.path.exists(desktop_dir):
+                desktop_shortcut = os.path.join(desktop_dir, f"cianova-{version}.desktop")
+                with open(desktop_shortcut, "w") as f:
+                    f.write(content)
+                os.chmod(desktop_shortcut, 0o755)
+                logger.info(f"Desktop shortcut created at {desktop_shortcut}")
+
         messagebox.showinfo(app, c.UI_SUCCESS_TITLE, c.UI_SHORTCUT_CREATED_MSG.format(name=version))
     except Exception as e:
+        logger.error(f"Error creating shortcut: {e}")
         messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_SHORTCUT_CREATION_ERROR_MSG.format(e=e))
 
 def get_compatibility_range(app):
@@ -904,7 +943,7 @@ def check_google_session(app):
     # Intento de verificación vía binario si está disponible
     try:
         bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYVER, "gplayver")
-        cmd = [bin_path, "-nv", "-a", "com.mojang.minecraftpe"]
+        cmd = [bin_path, "-nv", "-a", "com.mojang.minecraftpe", "--accept-tos"]
         if app.running_in_flatpak:
             fs = shutil.which("flatpak-spawn")
             if fs: cmd = [fs, "--host"] + cmd
@@ -916,18 +955,22 @@ def check_google_session(app):
         return False
 
 def launch_google_login(app):
-    """Lanza el binario playdl-signin-ui-qt."""
+    """Lanza el binario playdl-signin-ui-qt en el directorio activo."""
     try:
         bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_SIGNIN_UI, "playdl-signin-ui-qt")
+        # Ensure we run in the active data path so playdl.conf is found by other tools
+        cwd = app.active_path if app.active_path else os.getcwd()
+        
         if app.running_in_flatpak:
             fs = shutil.which("flatpak-spawn")
             if fs:
-                subprocess.Popen([fs, "--host", bin_path])
+                subprocess.Popen([fs, "--host", bin_path], cwd=cwd)
             else:
-                subprocess.Popen([bin_path])
+                subprocess.Popen([bin_path], cwd=cwd)
         else:
-            subprocess.Popen([bin_path])
+            subprocess.Popen([bin_path], cwd=cwd)
     except Exception as e:
+        logger.error(f"Error launching login: {e}")
         messagebox.showerror(app, c.UI_ERROR_TITLE, f"Error al lanzar login: {e}")
 
 def download_and_install_google(app, vcode, vname, arch, target_root, is_target_flatpak, flatpak_id,
@@ -937,26 +980,34 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
     """
     def run_flow():
         temp_apk = os.path.join(tempfile.gettempdir(), f"minecraft_{vcode}.apk")
+        # Save device.conf permanently in the data root for licensing and consistency
+        device_conf = os.path.join(target_root, "device.conf")
         try:
+            # 0. Prepare device.conf (Required for correct arch and licensing)
+            with open(device_conf, "w") as f:
+                f.write(f"config.native_platforms = [\n    {arch}\n]\n")
+
             # 1. Download
             QTimer.singleShot(0, lambda: status_callback(c.UI_STATUS_DOWNLOADING))
 
             bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYDL, "gplaydl")
-            cmd = [bin_path, "-a", "com.mojang.minecraftpe", "-v", str(vcode), "-o", temp_apk]
+            cmd = [bin_path, "-a", "com.mojang.minecraftpe", "-v", str(vcode), "-o", temp_apk, "--device", device_conf, "--accept-tos"]
             if app.running_in_flatpak:
                 fs = shutil.which("flatpak-spawn")
                 if fs: cmd = [fs, "--host"] + cmd
 
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, cwd=target_root)
 
             for line in process.stdout:
-                # Parse progress: "Downloaded 45% [123/270 MiB]"
+                # Parse progress
                 match = re.search(r"Downloaded (\d+)%", line)
                 if match:
                     p_val = int(match.group(1))
                     QTimer.singleShot(0, lambda p=p_val: progress_callback(p))
 
             process.wait()
+
+            # We NO LONGER remove device_conf here to keep it for the client
 
             if process.returncode != 0 or not os.path.exists(temp_apk):
                 QTimer.singleShot(0, lambda: finished_callback(False, "Error en la descarga. Asegúrate de haber iniciado sesión y tener el juego comprado."))

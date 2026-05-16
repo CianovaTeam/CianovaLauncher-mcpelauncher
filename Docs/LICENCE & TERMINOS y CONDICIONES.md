@@ -1,6 +1,6 @@
 # ⚖️ LICENCIA & TÉRMINOS Y CONDICIONES
 
-**Última Actualización:** 27 de Febrero de 2026
+**Última Actualización:** 12 de Mayo de 2026
 
 ---
 
@@ -14,6 +14,10 @@
 Este "launcher" solo funciona de forma independiente en su apartado visual pero cualquier opción de ejecución, extracción u otro proceso requiere la instalación previa y binarios compilados de:
 
 * **MCPELauncher-Manifest:** Proyecto base en el que se fundamenta (Créditos a **ChristopherHX** y **MCMrARM**).
+
+**CianovaLauncher** hace uso de componentes del ecosistema mcpelauncher, incluyendo:
+* **Google Play API:** Utilizada para la autenticación y descarga de archivos APK oficiales (vía `playdl-signin-ui-qt` y `gplaydl`).
+* **VersionDB:** Repositorio de base de datos de versiones utilizado para consultar las actualizaciones oficiales.
 
 **CianovaLauncher** no busca reemplazar, competir ni apropiarse del crédito del proyecto mencionado anteriormente ni ningún otro launcher que cumpla su misma función. Su único propósito es facilitar la gestión de versiones y procesos para los usuarios de dicho manifest sin pretender ser el soporte oficial del proyecto.
 

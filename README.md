@@ -1,18 +1,25 @@
 # <img src="icon.png" width="48" height="48"> CianovaLauncher v3.0
-### Nota está rama es para la versión Qt6
+### 🚀 Edición definitiva migrada a Qt6 (PySide6)
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![CustomTkinter](https://img.shields.io/badge/UI-CustomTkinter-blue?style=for-the-badge)](https://github.com/TomSchimansky/CustomTkinter)
+[![PySide6](https://img.shields.io/badge/UI-PySide6-green?style=for-the-badge&logo=qt&logoColor=white)](https://www.qt.io/qt-for-python)
 [![Flatpak](https://img.shields.io/badge/Platform-Flatpak-316dad?style=for-the-badge&logo=flatpak&logoColor=white)](https://flatpak.org/)
 [![Linux](https://img.shields.io/badge/OS-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.kernel.org/)
-[![License](https://img.shields.io/badge/License-GPL%20v3-red?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPL%20v3-red?style=for-the-badge)](Docs/LICENCE%20&%20TERMINOS%20y%20CONDICIONES.md)
 
 **CianovaLauncher** es una interfaz gráfica moderna diseñada para facilitar la gestión, instalación y personalización de **Minecraft: Bedrock Edition** en Linux. Esta herramienta trabaja en conjunto con la base del proyecto **MCPELauncher-manifest**, proporcionando una experiencia de usuario amigable y potente.
 
 ---
 
 ## ✨ Características de la v3.0
-**EN PROGRESO LAS NOTAS**
+- **Migración a Qt6:** Interfaz rediseñada desde cero con PySide6 para mayor fluidez, estabilidad y soporte HiDPI.
+- **Asistente de Configuración:** Guía paso a paso para nuevos usuarios (idioma, temas, términos legales).
+- **Google Play Integration:** Descarga versiones oficiales directamente (requiere cuenta con el juego comprado).
+- **Gestión Avanzada:** Perfiles independientes con Symlinks, iconos personalizados por versión y accesos directos al escritorio.
+- **Optimización Nvidia:** Soporte para Nvidia Prime y Modo Zink (OpenGL sobre Vulkan) para corregir errores gráficos.
+- **Sistema de Logs:** Registro detallado de hardware y ejecución para facilitar el soporte técnico.
+
+---
 
 ## 1. Ejecución
 
@@ -63,9 +70,9 @@ flatpak install org.kde.Platform//6.9 io.qt.qtwebengine.BaseApp//6.9
 
 ### Instalación no-Flatpak:
 
-Descarga de la ultima **RELEASE** el archivo `CianovaLauncher-vX.Y.tar.gz` donde `X.Y.Z` es el numero de la versión y lo extraes en alguna carpeta que desees y también compila o descarga algún paquete de binarios del **MCPELAUNCHER-MANIFEST** del proyecto oficial; o algún algún pack Pre-compilado disponible de confianza llamado `BIN X.Y.Z (DATE) + <NOTES>.tar.gz` que vas a extraer y te dejara una carpeta llamada `bin` que la colocaras dentro de la carpeta raíz del launcher (Recomendado) o donde mejor te parezca.
+Descarga de la última **RELEASE** el archivo `CianovaLauncher-v3.0.tar.gz` y lo extraes en la carpeta que desees. También compila o descarga los binarios del **MCPELAUNCHER-MANIFEST**; se recomienda usar un pack de confianza y colocar la carpeta `bin` dentro de la raíz del launcher.
 
-**NOTA:** En el paquete portable ya se deja unos binarios Pre-compilados y sus librerias necesarias
+**NOTA:** En el paquete portable ya se incluyen binarios pre-compilados y sus librerías necesarias de forma local.
 
 Para iniciar el launcher, simplemente haz doble clic en el script `CianovaLauncher.sh` o ejecútalo desde la terminal:
 
@@ -76,18 +83,18 @@ Para iniciar el launcher, simplemente haz doble clic en el script `CianovaLaunch
 ---
 Luego ve a Ajustes y completa la configuración de binarios, requisitos y guarda la config.
 
-**NOTA 2:** Dependiendo de tu distribucion y *PKG MANAGER* algunos nombres pueden no coincidir con el paquete disponible. Por lo tanto use la lista como referencia para saber cuales librerias le hacen falta.
+**NOTA 2:** Dependiendo de tu distribución y *PKG MANAGER* algunos nombres de paquetes pueden variar. Usa la lista de dependencias como referencia.
 
-**Para saber mas vaya a [MANUAL DE USO](MANUAL%DE%USO.md).**
+**Para saber más consulta el [MANUAL DE USO](Docs/MANUAL%20DE%20USO.md).**
 
 ---
 ## ⚖️ Términos y Condiciones (Resumen)
 
 El uso de esta herramienta implica la aceptación de los siguientes puntos:
-1. **Independencia:** Este launcher es una interfaz visual independiente y NO incluye el juego ni las APKs necesarias.
-2. **Atribución:** Se reconoce el trabajo del proyecto **MCPELauncher** (Perteneciente de **ChristopherHX**, **MCMrARM** y todo su equipo de trabajo). como la base técnica esencial.
-3. **No Lucrativo:** Esta herramienta es gratuita y de código abierto (GPL v3). Se agradece a la comunidad de mantenerlo asi para fomentar el espiritu colaborativo.
-4. **Responsabilidad:** Los desarrolladores no se hacen responsables por pérdida de datos, baneos de cuentas o fallos en el sistema derivados del uso indebido.
+1. **Independencia:** Este launcher es una interfaz visual independiente y NO incluye el juego ni las APKs necesarias de forma ilícita.
+2. **Atribución:** Se reconoce el trabajo del proyecto **MCPELauncher** (ChristopherHX, MCMrARM y equipo) como la base técnica esencial, así como el uso de las APIs de Google Play.
+3. **No Lucrativo:** Esta herramienta es gratuita y de código abierto (GPL v3). Mantengamos el espíritu colaborativo.
+4. **Responsabilidad:** Los desarrolladores no se hacen responsables por pérdida de datos, problemas de cuenta o fallos derivados del uso indebido.
 
 > 📄 Consulta el documento completo en: [LICENCIA & TÉRMINOS Y CONDICIONES](Docs/LICENCE%20&%20TERMINOS%20y%20CONDICIONES.md)
 

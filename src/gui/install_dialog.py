@@ -12,12 +12,33 @@ from src.gui import custom_dialogs as messagebox
 from src.utils.dialogs import ask_open_filename_native
 from src import constants as c
 
+class VersionFetcher(QThread):
+    finished = Signal(list)
+    error = Signal(str)
+
+    def __init__(self, arch):
+        super().__init__()
+        self.arch = arch
+
+    def run(self):
+        try:
+            url = c.VERSION_MANIFEST_URL.format(arch=self.arch)
+            with urllib.request.urlopen(url, timeout=10) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode())
+                    self.finished.emit(data)
+                else:
+                    self.error.emit(f"HTTP {response.status}")
+        except Exception as e:
+            self.error.emit(str(e))
+
 class GooglePlayTab(QWidget):
     def __init__(self, parent_dialog):
         super().__init__()
         self.dialog = parent_dialog
         self.app = parent_dialog.parent_app
         self.all_versions_data = []
+        self.fetcher = None
         self.setup_ui()
         self.load_versions("x86_64")
 
@@ -36,7 +57,6 @@ class GooglePlayTab(QWidget):
         self.lbl_session_status.setAlignment(Qt.AlignCenter)
         self.lbl_session_status.setStyleSheet("font-weight: bold; font-size: 11px;")
         layout.addWidget(self.lbl_session_status)
-        self.update_session_status()
 
         # Arch & Filter Selection
         selectors_layout = QHBoxLayout()
@@ -51,7 +71,8 @@ class GooglePlayTab(QWidget):
         # Filter
         selectors_layout.addWidget(QLabel(c.UI_LABEL_FILTER_VERSIONS))
         self.combo_filter = QComboBox()
-        self.combo_filter.addItems([c.UI_FILTER_ALL, c.UI_FILTER_STABLE, c.UI_FILTER_BETA])
+        self.combo_filter.addItems([c.UI_FILTER_STABLE, c.UI_FILTER_ALL, c.UI_FILTER_BETA])
+        self.combo_filter.setCurrentText(c.UI_FILTER_STABLE)
         self.combo_filter.currentTextChanged.connect(self.apply_filter)
         selectors_layout.addWidget(self.combo_filter, 1)
 
@@ -79,6 +100,9 @@ class GooglePlayTab(QWidget):
         self.btn_download.clicked.connect(self.start_download_flow)
         layout.addWidget(self.btn_download)
 
+        # Call this LAST to ensure btn_download exists
+        self.update_session_status()
+
     def do_login(self):
         self.app.logic.launch_google_login(self.app)
         # Check status again after a while as the login window is external
@@ -89,38 +113,66 @@ class GooglePlayTab(QWidget):
         if is_active:
             self.lbl_session_status.setText(c.UI_STATUS_SESSION_ACTIVE)
             self.lbl_session_status.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-weight: bold; font-size: 11px;")
+            self.btn_download.setEnabled(True)
         else:
             self.lbl_session_status.setText(c.UI_STATUS_SESSION_INACTIVE)
             self.lbl_session_status.setStyleSheet("color: #ef4444; font-weight: bold; font-size: 11px;")
+            self.btn_download.setEnabled(False)
+
+        # Force button color update respecting disabled state
+        accent = c.THEME_COLOR_MAP.get(self.app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue"), "#1f6aa5")
+        self.btn_download.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {accent}; 
+                color: white; 
+                border-radius: 12px; 
+                font-weight: bold;
+            }}
+            QPushButton:disabled {{
+                background-color: #444444;
+                color: #888888;
+            }}
+        """)
 
     def load_versions(self, arch):
-        # Fetch versions from manifest URL asynchronously
+        # Stop any ongoing fetch
+        if self.fetcher and self.fetcher.isRunning():
+            self.fetcher.terminate()
+            self.fetcher.wait()
+
+        self.all_versions_data = []
         self.combo_versions.clear()
         self.combo_versions.addItem(c.UI_LABEL_SEARCHING)
         self.combo_versions.setEnabled(False)
 
-        def fetch():
-            try:
-                url = c.VERSION_MANIFEST_URL.format(arch=arch)
-                with urllib.request.urlopen(url, timeout=5) as response:
-                    if response.status == 200:
-                        data = json.loads(response.read().decode())
-                        self.all_versions_data = data
-                        QTimer.singleShot(0, self.apply_filter)
-            except Exception as e:
-                print(f"Error loading versions: {e}")
-                QTimer.singleShot(0, lambda: [self.combo_versions.clear(), self.combo_versions.setEnabled(True)])
+        self.fetcher = VersionFetcher(arch)
+        self.fetcher.finished.connect(self.on_versions_loaded)
+        self.fetcher.error.connect(self.on_versions_error)
+        self.fetcher.start()
 
-        threading.Thread(target=fetch, daemon=True).start()
+    def on_versions_loaded(self, data):
+        self.all_versions_data = data
+        self.apply_filter()
 
-    def apply_filter(self):
+    def on_versions_error(self, err):
+        print(f"Error loading versions: {err}")
+        self.combo_versions.clear()
+        self.combo_versions.addItem(f"❌ Error al cargar (Verificar Internet)")
+        self.combo_versions.setEnabled(True)
+
+    def apply_filter(self, _text=None):
         self.combo_versions.clear()
         self.combo_versions.setEnabled(True)
+        
+        if not self.all_versions_data:
+            return
+
         filter_type = self.combo_filter.currentText()
 
         # data is list of lists [[vcode, vname, isbeta], ...]
-        for ver in self.all_versions_data:
-            is_beta = len(ver) > 2 and ver[2]
+        # Reversed to show newest first
+        for ver in reversed(self.all_versions_data):
+            is_beta = len(ver) > 2 and bool(ver[2])
 
             if filter_type == c.UI_FILTER_STABLE and is_beta:
                 continue
@@ -131,6 +183,7 @@ class GooglePlayTab(QWidget):
             if is_beta:
                 display += " [BETA]"
             self.combo_versions.addItem(display, (ver[0], ver[1])) # Store both code and name
+
 
     def start_download_flow(self):
         version_data = self.combo_versions.currentData()

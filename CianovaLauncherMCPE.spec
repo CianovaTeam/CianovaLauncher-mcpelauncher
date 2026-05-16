@@ -7,20 +7,25 @@ from PyInstaller.utils.hooks import collect_all
 block_cipher = None
 
 # Recolectamos todo lo necesario
-tmp_ret_ctk = collect_all('customtkinter')
+from PyInstaller.utils.hooks import collect_all
+
+block_cipher = None
+
+tmp_ret_pyside = collect_all('PySide6')
 tmp_ret_pil = collect_all('Pillow')
 
 # Definimos los datos manuales: ('origen', 'destino')
 my_datas = [
     ('icon.png', '.'),
     ('src/langs', 'src/langs'),
-    ('src/themes', 'src/themes')
-] 
+    ('src/themes', 'src/themes'),
+    ('Docs', 'Docs')
+]
 
 # Sumamos los datos de las librerías a los nuestros
-datas = my_datas + tmp_ret_ctk[0] + tmp_ret_pil[0]
-binaries = tmp_ret_ctk[1] + tmp_ret_pil[1]
-hiddenimports = ['customtkinter', 'PIL._tkinter_finder'] + tmp_ret_ctk[2] + tmp_ret_pil[2]
+datas = my_datas + tmp_ret_pyside[0] + tmp_ret_pil[0]
+binaries = tmp_ret_pyside[1] + tmp_ret_pil[1]
+hiddenimports = ['PySide6', 'PySide6.QtCore', 'PySide6.QtWidgets', 'PySide6.QtGui', 'PIL._tkinter_finder'] + tmp_ret_pyside[2] + tmp_ret_pil[2]
 
 a = Analysis(
     ['src/main.py'],
