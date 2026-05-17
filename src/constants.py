@@ -37,13 +37,13 @@ APP_NAME = "CianovaLauncher"
 VERSION_LAUNCHER = "3.0"
 BINARY_VERSION_INFO = "v1.7.4-official"  # Default for Flatpak or if not found
 BINARY_VERSION_FALLBACK = "PreCompiled Binaries from mcpelauncher Github"
-DEVELOPERS = "@PlaGaDev & @ShaggyLinux"
-UPDATE_NAME = "Support for Nvidia"
+DEVELOPERS = "@PlaGaDev"
+UPDATE_NAME = "The Qt6 Evolution"
 CHANGELOG = f"{UPDATE_NAME}: {APP_NAME} {VERSION_LAUNCHER}"
 CREDITOS = f"Dev: {DEVELOPERS}\nProyecto: {APP_NAME}"
 LEGAL_TEXT = """LICENCIA & TÉRMINOS Y CONDICIONES
 
-Última Actualización: 27 de Febrero de 2026
+Última Actualización: 12 de Mayo de 2026
 
 ---
 
@@ -56,6 +56,10 @@ CianovaLauncher es una herramienta de código abierto desarrollada con fines edu
 2. Atribución y Dependencias
 Este "launcher" solo funciona de forma independiente en su apartado visual pero cualquier opción de ejecución, extracción u otro proceso requiere la instalación previa y binarios compilados de:
 * MCPELauncher-Manifest: Proyecto base en el que se fundamenta (Créditos a ChristopherHX y MCMrARM).
+
+CianovaLauncher hace uso de componentes del ecosistema mcpelauncher, incluyendo:
+* Google Play API: Utilizada para la autenticación y descarga de archivos APK oficiales (vía playdl-signin-ui-qt y gplaydl).
+* VersionDB: Repositorio de base de datos de versiones utilizado para consultar las actualizaciones oficiales.
 
 CianovaLauncher no busca reemplazar, competir ni apropiarse del crédito del proyecto mencionado anteriormente ni ningún otro launcher que cumpla su misma función. Su único propósito es facilitar la gestión de versiones y procesos para los usuarios de dicho manifest sin pretender ser el soporte oficial del proyecto.
 
@@ -80,6 +84,44 @@ Al utilizar CianovaLauncher, aceptas estos términos y condiciones.
 ---
 Hecho con ❤️ y 🤖 para la comunidad Linux.
 """
+
+# --- Setup Wizard Strings ---
+UI_SETUP_WIZARD_TITLE = "Asistente de Configuración Inicial"
+UI_SETUP_WELCOME_TITLE = "Bienvenidos a CianovaLauncher v3.0"
+UI_SETUP_WELCOME_SUB = "Gracias por elegir esta herramienta para gestionar tu experiencia en Minecraft Bedrock."
+UI_SETUP_LANG_TITLE = "Selecciona tu Idioma"
+UI_SETUP_APPEARANCE_TITLE = "Personaliza tu Estilo"
+UI_SETUP_LEGAL_TITLE = "Aviso Legal y Términos"
+UI_SETUP_LEGAL_CHECK = "He leído y acepto la licencia y los términos de uso"
+UI_SETUP_MIGRATION_TITLE = "¿Deseas migrar tus datos?"
+UI_SETUP_MIGRATION_SUB = "Si utilizabas MCPETool u otro launcher diferente, puedes traer tus mundos y versiones de forma sencilla."
+UI_SETUP_FINISH_TITLE = "Primeros Pasos y Agradecimientos"
+UI_SETUP_FINISH_SUB = """¡Muchas gracias por elegir CianovaLauncher v3.0!
+
+Este proyecto ha sido desarrollado con dedicación para ofrecerte la mejor experiencia en Linux. Aquí tienes un pequeño resumen de lo que puedes hacer:
+
+🎮 **Pestaña Jugar:** Aquí lanzas tus versiones y gestionas tus **Perfiles Independientes**. Cada perfil guarda sus propios mundos y configuraciones.
+🛠️ **Herramientas:** Instala APKs, descarga desde Google Play, gestiona tus **Texturas, Resource Packs y Behavior Packs** o migra datos de otros launchers.
+⚙️ **Ajustes:** Personaliza el launcher a tu gusto. Puedes cambiar el **Fondo de pantalla**, añadir una **Marca de agua**, ajustar la transparencia y optimizar el rendimiento con Nvidia y Zink.
+
+¡Esperamos que disfrutes de tu aventura en Minecraft!"""
+UI_BUTTON_NEXT = "Siguiente"
+UI_BUTTON_BACK = "Anterior"
+UI_BUTTON_FINISH = "Empezar ahora"
+UI_BUTTON_SKIP = "Omitir"
+UI_SETUP_THEME_PREVIEW = "Vista previa del estilo:"
+UI_SETUP_STEP = "Paso {current} de {total}"
+UI_SETUP_RESTART_NOTE = "* El modo claro/oscuro puede requerir reiniciar para aplicarse totalmente."
+UI_BUTTON_OPEN_MIGRATION = "Abrir Herramienta de Migración"
+UI_SETUP_CHANGELOG_TITLE = "Historial de Cambios"
+UI_SETUP_INSTALL_TITLE = "Instalación Inicial"
+UI_SETUP_INSTALL_SUB = "Puedes descargar Minecraft ahora o hacerlo más tarde desde la pestaña Herramientas."
+
+# --- Diálogos de Versión ---
+UI_WELCOME_NEW_VERSION_TITLE = "¡Bienvenido a la versión {ver}!"
+UI_DOWNGRADE_WARNING_TITLE = "Advertencia de Versión"
+UI_DOWNGRADE_WARNING_MSG = "Parece que has usado una versión más reciente ({old}) anteriormente. Se recomienda actualizar a la última versión para evitar conflictos en la configuración."
+
 
 # --- Configuración Flatpak ---
 FLATPAK_REQUIRED_RUNTIMES = [
@@ -125,6 +167,8 @@ CONFIG_KEY_LANGUAGE = "language"
 CONFIG_KEY_FLATPAK_ID = "flatpak_app_id"
 CONFIG_KEY_PROFILES = "profiles"
 CONFIG_KEY_CURRENT_PROFILE = "current_profile"
+CONFIG_KEY_VERSION = "app_version"
+CONFIG_KEY_UI_SCALE = "ui_scale"
 
 # --- Valores de Modos (Internal Keys) ---
 MODE_BIN_SYSTEM = "system"
@@ -252,8 +296,8 @@ UI_INSTALL_MODES = {
 # Pestaña Herramientas
 UI_SECTION_MANAGEMENT = "Gestión"
 UI_BUTTON_INSTALL_APK = "Instalar Versión"
-UI_BUTTON_MOVE_DELETE_VERSION = "Mover/Borrar Versión"
-UI_BUTTON_VERSION_MANAGER = "Version Manager"
+UI_BUTTON_MOVE_DELETE_VERSION = "Gestor de Versiones"
+UI_BUTTON_VERSION_MANAGER = "Gestor de Versiones"
 UI_BUTTON_MIGRATE_DATA = "Migración de Datos"
 UI_SECTION_ADDONS = "Complementos"
 UI_BUTTON_ADDON_MANAGER = "Gestor de recursos"
@@ -268,7 +312,7 @@ UI_SECTION_SYSTEM = "Sistema"
 UI_BUTTON_VERIFY_DEPS = "Verificar Dependencias"
 UI_BUTTON_VERIFY_HW = "Verificar Requisitos (Hardware)"
 UI_SECTION_SHORTCUT = "Menú de Inicio"
-UI_BUTTON_MANAGE_SHORTCUT = "Gestor Avanzado de Versiones"
+UI_BUTTON_MANAGE_SHORTCUT = "Gestor de Versiones"
 UI_SECTION_EXPORT = "Exportación"
 UI_BUTTON_EXPORT_WORLDS = "Exportar Mundos"
 UI_BUTTON_OPEN_SCREENSHOTS = "Abrir Capturas"
@@ -463,8 +507,11 @@ UI_HW_CPU_INFO = "INFORMACIÓN DE CPU"
 UI_HW_RAM_INFO = "INFORMACIÓN DE RAM"
 UI_HW_GPU_INFO = "INFORMACIÓN DE GPU"
 UI_HW_OPENGL_ES = "OpenGL ES: {gl_ver}\n\n"
-UI_SYMLINK_NOT_SUPPORTED_TITLE = "Compatibilidad"
-UI_SYMLINK_NOT_SUPPORTED_MSG = "Los enlaces simbólicos no están soportados en este sistema. El cambio de perfiles puede ser más lento."
+UI_SYMLINK_NOT_SUPPORTED_TITLE = "Compatibilidad de Disco"
+UI_SYMLINK_NOT_SUPPORTED_MSG = "Los enlaces simbólicos no están soportados en este sistema de archivos (exFAT/NTFS).\n\nEl sistema multiperfil ha sido desactivado por seguridad para evitar pérdida de datos. Se usará el perfil por defecto."
+UI_LABEL_UI_SCALE = "Escalado de Interfaz (DPI):"
+UI_RESTART_SCALE_MSG = "* El cambio de escalado requiere reiniciar el launcher para aplicarse."
+UI_PROMPT_DESKTOP_SHORTCUT = "¿Deseas agregar también un acceso directo al escritorio?"
 UI_VERIFYING_PACKAGES_LABEL = "{title} {count} paquetes..."
 UI_INCOMPATIBLE_TEXT = "Incompatible"
 UI_VERSION_TEXT = "Versión: "

@@ -81,11 +81,21 @@ class SettingsTab(QWidget):
         self.combo_profile.setMinimumWidth(200)
         selector_layout.addWidget(self.combo_profile, 1)
 
-        btn_manage = QPushButton("⚙️")
-        btn_manage.setObjectName("ToolButton")
-        btn_manage.setFixedSize(35, 35)
-        btn_manage.clicked.connect(self.open_profile_manager)
-        selector_layout.addWidget(btn_manage)
+        self.btn_manage_prof = QPushButton("⚙️")
+        self.btn_manage_prof.setObjectName("ToolButton")
+        self.btn_manage_prof.setFixedSize(35, 35)
+        self.btn_manage_prof.clicked.connect(self.open_profile_manager)
+        selector_layout.addWidget(self.btn_manage_prof)
+
+        # Disable if not supported
+        if not getattr(self.app, "profiles_supported", True):
+            self.combo_profile.setEnabled(False)
+            self.btn_manage_prof.setEnabled(False)
+            self.combo_profile.setToolTip(c.UI_SYMLINK_NOT_SUPPORTED_MSG)
+            lbl_warn = QLabel(c.UI_SYMLINK_NOT_SUPPORTED_TITLE)
+            lbl_warn.setStyleSheet("color: #ff9800; font-size: 10px; font-weight: bold;")
+            lbl_warn.setAlignment(Qt.AlignCenter)
+            layout.addWidget(lbl_warn)
 
         self.scroll_layout.addWidget(frame)
 
@@ -349,54 +359,66 @@ class SettingsTab(QWidget):
         self.combo_lang.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         grid.addWidget(self.combo_lang, 3, 1)
 
+        # UI Scale
+        grid.addWidget(QLabel(c.UI_LABEL_UI_SCALE), 4, 0)
+        self.combo_scale = QComboBox()
+        self.combo_scale.addItems(["1.0", "1.25", "1.5", "1.75", "2.0"])
+        curr_scale = str(self.app.config.get(c.CONFIG_KEY_UI_SCALE, "1.0"))
+        self.combo_scale.setCurrentText(curr_scale)
+        self.combo_scale.currentTextChanged.connect(self.on_scale_change)
+        grid.addWidget(self.combo_scale, 4, 1)
+        lbl_scale_note = QLabel(c.UI_RESTART_SCALE_MSG)
+        lbl_scale_note.setStyleSheet("color: #ff9800; font-size: 10px;")
+        grid.addWidget(lbl_scale_note, 4, 2)
+
         # List Style
-        grid.addWidget(QLabel(c.UI_LABEL_VERSION_LIST_STYLE), 4, 0)
+        grid.addWidget(QLabel(c.UI_LABEL_VERSION_LIST_STYLE), 5, 0)
         self.combo_list_style = QComboBox()
         self.combo_list_style.addItems(list(c.UI_LIST_STYLES.values()))
         current_style = self.app.config.get(c.CONFIG_KEY_VERSION_LIST_STYLE, c.STYLE_LIST)
         self.combo_list_style.setCurrentText(c.UI_LIST_STYLES.get(current_style, c.STYLE_LIST))
         self.combo_list_style.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.combo_list_style.currentTextChanged.connect(self.on_appearance_setting_change)
-        grid.addWidget(self.combo_list_style, 4, 1)
+        grid.addWidget(self.combo_list_style, 5, 1)
 
         # Sliders
-        grid.addWidget(QLabel(c.UI_LABEL_ICON_SIZE), 5, 0)
+        grid.addWidget(QLabel(c.UI_LABEL_ICON_SIZE), 6, 0)
         self.slider_icon = QSlider(Qt.Horizontal)
         self.slider_icon.setRange(16, 128)
         self.slider_icon.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_ICON_SIZE, 32))
         self.slider_icon.valueChanged.connect(self.on_appearance_setting_change)
-        grid.addWidget(self.slider_icon, 5, 1)
+        grid.addWidget(self.slider_icon, 6, 1)
         self.lbl_icon_val = QLabel(str(self.slider_icon.value()))
-        grid.addWidget(self.lbl_icon_val, 5, 2)
+        grid.addWidget(self.lbl_icon_val, 6, 2)
 
-        grid.addWidget(QLabel(c.UI_LABEL_TITLE_SIZE), 6, 0)
+        grid.addWidget(QLabel(c.UI_LABEL_TITLE_SIZE), 7, 0)
         self.slider_title = QSlider(Qt.Horizontal)
         self.slider_title.setRange(8, 32)
         self.slider_title.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_TITLE_SIZE, 13))
         self.slider_title.valueChanged.connect(self.on_appearance_setting_change)
-        grid.addWidget(self.slider_title, 6, 1)
+        grid.addWidget(self.slider_title, 7, 1)
         self.lbl_title_val = QLabel(str(self.slider_title.value()))
-        grid.addWidget(self.lbl_title_val, 6, 2)
+        grid.addWidget(self.lbl_title_val, 7, 2)
 
         # Card Width
-        grid.addWidget(QLabel(c.UI_LABEL_CARD_WIDTH), 7, 0)
+        grid.addWidget(QLabel(c.UI_LABEL_CARD_WIDTH), 8, 0)
         self.slider_card_width = QSlider(Qt.Horizontal)
         self.slider_card_width.setRange(80, 400)
         self.slider_card_width.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_CARD_WIDTH, 180))
         self.slider_card_width.valueChanged.connect(self.on_appearance_setting_change)
-        grid.addWidget(self.slider_card_width, 7, 1)
+        grid.addWidget(self.slider_card_width, 8, 1)
         self.lbl_card_width_val = QLabel(str(self.slider_card_width.value()))
-        grid.addWidget(self.lbl_card_width_val, 7, 2)
+        grid.addWidget(self.lbl_card_width_val, 8, 2)
 
         # Card Height
-        grid.addWidget(QLabel(c.UI_LABEL_CARD_HEIGHT), 8, 0)
+        grid.addWidget(QLabel(c.UI_LABEL_CARD_HEIGHT), 9, 0)
         self.slider_card_height = QSlider(Qt.Horizontal)
         self.slider_card_height.setRange(60, 300)
         self.slider_card_height.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_CARD_HEIGHT, 145))
         self.slider_card_height.valueChanged.connect(self.on_appearance_setting_change)
-        grid.addWidget(self.slider_card_height, 8, 1)
+        grid.addWidget(self.slider_card_height, 9, 1)
         self.lbl_card_height_val = QLabel(str(self.slider_card_height.value()))
-        grid.addWidget(self.lbl_card_height_val, 8, 2)
+        grid.addWidget(self.lbl_card_height_val, 9, 2)
 
         self.scroll_layout.addWidget(frame)
 
@@ -606,6 +628,10 @@ class SettingsTab(QWidget):
     def on_language_change(self, display_name):
         lang_code = next((k for k, v in self.langs_dict.items() if v == display_name), "en")
         self.app.config[c.CONFIG_KEY_LANGUAGE] = lang_code
+        self.app.config_manager.save_config()
+
+    def on_scale_change(self, value):
+        self.app.config[c.CONFIG_KEY_UI_SCALE] = value
         self.app.config_manager.save_config()
 
     def on_section_opacity_change(self):

@@ -47,6 +47,8 @@ class ConfigManager:
             c.CONFIG_KEY_PROFILES: [c.UI_PROFILE_DEFAULT],
             c.CONFIG_KEY_CURRENT_PROFILE: c.UI_PROFILE_DEFAULT,
             c.CONFIG_KEY_SECTION_OPACITY: 100,
+            c.CONFIG_KEY_VERSION: c.VERSION_LAUNCHER, # Initial version
+            c.CONFIG_KEY_UI_SCALE: "1.0",
             c.CONFIG_KEY_VERSION_ICON_ZOOM: {},
             c.CONFIG_KEY_VERSION_ICON_X: {},
             c.CONFIG_KEY_VERSION_ICON_Y: {},

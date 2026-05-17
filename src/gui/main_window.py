@@ -23,6 +23,7 @@ from src.gui.tabs.play_tab import PlayTab
 from src.gui.tabs.tools_tab import ToolsTab
 from src.gui.tabs.settings_tab import SettingsTab
 from src.gui.tabs.about_tab import AboutTab
+from src.utils.logger import logger
 
 class VisualLabel(QLabel):
     def __init__(self, parent=None):
@@ -34,6 +35,7 @@ class CianovaLauncherApp(QMainWindow):
     def __init__(self, launcher_path=".", force_flatpak_ui=False, force_nvidia_ui=False):
         super().__init__()
 
+        logger.info("Initializing Main Window...")
         self.logic = app_logic
         self.launcher_path = launcher_path
         self.home = c.HOME_DIR
@@ -664,3 +666,36 @@ class CianovaLauncherApp(QMainWindow):
 
     def manage_desktop_shortcut(self):
         self.open_version_manager()
+
+    def check_version_update(self):
+        config_ver = self.config.get(c.CONFIG_KEY_VERSION, "0.0.0")
+        current_ver = c.VERSION_LAUNCHER
+
+        if config_ver == current_ver:
+            return
+
+        try:
+            # Simple version comparison (works for X.Y.Z)
+            def ver_to_tuple(v): return tuple(map(int, (v.split('.') + ['0','0'])[:3]))
+            
+            cv_tuple = ver_to_tuple(config_ver)
+            rv_tuple = ver_to_tuple(current_ver)
+
+            if rv_tuple > cv_tuple:
+                logger.info(f"Update detected: {config_ver} -> {current_ver}")
+                self.show_update_changelog(current_ver)
+            elif rv_tuple < cv_tuple:
+                logger.warning(f"Downgrade detected: {config_ver} -> {current_ver}")
+                messagebox.showwarning(self, c.UI_DOWNGRADE_WARNING_TITLE, 
+                                     c.UI_DOWNGRADE_WARNING_MSG.format(old=config_ver))
+            
+            # Update version in config
+            self.config[c.CONFIG_KEY_VERSION] = current_ver
+            self.config_manager.save_config()
+        except Exception as e:
+            logger.error(f"Error comparing versions: {e}")
+
+    def show_update_changelog(self, version):
+        from src.gui.changelog_dialog import ChangelogDialog
+        dialog = ChangelogDialog(self, version)
+        dialog.exec()

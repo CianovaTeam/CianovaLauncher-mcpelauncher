@@ -1,12 +1,44 @@
 import sys
 import os
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
 from src.gui.main_window import CianovaLauncherApp
 from src.gui.test_window import TestWindow
+from src.gui.setup_wizard import SetupWizard
 from src import constants as c
 from src.core import language_manager
+from src.utils.logger import logger
 
 if __name__ == "__main__":
+    # --- Pre-App Init (Scaling) ---
+    # We need to read scaling before QApplication starts
+    ui_scale = "1.0"
+    try:
+        import json
+        # Determine config path (simplified version of CianovaLauncherApp logic)
+        home = os.path.expanduser("~")
+        if os.path.exists("/.flatpak-info"):
+            # Try to get app id
+            fid = "org.cianova.Launcher"
+            try:
+                with open("/.flatpak-info", "r") as f:
+                    for line in f:
+                        if line.startswith("app="): fid = line.split("=")[1].strip(); break
+            except: pass
+            c_path = os.path.join(home, ".var/app", fid, "data", "cianovalauncher-config.json")
+        else:
+            c_path = os.path.join(home, ".local/share/mcpelauncher", "cianovalauncher-config.json")
+        
+        if os.path.exists(c_path):
+            with open(c_path, "r") as f:
+                conf = json.load(f)
+                ui_scale = str(conf.get("ui_scale", "1.0"))
+    except: pass
+
+    if ui_scale != "1.0":
+        os.environ["QT_SCALE_FACTOR"] = ui_scale
+        os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "0" # Disable auto when manual is set
+
     app = QApplication(sys.argv)
 
     # Parse arguments
@@ -15,16 +47,43 @@ if __name__ == "__main__":
     force_nvidia_ui = "--force-nvidia-ui" in sys.argv
     test_mode = "--test-mode" in sys.argv
 
+    # Initialize Logger
+    # Determine log dir based on environment
+    if os.path.exists("/.flatpak-info"):
+        log_dir = os.path.join(os.path.expanduser("~"), ".var/app/org.cianova.Launcher/data/mcpelauncher/logs")
+    else:
+        log_dir = os.path.join(os.path.expanduser("~"), ".local/share/mcpelauncher/logs")
+    
+    logger.init(log_dir)
+    logger.info(f"Launcher started (Path: {launcher_path})")
+
     if test_mode:
         window = TestWindow()
         window.show()
         sys.exit(app.exec())
 
-    # normal launch
+    # Create app instance (this loads config)
     window = CianovaLauncherApp(launcher_path=launcher_path, force_flatpak_ui=force_flatpak_ui, force_nvidia_ui=force_nvidia_ui)
 
-    # Initial setup logic
+    # --- Factory Reset Argument ---
+    if "--factory-reset" in sys.argv:
+        from src.gui import custom_dialogs as messagebox
+        if messagebox.askyesno(window, "Factory Reset", "¿Deseas borrar toda la configuración y restaurar los valores de fábrica?"):
+            config_path = window.config_manager.config_file
+            try:
+                if os.path.exists(config_path):
+                    os.remove(config_path)
+                    logger.info(f"Config deleted successfully: {config_path}")
+                sys.exit(0)
+            except Exception as e:
+                logger.error(f"Error during factory reset: {e}")
+                sys.exit(1)
+        else:
+            sys.exit(0)
+
+    # Initial setup logic (for old migration)
     if not window.config_manager.get(c.CONFIG_KEY_INITIAL_SETUP_COMPLETE, False):
+        logger.info("First run detected, running initial migration check...")
         if window.running_in_flatpak:
             own_path_versions = os.path.join(window.our_data_path, c.VERSIONS_DIR)
             shared_path_versions = os.path.join(os.path.expanduser("~"), c.LOCAL_SHARE_DIR, c.VERSIONS_DIR)
@@ -38,6 +97,22 @@ if __name__ == "__main__":
 
         window.config_manager.set(c.CONFIG_KEY_INITIAL_SETUP_COMPLETE, True)
         window.logic.detect_installation(window)
+
+    # New Setup Wizard v3.0
+    force_wizard = "--first-wizard" in sys.argv
+    if not window.config.get("accepted_terms", False) or force_wizard:
+        logger.info("Triggering Setup Wizard (Accepted terms: {} | Forced: {})".format(
+            window.config.get("accepted_terms"), force_wizard
+        ))
+        wizard = SetupWizard(window)
+        if wizard.exec() != SetupWizard.Accepted:
+            logger.warning("Setup Wizard closed without completion. Exiting.")
+            sys.exit(0) 
+        else:
+            logger.info("Setup Wizard completed successfully.")
+    else:
+        # Version Check Logic only if terms already accepted
+        QTimer.singleShot(1000, window.check_version_update)
 
     window.show()
     sys.exit(app.exec())
