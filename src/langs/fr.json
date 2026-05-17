@@ -467,5 +467,19 @@
     "UI_WELCOME_NEW_VERSION_TITLE": "Bienvenue dans la version {ver} !",
     "UI_DOWNGRADE_WARNING_TITLE": "Avertissement de version",
     "UI_DOWNGRADE_WARNING_MSG": "Il semble que vous ayez utilisé une version plus récente ({old}) précédemment. Il est recommandé de mettre à jour vers la dernière version pour éviter les conflits de configuration.",
-    "UI_PROMPT_DESKTOP_SHORTCUT": "Souhaitez-vous également ajouter un raccourci sur le bureau ?"
+    "UI_PROMPT_DESKTOP_SHORTCUT": "Souhaitez-vous également ajouter un raccourci sur le bureau ?",
+    "UI_DISCORD_RPC_CHECKBOX": "Activer Discord Rich Presence",
+    "UI_DISCORD_RPC_TOOLTIP": "Affiche dans Discord quelle version de Minecraft Bedrock vous jouez avec un compteur de temps. Nécessite la bibliothèque 'pypresence' et Discord ouvert.",
+    "UI_CHECKBOX_DISCORD_RPC": "Afficher dans Discord",
+    "UI_GOOGLE_DELIVERY_STATUS_2": "Google Play n'a pas livré cette version spécifique. Causes courantes :\n• La version sélectionnée n'est plus dans le catalogue actif de Google\n• Le compte ne possède pas Minecraft Bedrock.\n\nSolutions :\n1. Vérifiez 'Dernière version (auto)' et réessayez.\n2. Vérifiez la propriété sur Google Play.\n3. Utilisez l'onglet 'APK Local' pour installer un APK.",
+    "UI_GOOGLE_DELIVERY_STATUS_3": "La version sélectionnée n'est pas disponible pour cette architecture.\n\nEssayez de changer l'architecture (x86_64 / x86) ou choisissez une autre version.",
+    "UI_GOOGLE_DELIVERY_STATUS_5": "Application introuvable sur Google Play.",
+    "UI_GOOGLE_DELIVERY_STATUS_UNKNOWN": "Google Play a rejeté le téléchargement (statut de livraison={status}).",
+    "UI_GOOGLE_SESSION_EXPIRED": "Votre session Google a expiré. Fermez cette fenêtre, reconnectez-vous et réessayez.",
+    "UI_GOOGLE_DROIDGUARD_REQUIRED": "Google nécessite DroidGuard pour ce compte/appareil. Essayez avec un autre compte ou réseau.",
+    "UI_GOOGLE_DOWNLOAD_ERROR": "Erreur de téléchargement (code {code}).\n\nSortie gplaydl :\n{tail}",
+    "UI_GOOGLE_TOKEN_EXCHANGE_FAILED": "Le jeton Google n'a pas pu être échangé.\n\nCauses possibles :\n• La session a expiré avant la fin de l'échange.\n• Google a rejeté l'authentification.\n\nReconnectez-vous et complétez le flux rapide.",
+    "UI_GOOGLE_SIGNIN_NO_TOKEN": "Le processus de connexion s'est terminé sans fournir de jeton. Réessayez et complétez le flux dans la fenêtre Google.",
+    "UI_GOOGLE_SIGNIN_LAUNCH_FAILED": "Impossible de lancer '{bin_path}'. Vérifiez le chemin dans Paramètres.",
+    "UI_GOOGLE_LOGIN_LAUNCH_ERROR": "Échec du lancement de la connexion : {error}"
 }

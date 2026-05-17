@@ -232,6 +232,11 @@ CONFIG_KEY_VERSION_ICON_ZOOM = "version_icon_zoom"
 CONFIG_KEY_VERSION_ICON_X = "version_icon_x"
 CONFIG_KEY_VERSION_ICON_Y = "version_icon_y"
 
+# --- Discord Rich Presence ---
+CONFIG_KEY_DISCORD_RPC_ENABLED = "discord_rpc_enabled"
+# Client ID — crear app en https://discord.com/developers/applications y pegar el ID.
+DISCORD_DEFAULT_CLIENT_ID = "1505628404362248213"
+
 STYLE_LIST = "list"
 STYLE_GRID = "grid"
 STYLE_COLUMNS = "columns"
@@ -454,6 +459,14 @@ UI_CUSTOM_ARGS_CHECKBOX = "Activar Argumentos/Variables Personalizadas"
 UI_CUSTOM_ARGS_TOOLTIP = "Permite pasar variables de entorno (KEY=VAL) o argumentos adicionales. Desactiva Nvidia Prime y Zink automáticos."
 UI_CUSTOM_ARGS_LABEL = "Argumentos/Variables:"
 
+# --- Discord Rich Presence ---
+UI_DISCORD_RPC_CHECKBOX = "Activar Discord Rich Presence"
+UI_DISCORD_RPC_TOOLTIP = "Muestra en Discord qué versión de Minecraft Bedrock estás jugando con un contador de tiempo. Requiere la librería 'pypresence' instalada y Discord abierto."
+UI_CHECKBOX_DISCORD_RPC = "Mostrar en Discord"
+UI_DISCORD_RPC_CLIENT_ID_LABEL = "Discord Client ID:"
+UI_DISCORD_RPC_MISSING_DEPS = "Discord RPC no disponible: instala 'pypresence' (pip install pypresence)"
+UI_DISCORD_RPC_MISSING_CLIENT_ID = "Configura un Discord Client ID en Ajustes > Compatibilidad para activar Rich Presence."
+
 # Diálogos y Mensajes
 UI_INFO_TITLE = "Info"
 UI_ERROR_TITLE = "Error"
@@ -611,6 +624,36 @@ UI_STATUS_SESSION_ACTIVE = "✓ Sesión Activa"
 UI_STATUS_SESSION_INACTIVE = "✗ Sesión no Iniciada"
 UI_STATUS_LOGIN_IN_PROGRESS = "⏳ Ventana de inicio de sesión abierta..."
 UI_STATUS_LOGIN_WAITING = "⏳ Esperando token... ({s}s)"
+
+# --- Google Play: Errores de descarga y sesión (mostrados en UI) ---
+UI_GOOGLE_DELIVERY_STATUS_2 = ("Google Play did not deliver this specific version. Common causes:\n"
+    "• The selected version is no longer in Google's active catalog\n"
+    "  (Google removes old versions and only offers the current release plan).\n"
+    "• The account does not own Minecraft Bedrock.\n\n"
+    "Solutions:\n"
+    "1. Check 'Latest version (auto)' and retry.\n"
+    "2. Verify ownership at:\n"
+    "   https://play.google.com/store/apps/details?id=com.mojang.minecraftpe\n"
+    "3. Use the 'Local APK' tab to install an APK you already have.")
+UI_GOOGLE_DELIVERY_STATUS_3 = ("The selected version is not available for this architecture.\n\n"
+    "Try changing the architecture (x86_64 / x86) or choose another version.")
+UI_GOOGLE_DELIVERY_STATUS_5 = "App not found on Google Play."
+UI_GOOGLE_DELIVERY_STATUS_UNKNOWN = "Google Play rejected the download (delivery status={status})."
+UI_GOOGLE_SESSION_EXPIRED = ("Your Google session has expired. Close this window, sign in again, "
+    "and retry the download.")
+UI_GOOGLE_DROIDGUARD_REQUIRED = ("Google requires DroidGuard for this account/device. "
+    "Try with a different account or network.")
+UI_GOOGLE_DOWNLOAD_ERROR = "Download error (code {code}).\n\ngplaydl output:\n{tail}"
+UI_GOOGLE_TOKEN_EXCHANGE_FAILED = ("The Google token could not be exchanged.\n\n"
+    "Possible causes:\n"
+    "• The session expired before the exchange completed.\n"
+    "• Google rejected the authentication (restricted account or no Play access).\n\n"
+    "Sign in again without an encryption password and complete the quick flow.")
+UI_GOOGLE_SIGNIN_NO_TOKEN = ("The sign-in process finished without delivering a token. "
+    "Please try again and complete the flow in the Google window.")
+UI_GOOGLE_SIGNIN_LAUNCH_FAILED = "Could not start '{bin_path}'. Check the path in Settings."
+UI_GOOGLE_LOGIN_LAUNCH_ERROR = "Failed to launch sign-in: {error}"
+
 UI_VERSION_LATEST_LABEL = "★ Última versión (auto) — recomendado"
 UI_APK_FILE_LABEL = "Archivo APK:"
 UI_SELECT_APK_PLACEHOLDER = "Selecciona un APK..."

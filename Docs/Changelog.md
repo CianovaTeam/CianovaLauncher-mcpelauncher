@@ -3,12 +3,23 @@
 # [3.0] - 2026-05-12 - The Qt6 Evolution
 - **MAJOR UPDATE:** Migración completa de la interfaz de **CustomTkinter a PySide6 (Qt6)**. Esto mejora drásticamente la fluidez, el soporte para pantallas de alta resolución y la estabilidad general de la aplicación.
 - **NEW:** Sistema de descarga de versiones desde Google Play integrado. Ahora puedes buscar y descargar versiones oficiales directamente desde el launcher (requiere login previo).
+- **NEW:** Discord Rich Presence opcional. Muestra en Discord qué versión de Minecraft Bedrock estás jugando con contador de tiempo. Se activa desde Ajustes > Compatibilidad o en el Play Tab.
 - **NEW:** Gestor Avanzado de Versiones: Ahora puedes asignar iconos personalizados a cada versión instalada, ajustar su posición/zoom y crear accesos directos individuales (`.desktop`) en tu menú de inicio.
 - **NEW:** Motor de Personalización Extendido: Añadido soporte para fondos de pantalla personalizados con opacidad dinámica, marcas de agua (stickers) y ajuste de transparencia en los paneles.
 - **NEW:** Se añadieron 12 temas de colores profesionales (Midnight, Cherry, Ocean, etc.) y la posibilidad de elegir entre vista de Lista o Cuadrícula para el selector de versiones.
+- **NEW:** Reorganización completa del código del launcher. El archivo principal se dividió en 7 módulos más pequeños para que sea más fácil de mantener y añadir nuevas funciones.
 - **FIX:** Reestructuración total de la carga de versiones mediante señales asíncronas (QThread), eliminando el bloqueo permanente en "Searching..." y optimizando el rendimiento.
 - **FIX:** Ahora las versiones se muestran en orden inverso (las más nuevas primero) y el filtro predeterminado es "Estables" para acelerar la carga inicial.
+- **FIX:** Se corrigió la ruta donde se guardan los archivos de sesión de Google para que funcione correctamente dentro de Flatpak.
+- **FIX:** Se restauró la detección de sesión de Google mediante el binario gplayver por si falla la lectura de archivos.
+- **FIX:** Se corrigió el nombre del archivo de configuración de dispositivo que se generaba como "cianova-device.conf" en lugar de "device.conf".
+- **FIX:** Se corrigió la detección de runtimes Flatpak para que funcione estando dentro del sandbox.
+- **FIX:** Los mensajes de error de descarga de Google Play ahora se pueden traducir a diferentes idiomas.
+- **FIX:** En equipos muy restrictivos, si el launcher no puede abrir el juego con el método normal, ahora lo intenta reemplazando el proceso directamente (execve).
+- **FIX:** Se solucionó un problema donde al hacer clic en las tarjetas de versión se podían producir artefactos visuales al mover la ventana.
+- **FIX:** Se mejoró la suavidad del movimiento de los overlays (fondo y sticker) al redimensionar la ventana.
 - **SUPPORT:** Mejora en las opciones de compatibilidad para Nvidia y Zink, incluyendo una gestión más limpia de argumentos de entorno y variables personalizadas.
+- **SUPPORT:** Se añadieron los permisos necesarios para que Discord Rich Presence funcione dentro de Flatpak.
 
 # [2.2] - 2026-03-01 - Management Update
 - **NEW:** Soporte multiperfil disponible para aislar tus mundos, recursos y configuraciones de Minecraft en diferentes perfiles mediante enlaces simbólicos (Symlink).

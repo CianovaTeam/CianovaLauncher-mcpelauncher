@@ -467,5 +467,19 @@
     "UI_WELCOME_NEW_VERSION_TITLE": "Benvenuto nella versione {ver}!",
     "UI_DOWNGRADE_WARNING_TITLE": "Avviso versione",
     "UI_DOWNGRADE_WARNING_MSG": "Sembra che tu abbia usato una versione più recente ({old}) in precedenza. Si consiglia di aggiornare all'ultima versione per evitare conflitti di configurazione.",
-    "UI_PROMPT_DESKTOP_SHORTCUT": "Vuoi aggiungere anche un collegamento sul desktop?"
+    "UI_PROMPT_DESKTOP_SHORTCUT": "Vuoi aggiungere anche un collegamento sul desktop?",
+    "UI_DISCORD_RPC_CHECKBOX": "Attiva Discord Rich Presence",
+    "UI_DISCORD_RPC_TOOLTIP": "Mostra su Discord quale versione di Minecraft Bedrock stai giocando con un contatore di tempo. Richiede la libreria 'pypresence' e Discord aperto.",
+    "UI_CHECKBOX_DISCORD_RPC": "Mostra su Discord",
+    "UI_GOOGLE_DELIVERY_STATUS_2": "Google Play non ha consegnato questa versione specifica. Cause comuni:\n• La versione selezionata non è più nel catalogo attivo di Google\n• L'account non possiede Minecraft Bedrock.\n\nSoluzioni:\n1. Prova 'Ultima versione (auto)' e riprova.\n2. Verifica il possesso su Google Play.\n3. Usa la scheda 'APK Locale' per installare un APK.",
+    "UI_GOOGLE_DELIVERY_STATUS_3": "La versione selezionata non è disponibile per questa architettura.\n\nProva a cambiare architettura (x86_64 / x86) o scegli un'altra versione.",
+    "UI_GOOGLE_DELIVERY_STATUS_5": "App non trovata su Google Play.",
+    "UI_GOOGLE_DELIVERY_STATUS_UNKNOWN": "Google Play ha rifiutato il download (stato consegna={status}).",
+    "UI_GOOGLE_SESSION_EXPIRED": "La tua sessione Google è scaduta. Chiudi questa finestra, riaccedi e riprova il download.",
+    "UI_GOOGLE_DROIDGUARD_REQUIRED": "Google richiede DroidGuard per questo account/dispositivo. Prova con un altro account o rete.",
+    "UI_GOOGLE_DOWNLOAD_ERROR": "Errore di download (codice {code}).\n\nOutput gplaydl:\n{tail}",
+    "UI_GOOGLE_TOKEN_EXCHANGE_FAILED": "Il token Google non può essere scambiato.\n\nCause possibili:\n• La sessione è scaduta prima del completamento dello scambio.\n• Google ha rifiutato l'autenticazione.\n\nRiaccedi e completa il flusso rapido.",
+    "UI_GOOGLE_SIGNIN_NO_TOKEN": "Il processo di accesso si è concluso senza fornire un token. Riprova e completa il flusso nella finestra di Google.",
+    "UI_GOOGLE_SIGNIN_LAUNCH_FAILED": "Impossibile avviare '{bin_path}'. Controlla il percorso in Impostazioni.",
+    "UI_GOOGLE_LOGIN_LAUNCH_ERROR": "Errore nell'avvio dell'accesso: {error}"
 }

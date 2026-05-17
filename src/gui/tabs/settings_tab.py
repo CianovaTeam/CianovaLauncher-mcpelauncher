@@ -258,6 +258,21 @@ class SettingsTab(QWidget):
         self.checks[c.CONFIG_KEY_CUSTOM_ENV_ENABLED].stateChanged.connect(self.toggle_custom_env)
         self.checks[c.CONFIG_KEY_GAMEMODE_ENABLED].stateChanged.connect(lambda state: self.app.sync_gamemode_ui(state == Qt.Checked))
 
+        # Discord Rich Presence
+        f_discord = QFrame()
+        fl_discord = QHBoxLayout(f_discord)
+        self.check_discord_rpc = QCheckBox(c.UI_DISCORD_RPC_CHECKBOX)
+        self.check_discord_rpc.setChecked(self.app.config.get(c.CONFIG_KEY_DISCORD_RPC_ENABLED, False))
+        fl_discord.addWidget(self.check_discord_rpc)
+        btn_info_discord = QPushButton("?")
+        btn_info_discord.setObjectName("ToolButton")
+        btn_info_discord.setFixedSize(25, 25)
+        btn_info_discord.clicked.connect(lambda checked=False: self.app.show_info(c.UI_DISCORD_RPC_CHECKBOX, c.UI_DISCORD_RPC_TOOLTIP))
+        fl_discord.addWidget(btn_info_discord)
+        layout.addWidget(f_discord)
+        self.checks[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = self.check_discord_rpc
+        self.check_discord_rpc.stateChanged.connect(lambda state: self.app.sync_discord_rpc_ui(state == Qt.Checked))
+
         self.scroll_layout.addWidget(frame)
 
     def update_binary_version_info(self):

@@ -467,5 +467,19 @@
     "UI_WELCOME_NEW_VERSION_TITLE": "¡Bienvenido a la versión {ver}!",
     "UI_DOWNGRADE_WARNING_TITLE": "Advertencia de Versión",
     "UI_DOWNGRADE_WARNING_MSG": "Parece que has usado una versión más reciente ({old}) anteriormente. Se recomienda actualizar a la última versión para evitar conflictos en la configuración.",
-    "UI_PROMPT_DESKTOP_SHORTCUT": "¿Deseas agregar también un acceso directo al escritorio?"
+    "UI_PROMPT_DESKTOP_SHORTCUT": "¿Deseas agregar también un acceso directo al escritorio?",
+    "UI_DISCORD_RPC_CHECKBOX": "Activar Discord Rich Presence",
+    "UI_DISCORD_RPC_TOOLTIP": "Muestra en Discord qué versión de Minecraft Bedrock estás jugando con un contador de tiempo. Requiere la librería 'pypresence' instalada y Discord abierto.",
+    "UI_CHECKBOX_DISCORD_RPC": "Mostrar en Discord",
+    "UI_GOOGLE_DELIVERY_STATUS_2": "Google Play no entregó esta versión específica. Causas comunes:\n• La versión seleccionada ya no está en el catálogo activo de Google\n  (Google elimina versiones antiguas y solo ofrece el plan de lanzamiento actual).\n• La cuenta no posee Minecraft Bedrock.\n\nSoluciones:\n1. Selecciona 'Última versión (auto)' e inténtalo de nuevo.\n2. Verifica la propiedad en:\n   https://play.google.com/store/apps/details?id=com.mojang.minecraftpe\n3. Usa la pestaña 'APK Local' para instalar un APK que ya tengas.",
+    "UI_GOOGLE_DELIVERY_STATUS_3": "La versión seleccionada no está disponible para esta arquitectura.\n\nPrueba a cambiar la arquitectura (x86_64 / x86) o elige otra versión.",
+    "UI_GOOGLE_DELIVERY_STATUS_5": "App no encontrada en Google Play.",
+    "UI_GOOGLE_DELIVERY_STATUS_UNKNOWN": "Google Play rechazó la descarga (delivery status={status}).",
+    "UI_GOOGLE_SESSION_EXPIRED": "Tu sesión de Google ha expirado. Cierra esta ventana, inicia sesión de nuevo y reintenta la descarga.",
+    "UI_GOOGLE_DROIDGUARD_REQUIRED": "Google requiere DroidGuard para esta cuenta/dispositivo. Prueba con otra cuenta o red.",
+    "UI_GOOGLE_DOWNLOAD_ERROR": "Error de descarga (código {code}).\n\nSalida de gplaydl:\n{tail}",
+    "UI_GOOGLE_TOKEN_EXCHANGE_FAILED": "No se pudo intercambiar el token de Google.\n\nCausas posibles:\n• La sesión expiró antes de completar el intercambio.\n• Google rechazó la autenticación (cuenta restringida o sin acceso a Play).\n\nInicia sesión de nuevo sin contraseña de cifrado y completa el flujo rápido.",
+    "UI_GOOGLE_SIGNIN_NO_TOKEN": "El proceso de inicio de sesión terminó sin entregar un token. Inténtalo de nuevo y completa el flujo en la ventana de Google.",
+    "UI_GOOGLE_SIGNIN_LAUNCH_FAILED": "No se pudo iniciar '{bin_path}'. Verifica la ruta en Ajustes.",
+    "UI_GOOGLE_LOGIN_LAUNCH_ERROR": "Error al lanzar inicio de sesión: {error}"
 }

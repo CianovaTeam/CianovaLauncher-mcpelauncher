@@ -467,5 +467,19 @@
     "UI_WELCOME_NEW_VERSION_TITLE": "Bem-vindo à versão {ver}!",
     "UI_DOWNGRADE_WARNING_TITLE": "Aviso de Versão",
     "UI_DOWNGRADE_WARNING_MSG": "Parece que usou uma versão mais recente ({old}) anteriormente. Recomenda-se a atualização para a versão mais recente para evitar conflitos de configuração.",
-    "UI_PROMPT_DESKTOP_SHORTCUT": "Deseja também adicionar um atalho na área de trabalho?"
+    "UI_PROMPT_DESKTOP_SHORTCUT": "Deseja também adicionar um atalho na área de trabalho?",
+    "UI_DISCORD_RPC_CHECKBOX": "Ativar Discord Rich Presence",
+    "UI_DISCORD_RPC_TOOLTIP": "Mostra no Discord qual versão do Minecraft Bedrock você está jogando com um contador de tempo. Requer a biblioteca 'pypresence' e o Discord aberto.",
+    "UI_CHECKBOX_DISCORD_RPC": "Mostrar no Discord",
+    "UI_GOOGLE_DELIVERY_STATUS_2": "O Google Play não entregou esta versão específica. Causas comuns:\n• A versão selecionada não está mais no catálogo ativo do Google\n• A conta não possui o Minecraft Bedrock.\n\nSoluções:\n1. Selecione 'Última versão (auto)' e tente novamente.\n2. Verifique a propriedade no Google Play.\n3. Use a aba 'APK Local' para instalar um APK.",
+    "UI_GOOGLE_DELIVERY_STATUS_3": "A versão selecionada não está disponível para esta arquitetura.\n\nTente alterar a arquitetura (x86_64 / x86) ou escolha outra versão.",
+    "UI_GOOGLE_DELIVERY_STATUS_5": "App não encontrada no Google Play.",
+    "UI_GOOGLE_DELIVERY_STATUS_UNKNOWN": "O Google Play rejeitou o download (status de entrega={status}).",
+    "UI_GOOGLE_SESSION_EXPIRED": "A sua sessão do Google expirou. Feche esta janela, inicie sessão novamente e tente o download.",
+    "UI_GOOGLE_DROIDGUARD_REQUIRED": "O Google requer DroidGuard para esta conta/dispositivo. Tente com outra conta ou rede.",
+    "UI_GOOGLE_DOWNLOAD_ERROR": "Erro de download (código {code}).\n\nSaída do gplaydl:\n{tail}",
+    "UI_GOOGLE_TOKEN_EXCHANGE_FAILED": "O token do Google não pôde ser trocado.\n\nCausas possíveis:\n• A sessão expirou antes da troca ser concluída.\n• O Google rejeitou a autenticação.\n\nInicie sessão novamente e complete o fluxo rápido.",
+    "UI_GOOGLE_SIGNIN_NO_TOKEN": "O processo de início de sessão terminou sem fornecer um token. Tente novamente e complete o fluxo na janela do Google.",
+    "UI_GOOGLE_SIGNIN_LAUNCH_FAILED": "Não foi possível iniciar '{bin_path}'. Verifique o caminho nas Definições.",
+    "UI_GOOGLE_LOGIN_LAUNCH_ERROR": "Erro ao iniciar sessão: {error}"
 }

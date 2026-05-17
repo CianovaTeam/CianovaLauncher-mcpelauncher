@@ -467,5 +467,19 @@
     "UI_WELCOME_NEW_VERSION_TITLE": "Willkommen in Version {ver}!",
     "UI_DOWNGRADE_WARNING_TITLE": "Versionswarnung",
     "UI_DOWNGRADE_WARNING_MSG": "Es scheint, dass Sie zuvor eine neuere Version ({old}) verwendet haben. Es wird empfohlen, auf die neueste Version zu aktualisieren, um Konfigurationskonflikte zu vermeiden.",
-    "UI_PROMPT_DESKTOP_SHORTCUT": "Möchten Sie auch eine Verknüpfung auf dem Desktop erstellen?"
+    "UI_PROMPT_DESKTOP_SHORTCUT": "Möchten Sie auch eine Verknüpfung auf dem Desktop erstellen?",
+    "UI_DISCORD_RPC_CHECKBOX": "Discord Rich Presence aktivieren",
+    "UI_DISCORD_RPC_TOOLTIP": "Zeigt in Discord an, welche Minecraft Bedrock-Version Sie mit Zeitmessung spielen. Erfordert die 'pypresence'-Bibliothek und geöffnetes Discord.",
+    "UI_CHECKBOX_DISCORD_RPC": "In Discord anzeigen",
+    "UI_GOOGLE_DELIVERY_STATUS_2": "Google Play hat diese Version nicht ausgeliefert. Häufige Ursachen:\n• Die ausgewählte Version ist nicht mehr im aktiven Katalog von Google\n• Das Konto besitzt Minecraft Bedrock nicht.\n\nLösungen:\n1. Wählen Sie 'Letzte Version (auto)' und versuchen Sie es erneut.\n2. Überprüfen Sie den Besitz bei Google Play.\n3. Verwenden Sie den Reiter 'Lokale APK'.",
+    "UI_GOOGLE_DELIVERY_STATUS_3": "Die ausgewählte Version ist für diese Architektur nicht verfügbar.\n\nÄndern Sie die Architektur (x86_64 / x86) oder wählen Sie eine andere Version.",
+    "UI_GOOGLE_DELIVERY_STATUS_5": "App nicht bei Google Play gefunden.",
+    "UI_GOOGLE_DELIVERY_STATUS_UNKNOWN": "Google Play hat den Download abgelehnt (Lieferstatus={status}).",
+    "UI_GOOGLE_SESSION_EXPIRED": "Ihre Google-Sitzung ist abgelaufen. Schließen Sie dieses Fenster, melden Sie sich erneut an und versuchen Sie den Download.",
+    "UI_GOOGLE_DROIDGUARD_REQUIRED": "Google benötigt DroidGuard für dieses Konto/Gerät. Versuchen Sie es mit einem anderen Konto oder Netzwerk.",
+    "UI_GOOGLE_DOWNLOAD_ERROR": "Download-Fehler (Code {code}).\n\ngplaydl-Ausgabe:\n{tail}",
+    "UI_GOOGLE_TOKEN_EXCHANGE_FAILED": "Das Google-Token konnte nicht ausgetauscht werden.\n\nMögliche Ursachen:\n• Die Sitzung ist vor Abschluss des Austauschs abgelaufen.\n• Google hat die Authentifizierung abgelehnt.\n\nMelden Sie sich erneut an und schließen Sie den Schnelldurchlauf ab.",
+    "UI_GOOGLE_SIGNIN_NO_TOKEN": "Der Anmeldevorgang wurde ohne Token abgeschlossen. Versuchen Sie es erneut und schließen Sie den Vorgang im Google-Fenster ab.",
+    "UI_GOOGLE_SIGNIN_LAUNCH_FAILED": "Konnte '{bin_path}' nicht starten. Überprüfen Sie den Pfad in den Einstellungen.",
+    "UI_GOOGLE_LOGIN_LAUNCH_ERROR": "Fehler beim Starten der Anmeldung: {error}"
 }

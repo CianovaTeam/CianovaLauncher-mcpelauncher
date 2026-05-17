@@ -19,6 +19,7 @@ from src.gui.addon_manager_dialog import AddonManagerDialog
 from src.gui.migration_dialog import MigrationDialog
 from src.gui.game_config_dialog import GameConfigDialog
 from src.core import app_logic
+from src.core.discord_rpc import DiscordRPC
 from src.gui.tabs.play_tab import PlayTab
 from src.gui.tabs.tools_tab import ToolsTab
 from src.gui.tabs.settings_tab import SettingsTab
@@ -127,7 +128,7 @@ class CianovaLauncherApp(QMainWindow):
 
         self.resize_timer = QTimer()
         self.resize_timer.setSingleShot(True)
-        self.resize_timer.setInterval(100) # 100ms for resize debounce
+        self.resize_timer.setInterval(50) # 50ms for resize debounce (smoother tracking)
         self.resize_timer.timeout.connect(self._handle_resize_finished)
 
         # Logic init
@@ -135,6 +136,12 @@ class CianovaLauncherApp(QMainWindow):
         if self.running_in_flatpak:
             self.logic.setup_flatpak_environment(self)
             self.logic.check_migration_needed(self)
+
+        # Discord Rich Presence (lazy start on first show)
+        self._discord_rpc = DiscordRPC(self)
+        if self.config.get(c.CONFIG_KEY_DISCORD_RPC_ENABLED, False):
+            self._discord_rpc.start()
+            self._discord_rpc.set_idle()
 
         # Apply initial theme settings
         self.apply_theme_settings()
@@ -654,6 +661,14 @@ class CianovaLauncherApp(QMainWindow):
             cb = self.settings_tab.checks.get(c.CONFIG_KEY_GAMEMODE_ENABLED)
             if cb and cb.isChecked() != value:
                 cb.setChecked(value)
+
+    def sync_discord_rpc_ui(self, value):
+        self.config[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = value
+        if value:
+            self._discord_rpc.start()
+            self._discord_rpc.set_idle()
+        else:
+            self._discord_rpc.stop()
 
     def sync_close_on_launch_ui(self, value):
         self.config[c.CONFIG_KEY_CLOSE_ON_LAUNCH] = value

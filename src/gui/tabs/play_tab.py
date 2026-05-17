@@ -108,6 +108,11 @@ class PlayTab(QWidget):
         else:
             self.check_debug_log = None
 
+        self.check_discord = QCheckBox(c.UI_CHECKBOX_DISCORD_RPC)
+        self.check_discord.setChecked(self.app.config.get(c.CONFIG_KEY_DISCORD_RPC_ENABLED, False))
+        self.check_discord.stateChanged.connect(lambda state: (self.app.sync_discord_rpc_ui(state == Qt.Checked), self.save_quick_opts()))
+        self.opts_layout.addWidget(self.check_discord)
+
         # 4. Botón Jugar
         self.btn_launch = QPushButton(c.UI_BUTTON_PLAY_NOW)
         self.btn_launch.setObjectName("PlayButton")
@@ -135,6 +140,7 @@ class PlayTab(QWidget):
     def save_quick_opts(self):
         # Sync values to app config
         self.app.config[c.CONFIG_KEY_CLOSE_ON_LAUNCH] = self.check_close_on_launch.isChecked()
+        self.app.config[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = self.check_discord.isChecked()
         if self.check_debug_log:
             self.app.config[c.CONFIG_KEY_DEBUG_LOG] = self.check_debug_log.isChecked()
 

@@ -467,5 +467,19 @@
     "UI_WELCOME_NEW_VERSION_TITLE": "Benvingut a la versió {ver}!",
     "UI_DOWNGRADE_WARNING_TITLE": "Advertiment de versió",
     "UI_DOWNGRADE_WARNING_MSG": "Sembla que has utilitzat una versió més recent ({old}) anteriorment. Es recomana actualitzar a l'última versió per evitar conflictes en la configuració.",
-    "UI_PROMPT_DESKTOP_SHORTCUT": "Voleu afegir també una drecera a l'escriptori?"
+    "UI_PROMPT_DESKTOP_SHORTCUT": "Voleu afegir també una drecera a l'escriptori?",
+    "UI_DISCORD_RPC_CHECKBOX": "Activar Discord Rich Presence",
+    "UI_DISCORD_RPC_TOOLTIP": "Mostra al Discord quina versió de Minecraft Bedrock esteu jugant amb un comptador de temps. Requereix la biblioteca 'pypresence' i el Discord obert.",
+    "UI_CHECKBOX_DISCORD_RPC": "Mostrar al Discord",
+    "UI_GOOGLE_DELIVERY_STATUS_2": "Google Play no ha lliurat aquesta versió específica. Causes habituals:\n• La versió seleccionada ja no està al catàleg actiu de Google\n• El compte no posseeix Minecraft Bedrock.\n\nSolucions:\n1. Seleccioneu 'Última versió (auto)' i torneu-ho a provar.\n2. Verifiqueu la propietat a Google Play.\n3. Utilitzeu la pestanya 'APK Local' per instal·lar un APK.",
+    "UI_GOOGLE_DELIVERY_STATUS_3": "La versió seleccionada no està disponible per a aquesta arquitectura.\n\nProveu de canviar l'arquitectura (x86_64 / x86) o trieu una altra versió.",
+    "UI_GOOGLE_DELIVERY_STATUS_5": "App no trobada a Google Play.",
+    "UI_GOOGLE_DELIVERY_STATUS_UNKNOWN": "Google Play ha rebutjat la descàrrega (estat de lliurament={status}).",
+    "UI_GOOGLE_SESSION_EXPIRED": "La vostra sessió de Google ha expirat. Tanqueu aquesta finestra, inicieu sessió de nou i reintenteu la descàrrega.",
+    "UI_GOOGLE_DROIDGUARD_REQUIRED": "Google requereix DroidGuard per a aquest compte/dispositiu. Proveu amb un altre compte o xarxa.",
+    "UI_GOOGLE_DOWNLOAD_ERROR": "Error de descàrrega (codi {code}).\n\nSortida de gplaydl:\n{tail}",
+    "UI_GOOGLE_TOKEN_EXCHANGE_FAILED": "No s'ha pogut intercanviar el token de Google.\n\nCauses possibles:\n• La sessió ha expirat abans de completar l'intercanvi.\n• Google ha rebutjat l'autenticació.\n\nInicieu sessió de nou i completeu el flux ràpid.",
+    "UI_GOOGLE_SIGNIN_NO_TOKEN": "El procés d'inici de sessió ha acabat sense lliurar un token. Torneu-ho a provar i completeu el flux a la finestra de Google.",
+    "UI_GOOGLE_SIGNIN_LAUNCH_FAILED": "No s'ha pogut iniciar '{bin_path}'. Verifiqueu la ruta a Configuració.",
+    "UI_GOOGLE_LOGIN_LAUNCH_ERROR": "Error en iniciar sessió: {error}"
 }

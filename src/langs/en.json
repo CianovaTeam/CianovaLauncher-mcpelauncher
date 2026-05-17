@@ -467,5 +467,19 @@
     "UI_WELCOME_NEW_VERSION_TITLE": "Welcome to version {ver}!",
     "UI_DOWNGRADE_WARNING_TITLE": "Version Warning",
     "UI_DOWNGRADE_WARNING_MSG": "It seems you have used a newer version ({old}) previously. It is recommended to update to the latest version to avoid configuration conflicts.",
-    "UI_PROMPT_DESKTOP_SHORTCUT": "Do you also want to add a shortcut to the desktop?"
+    "UI_PROMPT_DESKTOP_SHORTCUT": "Do you also want to add a shortcut to the desktop?",
+    "UI_DISCORD_RPC_CHECKBOX": "Activate Discord Rich Presence",
+    "UI_DISCORD_RPC_TOOLTIP": "Shows in Discord which Minecraft Bedrock version you are playing with a time counter. Requires the 'pypresence' library and Discord open.",
+    "UI_CHECKBOX_DISCORD_RPC": "Show in Discord",
+    "UI_GOOGLE_DELIVERY_STATUS_2": "Google Play did not deliver this specific version. Common causes:\n• The selected version is no longer in Google's active catalog\n  (Google removes old versions and only offers the current release plan).\n• The account does not own Minecraft Bedrock.\n\nSolutions:\n1. Check 'Latest version (auto)' and retry.\n2. Verify ownership at:\n   https://play.google.com/store/apps/details?id=com.mojang.minecraftpe\n3. Use the 'Local APK' tab to install an APK you already have.",
+    "UI_GOOGLE_DELIVERY_STATUS_3": "The selected version is not available for this architecture.\n\nTry changing the architecture (x86_64 / x86) or choose another version.",
+    "UI_GOOGLE_DELIVERY_STATUS_5": "App not found on Google Play.",
+    "UI_GOOGLE_DELIVERY_STATUS_UNKNOWN": "Google Play rejected the download (delivery status={status}).",
+    "UI_GOOGLE_SESSION_EXPIRED": "Your Google session has expired. Close this window, sign in again, and retry the download.",
+    "UI_GOOGLE_DROIDGUARD_REQUIRED": "Google requires DroidGuard for this account/device. Try with a different account or network.",
+    "UI_GOOGLE_DOWNLOAD_ERROR": "Download error (code {code}).\n\ngplaydl output:\n{tail}",
+    "UI_GOOGLE_TOKEN_EXCHANGE_FAILED": "The Google token could not be exchanged.\n\nPossible causes:\n• The session expired before the exchange completed.\n• Google rejected the authentication (restricted account or no Play access).\n\nSign in again without an encryption password and complete the quick flow.",
+    "UI_GOOGLE_SIGNIN_NO_TOKEN": "The sign-in process finished without delivering a token. Please try again and complete the flow in the Google window.",
+    "UI_GOOGLE_SIGNIN_LAUNCH_FAILED": "Could not start '{bin_path}'. Check the path in Settings.",
+    "UI_GOOGLE_LOGIN_LAUNCH_ERROR": "Failed to launch sign-in: {error}"
 }

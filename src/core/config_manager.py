@@ -52,6 +52,7 @@ class ConfigManager:
             c.CONFIG_KEY_VERSION_ICON_ZOOM: {},
             c.CONFIG_KEY_VERSION_ICON_X: {},
             c.CONFIG_KEY_VERSION_ICON_Y: {},
+            c.CONFIG_KEY_DISCORD_RPC_ENABLED: False,
         }
         self.config = self.load_config()
 

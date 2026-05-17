@@ -63,6 +63,10 @@ finish-args:
   # Soporte para los mandos y dispositivos a bajo nivel
   - --device=all
 
+  # Acceso a Discord IPC para Rich Presence (opcional)
+  - --filesystem=xdg-run/discord-ipc-0
+  - --filesystem=xdg-run/app/com.discordapp.Discord
+
   # Variables de entorno necesarias
   - --env=PATH=/app/bin:/usr/bin
   - --env=LD_LIBRARY_PATH=/app/lib:/app/lib/cianova:$LD_LIBRARY_PATH
@@ -109,6 +113,7 @@ modules:
       - mkdir -p /app/lib/cianova
       - cp -r dist/CianovaLauncherMCPE/* /app/lib/cianova
       - install -Dm755 cianova-launcher.sh /app/bin/cianova-launcher.sh
+
 
       # Copiar binarios de mcpelauncher al directorio bin/
       - mkdir -p /app/bin
