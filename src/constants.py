@@ -234,8 +234,9 @@ CONFIG_KEY_VERSION_ICON_Y = "version_icon_y"
 
 # --- Discord Rich Presence ---
 CONFIG_KEY_DISCORD_RPC_ENABLED = "discord_rpc_enabled"
-# Client ID — crear app en https://discord.com/developers/applications y pegar el ID.
-DISCORD_DEFAULT_CLIENT_ID = "1505628404362248213"
+CONFIG_KEY_DISCORD_CLIENT_ID = "discord_client_id"
+# Client ID por defecto — crear app en https://discord.com/developers/applications si se desea personalizar
+DISCORD_DEFAULT_CLIENT_ID = "1506034334316892410"
 
 STYLE_LIST = "list"
 STYLE_GRID = "grid"

@@ -270,6 +270,17 @@ class SettingsTab(QWidget):
         btn_info_discord.clicked.connect(lambda checked=False: self.app.show_info(c.UI_DISCORD_RPC_CHECKBOX, c.UI_DISCORD_RPC_TOOLTIP))
         fl_discord.addWidget(btn_info_discord)
         layout.addWidget(f_discord)
+
+        # Discord Client ID
+        f_discord_id = QFrame()
+        fl_discord_id = QHBoxLayout(f_discord_id)
+        fl_discord_id.addWidget(QLabel(c.UI_DISCORD_RPC_CLIENT_ID_LABEL))
+        self.entry_discord_client_id = QLineEdit()
+        self.entry_discord_client_id.setPlaceholderText("Dejar vacío para usar el predeterminado")
+        self.entry_discord_client_id.setText(self.app.config.get(c.CONFIG_KEY_DISCORD_CLIENT_ID, ""))
+        fl_discord_id.addWidget(self.entry_discord_client_id, 1)
+        layout.addWidget(f_discord_id)
+
         self.checks[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = self.check_discord_rpc
         self.check_discord_rpc.stateChanged.connect(lambda state: self.app.sync_discord_rpc_ui(state == Qt.Checked))
 
@@ -750,11 +761,15 @@ class SettingsTab(QWidget):
             self.app.config[key] = cb.isChecked()
 
         self.app.config[c.CONFIG_KEY_CUSTOM_ENV_VARS] = self.entry_custom_vars.text()
-
-        if mode_key == c.MODE_BIN_CUSTOM:
-            for key, (e, b, f) in self.inputs.items():
-                self.app.config[c.CONFIG_KEY_BINARY_PATHS][key] = e.text()
+        self.app.config[c.CONFIG_KEY_DISCORD_CLIENT_ID] = self.entry_discord_client_id.text().strip()
 
         self.app.config_manager.save_config()
+
+        # Reiniciar Discord RPC si está habilitado para aplicar cambios
+        if self.app.config.get(c.CONFIG_KEY_DISCORD_RPC_ENABLED, False):
+            self.app._discord_rpc.stop()
+            self.app._discord_rpc.start()
+            self.app._discord_rpc.set_idle()
+
         from src.gui import custom_dialogs as messagebox
         messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_SAVE_SUCCESS_MSG)
