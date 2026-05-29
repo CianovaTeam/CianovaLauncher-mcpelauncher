@@ -1,0 +1,153 @@
+# Release workflow for Cianova Launcher
+#
+# When a tag v* is pushed (or triggered manually), this workflow:
+#   1. Builds the Python app with PyInstaller
+#   2. Downloads pre-compiled mcpelauncher binaries from mcpelauncher-bins repo
+#   3. Builds the Flatpak package
+#   4. Generates the offline .flatpak bundle
+#   5. Packages the portable .tar.gz
+#   6. Creates a GitHub Release with all assets
+#   7. Deploys the Flatpak repo to gh-pages
+#
+# ── Prerequisites ──
+#   - GPG_PRIVATE_KEY secret: the private GPG key for signing the Flatpak repo
+#   - GPG_KEY_ID secret: the key ID (e.g. 3B72E50788CA732336B40855E4220487186BAA61)
+#   - mcpelauncher-bins repo with compiled binaries as GitHub Releases
+#
+# ── How to trigger ──
+#   git tag v3.0.0
+#   git push origin v3.0.0
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. v3.0.0)"
+        required: true
+      mcpelauncher_bins_version:
+        description: "mcpelauncher-bins version to use (e.g. v1.7.4)"
+        required: true
+        default: "v1.7.4"
+
+  # ── Uncomment when ready for automatic release on tag push ──
+  # push:
+  #   tags:
+  #     - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ github.event.inputs.version || github.ref_name }}
+      MCPELAUNCHER_BINS: ${{ github.event.inputs.mcpelauncher_bins_version || 'v1.7.4' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── System dependencies ──
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y flatpak flatpak-builder python3-pip python3-venv \
+            libfuse2 patchelf
+          flatpak remote-add --user --if-not-exists flathub \
+            https://flathub.org/repo/flathub.flatpakrepo
+
+      # ── Python ──
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install PySide6 Pillow pyinstaller
+
+      # ── Build Python app ──
+      - name: Build with PyInstaller
+        run: |
+          source venv/bin/activate
+          ./build.sh
+
+      # ── Download mcpelauncher binaries ──
+      - name: Download mcpelauncher binaries
+        run: |
+          TAG="${{ env.MCPELAUNCHER_BINS }}"
+          URL="https://github.com/PlaGaPlusDev/mcpelauncher-bins/releases/download/$TAG/mcpelauncher_bins-$TAG.tar.gz"
+          echo "Downloading from: $URL"
+          curl -L -o mcpelauncher_bins.tar.gz "$URL"
+          tar -xzf mcpelauncher_bins.tar.gz
+          mv mcpelauncher_bins-*/bin ./bin
+          mv mcpelauncher_bins-*/libs_mc ./libs_mc
+          rm -rf mcpelauncher_bins-* mcpelauncher_bins.tar.gz
+
+      # ── Flatpak ──
+      - name: Import GPG key
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --no-tty --batch
+
+      - name: Install Flatpak runtimes
+        run: |
+          flatpak install --user -y flathub org.kde.Platform//6.9 || true
+          flatpak install --user -y flathub org.kde.Sdk//6.9 || true
+          flatpak install --user -y flathub io.qt.qtwebengine.BaseApp//6.9 || true
+
+      - name: Build Flatpak
+        run: |
+          flatpak-builder --user --force-clean \
+            --repo=repo_dist \
+            --gpg-sign=${{ secrets.GPG_KEY_ID || '' }} \
+            build-dir org.cianova.Launcher.yml
+
+      - name: Update Flatpak repo
+        run: |
+          flatpak build-update-repo --prune --prune-depth=5 \
+            --generate-static-deltas \
+            --gpg-sign=${{ secrets.GPG_KEY_ID || '' }} \
+            repo_dist
+
+      - name: Generate Flatpak bundle
+        run: |
+          flatpak build-bundle repo_dist \
+            CianovaLauncher-${{ env.VERSION }}.flatpak \
+            org.cianova.Launcher \
+            --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
+
+      # ── Portable tar.gz ──
+      - name: Package portable build
+        run: |
+          if [ -d "dist/CianovaLauncherMCPE" ]; then
+            mv dist/CianovaLauncherMCPE CianovaLauncher-${{ env.VERSION }}
+            tar -czf CianovaLauncher-${{ env.VERSION }}.tar.gz \
+              CianovaLauncher-${{ env.VERSION }}
+            rm -rf CianovaLauncher-${{ env.VERSION }}
+          fi
+
+      # ── GitHub Release ──
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Cianova Launcher ${{ env.VERSION }}
+          body_path: Docs/Changelog.md
+          fail_on_unmatched_files: false
+          draft: true
+          files: |
+            CianovaLauncher-${{ env.VERSION }}.flatpak
+            CianovaLauncher-${{ env.VERSION }}.tar.gz
+            CianovaLauncher.flatpakrepo
+
+      # ── Deploy Flatpak repo to gh-pages ──
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./repo_dist
+          destination_dir: ./repo_dist
+          keep_files: true
