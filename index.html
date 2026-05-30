@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cianova Launcher</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300..900&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="icon.png" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --emerald: #00e87a;
+      --emerald-dim: #00cc66;
+      --emerald-glow: rgba(0, 232, 122, 0.12);
+      --emerald-glow-strong: rgba(0, 232, 122, 0.25);
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #111118;
+      --bg-card: #181820;
+      --bg-card-hover: #1e1e2a;
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888a0;
+      --text-muted: #5a5a72;
+      --border: #22223a;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --voxel-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Anybody', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    #cursorGlow {
+      position: fixed; pointer-events: none; z-index: 9999;
+      width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,232,122,0.06) 0%, transparent 70%);
+      transform: translate(-50%, -50%);
+      transition: opacity 0.3s;
+    }
+    body::before {
+      content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,230,118,0.06) 0%, transparent 100%),
+        radial-gradient(ellipse 40% 30% at 80% 30%, rgba(0,230,118,0.04) 0%, transparent 100%),
+        radial-gradient(ellipse 30% 25% at 20% 60%, rgba(0,230,118,0.03) 0%, transparent 100%);
+      pointer-events: none; z-index: 0;
+    }
+    a { color: var(--emerald); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: #fff; }
+    ::selection { background: var(--emerald); color: #000; }
+
+    /* ── Header ── */
+    header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(10,10,15,0.85); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    header .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; font-size: 1.2rem; line-height: 1;
+      color: var(--text-primary); transform: translateY(2px);
+    }
+    header .logo img { width: 42px; height: 42px; border-radius: 6px; }
+    header nav { display: flex; gap: 24px; align-items: center; }
+    header nav a { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); }
+    header nav a:hover { color: var(--emerald); }
+
+    /* ── Sections ── */
+    section { padding: 96px 24px; max-width: 1120px; margin: 0 auto; position: relative; z-index: 1; }
+    .section-label {
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--emerald); margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 2.6rem; font-weight: 800; line-height: 1.15;
+      margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 1.15rem; color: var(--text-secondary);
+      max-width: 640px; margin-bottom: 48px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 85vh; display: flex; align-items: center;
+      padding-top: 80px; position: relative; z-index: 1;
+    }
+    .hero-content {
+      position: relative; z-index: 1;
+      display: flex; align-items: center; justify-content: space-between; gap: 64px;
+      width: 100%;
+    }
+    .hero-text { flex: 1; max-width: 600px; }
+    .hero-icon-wrap {
+      flex-shrink: 0; position: relative;
+      display: flex; align-items: center; justify-content: center;
+      margin-right: 0;
+    }
+    .hero-icon-wrap::before {
+      content: ''; position: absolute;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0,232,122,0.1) 0%, transparent 75%);
+      filter: blur(40px);
+      pointer-events: none;
+    }
+    .hero-icon {
+      width: 300px; height: 300px;
+      border-radius: var(--radius); position: relative;
+      animation: float 4s ease-in-out infinite;
+    }
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-12px); }
+      100% { transform: translateY(0px); }
+    }
+    @media (max-width: 1024px) {
+      .hero-content { gap: 40px; }
+      .hero-icon { width: 220px; height: 220px; }
+      .hero-icon-wrap::before { width: 420px; height: 420px; }
+    }
+    @media (max-width: 768px) {
+      .hero-content { flex-direction: column-reverse; text-align: center; gap: 32px; }
+      .hero-text { max-width: 100%; }
+      .hero-icon { width: 160px; height: 160px; }
+      .hero-icon-wrap::before { width: 320px; height: 320px; }
+    }
+    .hero-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.75rem; font-weight: 600;
+      padding: 5px 12px; border-radius: 999px;
+      background: rgba(0,230,118,0.08); color: var(--emerald);
+      border: 1px solid rgba(0,230,118,0.2);
+    }
+    .hero h1 { font-size: 3.6rem; font-weight: 900; line-height: 1.05; margin-bottom: 20px; }
+    .hero h1 span { color: var(--emerald); }
+    .hero p {
+      font-size: 1.2rem; color: var(--text-secondary);
+      margin-bottom: 36px; line-height: 1.7;
+    }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'Anybody', sans-serif; font-weight: 600;
+      font-size: 0.95rem; padding: 14px 32px; border-radius: var(--radius);
+      border: none; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--emerald); color: #000; box-shadow: var(--voxel-shadow);
+    }
+    .btn-primary:hover { background: var(--emerald-dim); transform: translate(-1px,-1px); box-shadow: 6px 6px 0 rgba(0,0,0,0.3); }
+    .btn-secondary {
+      background: transparent; color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--bg-card); border-color: var(--text-secondary); }
+    .btn .icon { width: 18px; height: 18px; }
+
+    /* ── Features Carousel ── */
+    .features-section { position: relative; }
+    .features-wrapper {
+      overflow: hidden; position: relative;
+      margin: 0 -4px; padding: 4px;
+    }
+    .features-track {
+      display: flex; gap: 20px; transition: transform 0.4s ease;
+    }
+    .feat-card {
+      flex: 0 0 calc(50% - 10px); min-width: 280px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 32px;
+      transition: all 0.25s; position: relative; overflow: hidden;
+    }
+    .feat-card:hover {
+      background: var(--bg-card-hover); border-color: var(--emerald);
+      transform: translateY(-2px);
+    }
+    .feat-card::before {
+      content: ''; position: absolute; top: 0; left: 0;
+      width: 100%; height: 3px; background: var(--emerald); opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .feat-card:hover::before { opacity: 1; }
+    .feat-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .feat-metric {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; padding: 4px 10px; border-radius: 999px;
+      background: rgba(0,230,118,0.1); color: var(--emerald);
+      border: 1px solid rgba(0,230,118,0.15); white-space: nowrap;
+    }
+    .feat-icon {
+      width: 44px; height: 44px; border-radius: var(--radius-sm);
+      background: rgba(0,230,118,0.08); display: flex;
+      align-items: center; justify-content: center;
+      margin-bottom: 0;
+    }
+    .feat-icon img, .feat-icon svg { width: 22px; height: 22px; }
+    .feat-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+    .feat-card p { font-size: 0.9rem; color: var(--text-secondary); }
+    .carousel-controls {
+      display: flex; justify-content: center; gap: 12px; margin-top: 32px;
+    }
+    .carousel-btn {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--bg-card); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .carousel-btn:hover { background: var(--bg-card-hover); border-color: var(--emerald); }
+    .carousel-btn svg { width: 20px; height: 20px; }
+    .carousel-dots { display: flex; gap: 8px; align-items: center; }
+    .carousel-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border); border: none; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .carousel-dot.active { background: var(--emerald); width: 24px; border-radius: 4px; }
+
+    /* ── Download ── */
+    .download-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .download-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px;
+      transition: all 0.25s;
+      display: flex; flex-direction: column;
+    }
+    .download-steps { flex: 1; }
+    .download-card:hover { border-color: var(--emerald); background: var(--bg-card-hover); }
+    .download-card.featured {
+      border-color: var(--emerald);
+      background: linear-gradient(135deg, rgba(0,230,118,0.06) 0%, var(--bg-card) 100%);
+    }
+    .download-label {
+      font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--emerald); margin-bottom: 4px;
+    }
+    .download-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
+    .download-card .meta {
+      font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;
+    }
+    .download-step {
+      display: flex; gap: 10px; align-items: flex-start;
+      margin-bottom: 10px; font-size: 0.85rem; color: var(--text-secondary);
+    }
+    .download-step .step-num {
+      flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(0,230,118,0.12); color: var(--emerald);
+      font-size: 0.7rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+    .download-step code {
+      display: block; background: var(--bg-primary);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 8px 12px; font-size: 0.78rem; color: var(--emerald);
+      margin-top: 4px; word-break: break-all;
+    }
+    .code-wrap { position: relative; }
+    .copy-btn {
+      position: absolute; top: 6px; right: 6px;
+      width: 28px; height: 28px; border-radius: 6px;
+      background: rgba(0,232,122,0.1); border: 1px solid rgba(0,232,122,0.25);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: 0; transition: opacity 0.2s;
+      color: var(--emerald);
+    }
+    .code-wrap:hover .copy-btn { opacity: 1; }
+    .copy-btn:hover { background: rgba(0,232,122,0.2); border-color: var(--emerald); }
+    .copy-btn svg { width: 14px; height: 14px; }
+    .copy-btn.copied { opacity: 1; border-color: var(--emerald); background: rgba(0,232,122,0.1); }
+    .download-card .btn { width: 100%; justify-content: center; margin-top: auto; }
+    .download-note {
+      grid-column: 1 / -1;
+      font-size: 0.9rem; color: var(--text-muted);
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 22px;
+    }
+    .download-note a { color: var(--text-secondary); }
+
+    /* ── Support ── */
+    .support-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .support-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px;
+      transition: all 0.25s;
+    }
+    .support-card:hover { border-color: var(--emerald); }
+    .support-card h3 {
+      font-size: 1.1rem; font-weight: 700; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .support-card h3 .icon { width: 22px; height: 22px; }
+    .support-card p, .support-card li {
+      font-size: 0.95rem; color: var(--text-secondary); line-height: 1.7;
+    }
+    .support-card ul { list-style: none; padding: 0; }
+    .support-card ul li { padding: 5px 0; }
+    .support-card ul li::before { content: '\25B6'; color: var(--emerald); margin-right: 8px; font-size: 0.55rem; }
+    .faq-item { margin-bottom: 18px; padding: 0; border: none; }
+    .faq-item:last-child { margin-bottom: 0; }
+    .faq-item h4 {
+      font-size: 1rem; font-weight: 600; margin-bottom: 4px;
+      color: var(--emerald); cursor: default;
+    }
+    .faq-item p { font-size: 0.9rem; }
+    .support-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.95rem; color: var(--text-secondary);
+      padding: 7px 0; transition: color 0.2s;
+    }
+    .support-link:hover { color: var(--emerald); }
+    .support-link-group { display: flex; flex-direction: column; }
+    .support-link .icon { width: 18px; height: 18px; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 48px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted); font-size: 0.9rem;
+      position: relative; z-index: 1;
+    }
+    footer a { color: var(--text-secondary); }
+    footer a:hover { color: var(--emerald); }
+    .footer-links {
+      display: flex; justify-content: center; gap: 24px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .footer-heart { display: inline; vertical-align: middle; }
+    .footer-heart svg { width: 16px; height: 16px; vertical-align: middle; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      section { padding: 64px 16px; }
+      .hero h1 { font-size: 2.2rem; }
+      .section-title { font-size: 2rem; }
+      .features-grid, .download-grid, .support-grid { grid-template-columns: 1fr; }
+      .feat-card { flex: 0 0 85%; }
+      header nav { gap: 14px; }
+      header nav a { font-size: 0.8rem; }
+    }
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 1.8rem; }
+      .hero-actions { flex-direction: column; }
+      .hero-actions .btn { width: 100%; }
+      header nav a:nth-child(n+4) { display: none; }
+      .feat-card { flex: 0 0 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="cursorGlow"></div>
+
+  <header>
+    <a href="#" class="logo">
+      <img src="icon.png" alt="Cianova Launcher" />
+      Cianova Launcher
+    </a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#download">Download</a>
+      <a href="#support">Support</a>
+      <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank">GitHub</a>
+    </nav>
+  </header>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="hero" id="hero">
+    <div class="hero-content">
+      <div class="hero-text">
+        <div class="hero-badges">
+          <span class="hero-badge">PySide6 / Qt6</span>
+          <span class="hero-badge">Flatpak</span>
+          <span class="hero-badge">Open Source</span>
+        </div>
+        <h1>
+          A modern<br />
+          <span>Minecraft: Bedrock</span><br />
+          launcher for Linux
+        </h1>
+        <p>
+          Cianova Launcher is a graphical interface for managing Minecraft
+          Bedrock Edition on Linux. A community-driven alternative that
+          works alongside the mcpelauncher project — with profile management,
+          version switching, and visual customization built in.
+        </p>
+        <div class="hero-actions">
+          <a href="#download" class="btn btn-primary">Download</a>
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" class="btn btn-secondary">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+            Source Code
+          </a>
+        </div>
+      </div>
+      <div class="hero-icon-wrap">
+        <img src="icon.png" alt="Cianova Launcher" class="hero-icon" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FEATURES ═══ -->
+  <section id="features" class="features-section">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">What you get</h2>
+    <p class="section-sub">
+      A set of practical tools designed to make your Bedrock experience on
+      Linux more manageable — no fuss, no unnecessary complexity.
+    </p>
+    <div class="features-wrapper">
+      <div class="features-track" id="featuresTrack">
+        <div class="feat-card">
+          <div class="feat-header">
+            <div class="feat-icon"><img src="assets/icons/profiles.svg" alt="" /></div>
+            <span class="feat-metric">Symlink isolation</span>
+          </div>
+          <h3>Profile Management</h3>
+          <p>Each profile keeps its own worlds, resource packs, and settings completely separate via symlinks.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-header">
+            <div class="feat-icon"><img src="assets/icons/versions.svg" alt="" /></div>
+            <span class="feat-metric">1-click switch</span>
+          </div>
+          <h3>Version Selector</h3>
+          <p>Switch between any installed version instantly. List or grid view, custom icons, and desktop shortcuts.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-header">
+            <div class="feat-icon"><img src="assets/icons/google.svg" alt="" /></div>
+            <span class="feat-metric">APK + Play Store</span>
+          </div>
+          <h3>Google Play &amp; Local APK</h3>
+          <p>Download official versions from Google Play, or install APKs you already have — the launcher verifies architecture compatibility.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-header">
+            <div class="feat-icon"><img src="assets/icons/resource.svg" alt="" /></div>
+            <span class="feat-metric">.mcpack import</span>
+          </div>
+          <h3>Resource Pack Manager</h3>
+          <p>Import .mcpack, .mcworld, .mcaddon files. Activate, deactivate, and manage packs without deleting anything.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-header">
+            <div class="feat-icon"><img src="assets/icons/config.svg" alt="" /></div>
+            <span class="feat-metric">Visual editor</span>
+          </div>
+          <h3>Game Configurator</h3>
+          <p>Adjust render distance, FPS cap, VSync, gamma, controls, and audio without launching the game.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-header">
+            <div class="feat-icon"><img src="assets/icons/palette.svg" alt="" /></div>
+            <span class="feat-metric">12 themes</span>
+          </div>
+          <h3>Visual Customization</h3>
+          <p>12 color themes, light/dark/system mode, custom backgrounds, watermark stickers, and adjustable UI scaling.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-header">
+            <div class="feat-icon"><img src="assets/icons/compat.svg" alt="" /></div>
+            <span class="feat-metric">Nvidia / Zink</span>
+          </div>
+          <h3>Compatibility Options</h3>
+          <p>Optional Nvidia Prime, Zink (OpenGL over Vulkan), GameMode, and Discord Rich Presence — toggle in Settings.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-header">
+            <div class="feat-icon"><img src="assets/icons/check.svg" alt="" /></div>
+            <span class="feat-metric">Auto-detect</span>
+          </div>
+          <h3>System &amp; Dependency Checks</h3>
+          <p>Hardware compatibility validator, dependency resolver (APT/DNF/PACMAN), Flatpak runtime verification, and execution logs.</p>
+        </div>
+      </div>
+    </div>
+    <div class="carousel-controls">
+      <button class="carousel-btn" onclick="slideFeatures(-1)" aria-label="Previous">
+        <img src="assets/icons/arrow-left.svg" alt="" />
+      </button>
+      <div class="carousel-dots" id="carouselDots"></div>
+      <button class="carousel-btn" onclick="slideFeatures(1)" aria-label="Next">
+        <img src="assets/icons/arrow-right.svg" alt="" />
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══ DOWNLOAD ═══ -->
+  <section id="download">
+    <div class="section-label">Download</div>
+    <h2 class="section-title">Get Cianova Launcher</h2>
+    <p class="section-sub">
+      Flatpak is recommended for automatic updates and sandboxed stability.
+      Portable and source options are also available.
+    </p>
+    <div class="download-grid">
+      <div class="download-card featured">
+        <div class="download-label">Recommended</div>
+        <h3>Flatpak Repo</h3>
+        <p class="meta">Add the repository and receive updates through your software center. Requires <a href="https://flathub.org/en/setup" target="_blank">Flatpak setup</a> first.</p>
+        <a href="CianovaLauncher.flatpakrepo" class="btn btn-primary" style="margin-bottom:16px;">One-Click Install</a>
+        <div class="download-steps">
+        <div class="download-step">
+          <span class="step-num">1</span>
+          <div>Add the repository:<code>flatpak remote-add --user --if-not-exists CianovaLauncher https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo</code></div>
+        </div>
+        <div class="download-step">
+          <span class="step-num">2</span>
+          <div>Install required runtimes:<code>flatpak install org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10</code></div>
+        </div>
+        <div class="download-step">
+          <span class="step-num">3</span>
+          <div>Install the launcher:<code>flatpak install --user CianovaLauncher org.cianova.Launcher</code></div>
+        </div>
+        </div>
+      </div>
+      <div class="download-card">
+        <div class="download-label">Bundle</div>
+        <h3>Flatpak Bundle</h3>
+        <p class="meta">Offline .flatpak file. Download once, then install.</p>
+        <div class="download-steps">
+        <div class="download-step">
+          <span class="step-num">1</span>
+          <div>Download the .flatpak from Releases</div>
+        </div>
+        <div class="download-step">
+          <span class="step-num">2</span>
+          <div>Install the bundle:<code>flatpak install --user CianovaLauncher.flatpak</code></div>
+        </div>
+        <div class="download-step">
+          <span class="step-num">3</span>
+          <div>Install required runtimes:<code>flatpak install org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10</code></div>
+        </div>
+        </div>
+        <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/releases" target="_blank" class="btn btn-secondary">Download .flatpak</a>
+      </div>
+      <div class="download-card">
+        <div class="download-label">Portable</div>
+        <h3>Compiled Binary (.tar.gz)</h3>
+        <p class="meta">Extract and run. Includes pre-compiled mcpelauncher binaries and libraries.</p>
+        <div class="download-steps">
+        <div class="download-step">
+          <span class="step-num">1</span>
+          <div>Download and extract:<code>tar -xzf CianovaLauncher-v3.0.tar.gz</code></div>
+        </div>
+        <div class="download-step">
+          <span class="step-num">2</span>
+          <div>Run the launcher:<code>./CianovaLauncher.sh</code></div>
+        </div>
+        </div>
+        <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/releases" target="_blank" class="btn btn-secondary">Download .tar.gz</a>
+      </div>
+      <div class="download-card">
+        <div class="download-label">Source</div>
+        <h3>From Source</h3>
+        <p class="meta">Python 3.10+, PySide6. Clone, install deps, and run.</p>
+        <div class="download-steps">
+        <div class="download-step">
+          <span class="step-num">1</span>
+          <div>Install dependencies:<code>pip install PySide6 Pillow</code></div>
+        </div>
+        <div class="download-step">
+          <span class="step-num">2</span>
+          <div>Run the development script:<code>./run.sh</code></div>
+        </div>
+        </div>
+        <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" class="btn btn-secondary">View on GitHub</a>
+      </div>
+      <div class="download-note">
+        <strong>Note:</strong> Cianova Launcher requires the
+        <a href="https://github.com/minecraft-linux/mcpelauncher-manifest" target="_blank">mcpelauncher-manifest</a>
+        binaries. The Flatpak and portable bundles include them. If building
+        from source, place the binaries in a <code>bin/</code> folder inside
+        the launcher root. See the
+        <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/MANUAL%20DE%20USO.md" target="_blank">User Manual</a>
+        for details. Your PC must support x86_64 and OpenGL ES 3.0.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SUPPORT / FAQ ═══ -->
+  <section id="support">
+    <div class="section-label">Support</div>
+    <h2 class="section-title">Help &amp; Resources</h2>
+    <p class="section-sub">
+      Guides, system tools, and community channels to help you get the most
+      out of Cianova Launcher.
+    </p>
+    <div class="support-grid">
+      <div class="support-card">
+        <h3><img src="assets/icons/check.svg" class="icon" alt="" /> System Health</h3>
+        <p>Built-in tools to check your setup:</p>
+        <ul>
+          <li>Hardware compatibility &amp; recommended version range</li>
+          <li>Missing dependency detection — approximate package lists for portable/source builds (APT, DNF, PACMAN)</li>
+          <li>Flatpak runtime verification</li>
+          <li>GPU / OpenGL ES analysis</li>
+        </ul>
+      </div>
+      <div class="support-card">
+        <h3><img src="assets/icons/docs.svg" class="icon" alt="" /> Documentation</h3>
+        <div class="support-link-group">
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/MANUAL%20DE%20USO.md" target="_blank" class="support-link"><img src="assets/icons/docs.svg" class="icon" alt="" /> User Manual</a>
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/Changelog.md" target="_blank" class="support-link"><img src="assets/icons/versions.svg" class="icon" alt="" /> Changelog</a>
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/LICENCE%20%26%20TERMINOS%20y%20CONDICIONES.md" target="_blank" class="support-link"><img src="assets/icons/profiles.svg" class="icon" alt="" /> License &amp; Terms</a>
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/tree/mainqt6/Docs" target="_blank" class="support-link"><img src="assets/icons/resource.svg" class="icon" alt="" /> All Docs</a>
+        </div>
+      </div>
+      <div class="support-card">
+        <h3><img src="assets/icons/faq.svg" class="icon" alt="" /> Frequently Asked Questions</h3>
+        <div class="faq-item">
+          <h4>Does it include Minecraft?</h4>
+          <p>No. You must own Minecraft Bedrock on Google Play. The launcher can download official versions via Google Play (requires your account), or you can install APKs that you obtain by your own means. Cianova Launcher does not distribute game files.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Does it work with Nvidia?</h4>
+          <p>It includes optional Nvidia Prime and Zink compatibility modes. Results vary by driver and GPU — toggle them in Settings.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Can I use it without Flatpak?</h4>
+          <p>Yes. Download the portable .tar.gz, place the mcpelauncher binaries in a <code>bin/</code> folder, and run <code>./CianovaLauncher.sh</code>.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Is this an official mcpelauncher product?</h4>
+          <p>No. Cianova Launcher is an independent project. It is a GUI wrapper that uses mcpelauncher binaries, but it is not affiliated with or endorsed by its authors.</p>
+        </div>
+      </div>
+      <div class="support-card">
+        <h3><img src="assets/icons/community.svg" class="icon" alt="" /> Community</h3>
+        <p style="margin-bottom: 22px;">
+          Built in the open — help, ideas, and contributions are always welcome.
+        </p>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div style="flex-shrink:0; width:36px; height:36px; border-radius:8px; background:rgba(0,230,118,0.08); display:flex; align-items:center; justify-content:center;">
+              <img src="assets/icons/community.svg" style="width:18px;height:18px;" alt="" />
+            </div>
+            <div>
+              <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/discussions" target="_blank" style="font-weight:600; font-size:0.95rem;">Discussions</a>
+              <p style="font-size:0.85rem; color:var(--text-secondary); margin:2px 0 0;">Ask questions, share setups, suggest features. All languages welcome.</p>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div style="flex-shrink:0; width:36px; height:36px; border-radius:8px; background:rgba(0,230,118,0.08); display:flex; align-items:center; justify-content:center;">
+              <img src="assets/icons/faq.svg" style="width:18px;height:18px;" alt="" />
+            </div>
+            <div>
+              <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/issues" target="_blank" style="font-weight:600; font-size:0.95rem;">Issues</a>
+              <p style="font-size:0.85rem; color:var(--text-secondary); margin:2px 0 0;">Found a bug? Open an issue. Check existing ones first.</p>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div style="flex-shrink:0; width:36px; height:36px; border-radius:8px; background:rgba(0,230,118,0.08); display:flex; align-items:center; justify-content:center;">
+              <img src="assets/icons/profiles.svg" style="width:18px;height:18px;" alt="" />
+            </div>
+            <div>
+              <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" style="font-weight:600; font-size:0.95rem;">Source Code</a>
+              <p style="font-size:0.85rem; color:var(--text-secondary); margin:2px 0 0;">Fork it, send a PR, or just browse. Contributions welcome.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-links">
+      <a href="#hero">Home</a>
+      <a href="#features">Features</a>
+      <a href="#download">Download</a>
+      <a href="#support">Support</a>
+      <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank">GitHub</a>
+    </div>
+    <p>
+      Made with <span class="footer-heart"><img src="assets/icons/heart.svg" alt="" style="width:16px;height:16px;vertical-align:middle;" /></span> and &#x1F916; for the Linux community &mdash;
+      <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/LICENCE%20%26%20TERMINOS%20y%20CONDICIONES.md" target="_blank">GPL v3.0</a>
+    </p>
+  </footer>
+
+  <script>
+    const track = document.getElementById('featuresTrack');
+    const dots = document.getElementById('carouselDots');
+    const cards = track.querySelectorAll('.feat-card');
+    let currentSlide = 0;
+    let visibleSlides = getVisibleSlides();
+
+    function getVisibleSlides() {
+      if (window.innerWidth <= 480) return 1;
+      if (window.innerWidth <= 768) return 1;
+      return 2;
+    }
+
+    function getMaxSlide() {
+      return Math.max(0, cards.length - visibleSlides);
+    }
+
+    function buildDots() {
+      dots.innerHTML = '';
+      const total = getMaxSlide() + 1;
+      for (let i = 0; i < total; i++) {
+        const dot = document.createElement('button');
+        dot.className = 'carousel-dot' + (i === currentSlide ? ' active' : '');
+        dot.onclick = function() { goToSlide(i); };
+        dots.appendChild(dot);
+      }
+    }
+
+    function goToSlide(index) {
+      const max = getMaxSlide();
+      currentSlide = Math.max(0, Math.min(index, max));
+      const gap = 20;
+      const cardWidth = cards[0].offsetWidth;
+      const offset = currentSlide * (cardWidth + gap);
+      track.style.transform = 'translateX(-' + offset + 'px)';
+      updateDots();
+    }
+
+    function updateDots() {
+      const all = dots.querySelectorAll('.carousel-dot');
+      all.forEach(function(d, i) {
+        d.classList.toggle('active', i === currentSlide);
+      });
+    }
+
+    function slideFeatures(dir) {
+      goToSlide(currentSlide + dir);
+    }
+
+    function recalc() {
+      visibleSlides = getVisibleSlides();
+      currentSlide = Math.min(currentSlide, getMaxSlide());
+      buildDots();
+      goToSlide(currentSlide);
+    }
+
+    window.addEventListener('resize', recalc);
+    recalc();
+
+    const glow = document.getElementById('cursorGlow');
+    document.addEventListener('mousemove', function(e) {
+      glow.style.left = e.clientX + 'px';
+      glow.style.top = e.clientY + 'px';
+    });
+    document.addEventListener('mouseleave', function() {
+      glow.style.opacity = '0';
+    });
+    document.addEventListener('mouseenter', function() {
+      glow.style.opacity = '1';
+    });
+
+    const copyIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    const checkIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+    document.querySelectorAll('.download-step code').forEach(function(el) {
+      var wrap = document.createElement('div');
+      wrap.className = 'code-wrap';
+      el.parentNode.insertBefore(wrap, el);
+      wrap.appendChild(el);
+
+      var btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.innerHTML = copyIcon;
+      btn.title = 'Copy to clipboard';
+      btn.addEventListener('click', function() {
+        navigator.clipboard.writeText(el.textContent).then(function() {
+          btn.innerHTML = checkIcon;
+          btn.classList.add('copied');
+          setTimeout(function() {
+            btn.innerHTML = copyIcon;
+            btn.classList.remove('copied');
+          }, 2000);
+        });
+      });
+      wrap.appendChild(btn);
+    });
+  </script>
+
+</body>
+</html>
