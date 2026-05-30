@@ -94,9 +94,9 @@ jobs:
 
       - name: Install Flatpak runtimes
         run: |
-          flatpak install --user -y flathub org.kde.Platform//6.9 || true
-          flatpak install --user -y flathub org.kde.Sdk//6.9 || true
-          flatpak install --user -y flathub io.qt.qtwebengine.BaseApp//6.9 || true
+          flatpak install --user -y flathub org.kde.Platform//6.10 || true
+          flatpak install --user -y flathub org.kde.Sdk//6.10 || true
+          flatpak install --user -y flathub io.qt.qtwebengine.BaseApp//6.10 || true
 
       - name: Build Flatpak
         run: |

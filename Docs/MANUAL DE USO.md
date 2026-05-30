@@ -36,7 +36,7 @@ Si has descargado el archivo `.flatpak` directamente desde **Releases**:
    ```
 2. **Importante (Runtimes):** Si instalas por este método, asegúrate de tener los runtimes necesarios ejecutando:
    ```bash
-   flatpak install org.kde.Platform//6.9 io.qt.qtwebengine.BaseApp//6.9
+   flatpak install org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10
    ```
 
 ---
