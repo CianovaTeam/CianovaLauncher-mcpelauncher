@@ -5,22 +5,24 @@ from src import constants as c
 from src.gui import custom_dialogs as messagebox
 
 class ProfileManagerDialog(QDialog):
+    """Dialog for creating, renaming, and deleting user profiles."""
     def __init__(self, parent, app):
         super().__init__(parent)
         self.app = app
-        self.setWindowTitle(c.UI_PROFILES_MANAGER_TITLE)
+        self.setWindowTitle(c.t("UI_PROFILES_MANAGER_TITLE"))
         self.resize(500, 500)
 
         self.setup_ui()
         self.refresh_list()
 
     def setup_ui(self):
+        """Build the dialog layout with add button and scrollable profile list."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(20, 20, 20, 20)
         self.main_layout.setSpacing(15)
 
         # Header
-        self.btn_add = QPushButton(f"➕ {c.UI_BUTTON_ADD_PROFILE}")
+        self.btn_add = QPushButton(f"➕ {c.t("UI_BUTTON_ADD_PROFILE")}")
         self.btn_add.setObjectName("ToolButton")
         self.btn_add.setFixedHeight(35)
         self.btn_add.clicked.connect(self.add_profile)
@@ -41,6 +43,7 @@ class ProfileManagerDialog(QDialog):
         self.setStyleSheet("background-color: #2b2b2b; color: white;")
 
     def refresh_list(self):
+        """Rebuild the profile list UI from the current available profiles."""
         while self.scroll_layout.count():
             item = self.scroll_layout.takeAt(0)
             if item.widget():
@@ -53,6 +56,7 @@ class ProfileManagerDialog(QDialog):
             self.create_item(p, p == current)
 
     def create_item(self, name, is_current):
+        """Create a single profile row widget with rename and delete buttons."""
         frame = QFrame()
         bg = c.COLOR_SELECTED_GREEN if is_current else "#333333"
         frame.setStyleSheet(f"background-color: {bg}; border-radius: 10px;")
@@ -65,7 +69,7 @@ class ProfileManagerDialog(QDialog):
 
         layout.addStretch()
 
-        if name != c.UI_PROFILE_DEFAULT:
+        if name != c.t("UI_PROFILE_DEFAULT"):
             btn_rename = QPushButton("✏️")
             btn_rename.setFixedSize(35, 30)
             btn_rename.clicked.connect(lambda checked=False, n=name: self.rename_profile(n))
@@ -91,7 +95,8 @@ class ProfileManagerDialog(QDialog):
             self.app.play_tab.update_profile_indicator()
 
     def add_profile(self):
-        name, ok = QInputDialog.getText(self, c.UI_BUTTON_ADD_PROFILE, c.UI_PROFILE_NAME_REQUIRED)
+        """Prompt for a new profile name and create it."""
+        name, ok = QInputDialog.getText(self, c.t("UI_BUTTON_ADD_PROFILE"), c.t("UI_PROFILE_NAME_REQUIRED"))
         if ok and name:
             # Reusing logic from app_logic would be better, but app_logic uses CTkInputDialog
             # I should update app_logic to be toolkit-agnostic or update it to use PySide6
@@ -101,12 +106,14 @@ class ProfileManagerDialog(QDialog):
                 self._sync_ui()
 
     def rename_profile(self, old_name):
-        new_name, ok = QInputDialog.getText(self, c.UI_BUTTON_RENAME_PROFILE, c.UI_PROFILE_NAME_REQUIRED, text=old_name)
+        """Prompt for a new name and rename the given profile."""
+        new_name, ok = QInputDialog.getText(self, c.t("UI_BUTTON_RENAME_PROFILE"), c.t("UI_PROFILE_NAME_REQUIRED"), text=old_name)
         if ok and new_name and self.app.logic.rename_profile(self.app, old_name, new_name):
             self.refresh_list()
             self._sync_ui()
 
     def delete_profile(self, name):
+        """Delete the given profile after confirming with the user."""
         if self.app.logic.delete_profile(self.app, name):
             self.refresh_list()
             self._sync_ui()

@@ -1,13 +1,13 @@
 # ⚖️ LICENCIA & TÉRMINOS Y CONDICIONES
 
-**Última Actualización:** 12 de Mayo de 2026
+**Última Actualización:** 21 de Mayo de 2026
 
 ---
 
 ## 1. Naturaleza del Proyecto
 **CianovaLauncher** es una herramienta de código abierto desarrollada con fines educativos y de utilidad para la comunidad de Minecraft Bedrock en Linux.
 
-* **Desarrollo Asistido por IA:** Esta herramienta ha sido desarrollada con la asistencia de **Google Antigravity** y **Google Jules**, un agente de Inteligencia Artificial avanzado.
+* **Desarrollo Asistido por IA:** Esta herramienta ha sido desarrollada con la asistencia de un agente de Inteligencia Artificial avanzado.
 * **Base Original:** El script original `MCPELauncher Tools ver0.3.sh` es propiedad intelectual del usuario @PlaGaDev, quien lo ha cedido libremente para este proyecto.
 
 ## 2. Atribución y Dependencias
@@ -31,7 +31,7 @@ El proyecto **CCMC Launcher** por CrowRei34, en el cual se basaba la versión an
 Este proyecto se distribuye bajo la licencia **GNU GPL v3.0**. Es de código abierto y se entrega con la intención de ser gratuito para siempre. Se agradece a la comunidad no monetizar esta herramienta para mantener el espíritu de colaboración.
 
 ## 4. Exención de Responsabilidad
-De acuerdo con la licencia **GPL v3.0** el software se proporciona "tal cual", sin garantía de ningún tipo. Los desarrolladores (@PlaGaDev y @ShaggyLinux) y el equipo de soporte técnico no se hacen responsables de:
+De acuerdo con la licencia **GPL v3.0** el software se proporciona "tal cual", sin garantía de ningún tipo. Los desarrolladores (@PlaGaDev, @leimipsum y @ShaggyLinux) y el equipo de soporte técnico no se hacen responsables de:
 * Pérdida de datos (mundos, capturas, etc.).
 * Baneos de cuentas por uso indebido.
 * Fallos en el sistema derivados del uso de la herramienta.

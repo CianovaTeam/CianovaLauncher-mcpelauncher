@@ -7,7 +7,7 @@ def ask_open_filename_native(parent, title=None, filetypes=None):
     """
     Intenta usar Zenity para un diálogo de archivo nativo, con fallback a PySide6.
     """
-    if title is None: title = c.UI_OPEN_FILE_TITLE
+    if title is None: title = c.t("UI_OPEN_FILE_TITLE")
     # Convert filetypes to QFileDialog format
     # Tkinter format: [("Name", "*.ext")]
     # PySide6 format: "Name (*.ext);;Other (*.other)"
@@ -15,7 +15,7 @@ def ask_open_filename_native(parent, title=None, filetypes=None):
     if filetypes:
         qt_file_filter = ";;".join([f"{name} ({pattern})" for name, pattern in filetypes])
     else:
-        qt_file_filter = f"{c.UI_ALL_FILES_TYPE} (*)"
+        qt_file_filter = f"{c.t("UI_ALL_FILES_TYPE")} (*)"
 
     if shutil.which("zenity"):
         try:
@@ -43,7 +43,7 @@ def ask_directory_native(parent, title=None):
     """
     Intenta usar Zenity para un diálogo de directorio nativo, con fallback a PySide6.
     """
-    if title is None: title = c.UI_SELECT_FOLDER_TITLE
+    if title is None: title = c.t("UI_SELECT_FOLDER_TITLE")
 
     if shutil.which("zenity"):
         try:
@@ -67,12 +67,12 @@ def ask_open_filenames_native(parent, title=None, filetypes=None):
     """
     Intenta usar Zenity para un diálogo de selección de múltiples archivos.
     """
-    if title is None: title = c.UI_OPEN_FILES_TITLE
+    if title is None: title = c.t("UI_OPEN_FILES_TITLE")
     qt_file_filter = ""
     if filetypes:
         qt_file_filter = ";;".join([f"{name} ({pattern})" for name, pattern in filetypes])
     else:
-        qt_file_filter = f"{c.UI_ALL_FILES_TYPE} (*)"
+        qt_file_filter = f"{c.t("UI_ALL_FILES_TYPE")} (*)"
 
     if shutil.which("zenity"):
         try:

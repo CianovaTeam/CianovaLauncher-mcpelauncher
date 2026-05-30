@@ -11,11 +11,12 @@ from src.utils.dialogs import ask_open_filename_native
 from src.utils.image_manager import ImageManager
 
 class VersionManagerDialog(QDialog):
+    """Dialog for managing installed versions: rename, change icon, delete, and create shortcuts."""
     def __init__(self, parent, app):
         super().__init__(parent)
         self.app = app
         self.setObjectName("VersionManagerDialog")
-        self.setWindowTitle(c.UI_MANAGE_VERSION_TITLE)
+        self.setWindowTitle(c.t("UI_MANAGE_VERSION_TITLE"))
         self.setMinimumSize(520, 500)
 
         self.main_layout = QVBoxLayout(self)
@@ -39,7 +40,7 @@ class VersionManagerDialog(QDialog):
 
         # Selector de Versión
         selector_layout = QHBoxLayout()
-        selector_layout.addWidget(QLabel(c.UI_LABEL_INSTALLED_VERSIONS + ":"))
+        selector_layout.addWidget(QLabel(c.t("UI_LABEL_INSTALLED_VERSIONS") + ":"))
         self.combo_versions = QComboBox()
         self.refresh_versions()
         self.combo_versions.currentTextChanged.connect(self.on_version_selected)
@@ -68,11 +69,13 @@ class VersionManagerDialog(QDialog):
 
         # Renombrar
         rename_row = QHBoxLayout()
-        rename_row.addWidget(QLabel(c.UI_BUTTON_RENAME + ":"))
+        rename_row.addWidget(QLabel(c.t("UI_BUTTON_RENAME") + ":"))
         self.entry_rename = QLineEdit()
+        self.entry_rename.setStyleSheet("background-color: #333; color: white; border: 1px solid #555; border-radius: 6px; padding: 4px 8px;")
         rename_row.addWidget(self.entry_rename)
-        self.btn_rename = QPushButton(c.UI_BUTTON_RENAME)
+        self.btn_rename = QPushButton(c.t("UI_BUTTON_RENAME"))
         self.btn_rename.setFixedWidth(100)
+        self.btn_rename.setStyleSheet("background-color: #1f6aa5; color: white; border: none; border-radius: 8px; font-weight: bold;")
         self.btn_rename.clicked.connect(self.rename_version)
         rename_row.addWidget(self.btn_rename)
         self.info_layout.addLayout(rename_row)
@@ -80,7 +83,7 @@ class VersionManagerDialog(QDialog):
         # Icono Personalizado - simplified layout
         icon_row = QHBoxLayout()
         icon_row.setContentsMargins(0, 5, 0, 5)
-        icon_row.addWidget(QLabel(c.UI_BUTTON_CHANGE_ICON + ":"))
+        icon_row.addWidget(QLabel(c.t("UI_BUTTON_CHANGE_ICON") + ":"))
         self.btn_change_icon = QPushButton("...")
         self.btn_change_icon.setFixedWidth(40)
         self.btn_change_icon.clicked.connect(self.change_icon)
@@ -88,16 +91,17 @@ class VersionManagerDialog(QDialog):
 
         self.btn_reset_icon = QPushButton("🔄")
         self.btn_reset_icon.setFixedWidth(40)
-        self.btn_reset_icon.setToolTip(c.UI_BUTTON_RESET_ICON)
+        self.btn_reset_icon.setToolTip(c.t("UI_BUTTON_RESET_ICON"))
         self.btn_reset_icon.clicked.connect(self.reset_icon)
         icon_row.addWidget(self.btn_reset_icon)
 
         icon_row.addSpacing(10)
-        icon_row.addWidget(QLabel(c.UI_LABEL_ICON_ZOOM))
+        icon_row.addWidget(QLabel(c.t("UI_LABEL_ICON_ZOOM")))
         self.slider_zoom = QSlider(Qt.Horizontal)
         self.slider_zoom.setRange(10, 500)
         self.slider_zoom.setValue(100)
         self.slider_zoom.valueChanged.connect(self.update_personalization)
+        self.slider_zoom.sliderReleased.connect(self.on_personalization_released)
         icon_row.addWidget(self.slider_zoom, 1)
         self.lbl_zoom_val = QLabel("100%")
         icon_row.addWidget(self.lbl_zoom_val)
@@ -106,21 +110,23 @@ class VersionManagerDialog(QDialog):
         # Icon Position - simplified layout
         pos_row = QHBoxLayout()
         pos_row.setContentsMargins(0, 5, 0, 5)
-        pos_row.addWidget(QLabel(c.UI_LABEL_POS_X))
+        pos_row.addWidget(QLabel(c.t("UI_LABEL_POS_X")))
         self.slider_x = QSlider(Qt.Horizontal)
         self.slider_x.setRange(-200, 200)
         self.slider_x.setValue(0)
         self.slider_x.valueChanged.connect(self.update_personalization)
+        self.slider_x.sliderReleased.connect(self.on_personalization_released)
         pos_row.addWidget(self.slider_x)
         self.lbl_x_val = QLabel("0")
         pos_row.addWidget(self.lbl_x_val)
 
         pos_row.addSpacing(15)
-        pos_row.addWidget(QLabel(c.UI_LABEL_POS_Y))
+        pos_row.addWidget(QLabel(c.t("UI_LABEL_POS_Y")))
         self.slider_y = QSlider(Qt.Horizontal)
         self.slider_y.setRange(-200, 200)
         self.slider_y.setValue(0)
         self.slider_y.valueChanged.connect(self.update_personalization)
+        self.slider_y.sliderReleased.connect(self.on_personalization_released)
         pos_row.addWidget(self.slider_y)
         self.lbl_y_val = QLabel("0")
         pos_row.addWidget(self.lbl_y_val)
@@ -147,14 +153,14 @@ class VersionManagerDialog(QDialog):
         file_actions.setContentsMargins(0, 10, 0, 5)
         file_actions.setAlignment(Qt.AlignCenter | Qt.AlignHCenter)
         
-        self.btn_move = QPushButton(c.UI_MOVE_TO_BACKUP)
+        self.btn_move = QPushButton(c.t("UI_MOVE_TO_BACKUP"))
         self.btn_move.setFixedWidth(120)
         self.btn_move.setFixedHeight(36)
         self.btn_move.setStyleSheet(f"background-color: {c.COLOR_YELLOW_BUTTON}; color: white; border-radius: 8px; font-weight: bold; border: 1px solid {c.COLOR_YELLOW_BUTTON};")
         self.btn_move.clicked.connect(self.move_to_backup)
         file_actions.addWidget(self.btn_move)
 
-        self.btn_delete = QPushButton(c.UI_DELETE_PERMANENTLY)
+        self.btn_delete = QPushButton(c.t("UI_DELETE_PERMANENTLY"))
         self.btn_delete.setFixedWidth(100)
         self.btn_delete.setFixedHeight(36)
         self.btn_delete.setStyleSheet(f"background-color: {c.COLOR_RED_BUTTON}; color: white; border-radius: 8px; font-weight: bold; border: 1px solid {c.COLOR_RED_BUTTON};")
@@ -164,11 +170,11 @@ class VersionManagerDialog(QDialog):
         self.container_layout.addLayout(file_actions)
 
         # Shortcut Section
-        lbl_shortcut = QLabel(c.UI_SECTION_VERSION_SHORTCUTS)
+        lbl_shortcut = QLabel(c.t("UI_SECTION_VERSION_SHORTCUTS"))
         lbl_shortcut.setStyleSheet("font-weight: bold; margin-top: 10px;")
         self.container_layout.addWidget(lbl_shortcut)
 
-        self.btn_create_shortcut = QPushButton(c.UI_BUTTON_CREATE_MAIN)
+        self.btn_create_shortcut = QPushButton(c.t("UI_BUTTON_CREATE_MAIN"))
         self.btn_create_shortcut.setStyleSheet(f"background-color: {c.COLOR_GREEN_BUTTON}; color: white; border: 1px solid {c.COLOR_GREEN_BUTTON};")
         self.btn_create_shortcut.setFixedHeight(38)
         self.btn_create_shortcut.clicked.connect(self.create_shortcut)
@@ -176,7 +182,7 @@ class VersionManagerDialog(QDialog):
 
         self.container_layout.addStretch()
 
-        self.btn_close = QPushButton(c.UI_BUTTON_CLOSE)
+        self.btn_close = QPushButton(c.t("UI_BUTTON_CLOSE"))
         self.btn_close.setObjectName("ActionButton") # Consistent styling
         self.btn_close.setFixedHeight(40)
         self.btn_close.clicked.connect(self.accept)
@@ -186,6 +192,7 @@ class VersionManagerDialog(QDialog):
         QTimer.singleShot(100, lambda: self.on_version_selected(self.combo_versions.currentText()))
 
     def refresh_versions(self):
+        """Reload the installed versions list into the selector combo."""
         curr = self.combo_versions.currentText()
         self.combo_versions.clear()
         vers = self.app.logic.get_installed_versions(self.app)
@@ -193,13 +200,14 @@ class VersionManagerDialog(QDialog):
         if curr in vers: self.combo_versions.setCurrentText(curr)
 
     def on_version_selected(self, version):
+        """Populate the UI fields when a version is selected in the combo box."""
         if not version:
             self.info_frame.setEnabled(False)
             self.btn_create_shortcut.setEnabled(False)
             return
         self.info_frame.setEnabled(True)
         self.btn_create_shortcut.setEnabled(True)
-        self.lbl_prompt.setText(c.UI_MANAGE_VERSION_PROMPT.format(version=version))
+        self.lbl_prompt.setText(c.t("UI_MANAGE_VERSION_PROMPT", version=version))
         self.entry_rename.setText(version)
 
         zooms = self.app.config.get(c.CONFIG_KEY_VERSION_ICON_ZOOM, {})
@@ -220,6 +228,7 @@ class VersionManagerDialog(QDialog):
         self.update_preview()
 
     def update_personalization(self):
+        """Update icon labels and preview live while dragging."""
         version = self.combo_versions.currentText()
         if not version: return
 
@@ -243,11 +252,18 @@ class VersionManagerDialog(QDialog):
         ys[version] = y
         self.app.config[c.CONFIG_KEY_VERSION_ICON_Y] = ys
 
-        self.app.config_manager.save_config()
         self.update_preview()
-        self.app.logic.refresh_version_list(self.app)
+
+    def on_personalization_released(self):
+        """Save icon personalization on slider release."""
+        version = self.combo_versions.currentText()
+        if not version: return
+        self.app.config_manager.set(c.CONFIG_KEY_VERSION_ICON_ZOOM, self.app.config.get(c.CONFIG_KEY_VERSION_ICON_ZOOM, {}))
+        self.app.config_manager.set(c.CONFIG_KEY_VERSION_ICON_X, self.app.config.get(c.CONFIG_KEY_VERSION_ICON_X, {}))
+        self.app.config_manager.set(c.CONFIG_KEY_VERSION_ICON_Y, self.app.config.get(c.CONFIG_KEY_VERSION_ICON_Y, {}))
 
     def update_preview(self):
+        """Refresh the icon preview with current zoom and position settings."""
         version = self.combo_versions.currentText()
         if not version: return
 
@@ -273,6 +289,7 @@ class VersionManagerDialog(QDialog):
         self.lbl_preview.move(int(60 - sw/2 + x), int(60 - sh/2 + y))
 
     def rename_version(self):
+        """Rename the selected version folder and refresh the list."""
         old = self.combo_versions.currentText()
         new = self.entry_rename.text().strip()
         if not new or old == new: return
@@ -280,9 +297,10 @@ class VersionManagerDialog(QDialog):
         if self.app.logic.rename_version(self.app, old, new):
             self.refresh_versions()
             self.combo_versions.setCurrentText(new)
-            messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_SAVE_SUCCESS_MSG)
+            messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), c.t("UI_SAVE_SUCCESS_MSG"))
 
     def reset_icon(self):
+        """Remove the custom icon file for the selected version."""
         version = self.combo_versions.currentText()
         if not version: return
         vdir = os.path.join(self.app.active_path, c.VERSIONS_DIR, version)
@@ -292,13 +310,14 @@ class VersionManagerDialog(QDialog):
             self.update_preview()
             self.app.logic.refresh_version_list(self.app)
         except Exception as e:
-            messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(e))
 
     def change_icon(self):
+        """Pick a new image file and set it as the version's custom icon."""
         version = self.combo_versions.currentText()
         if not version: return
 
-        p = ask_open_filename_native(self, title=c.UI_BUTTON_CHANGE_ICON)
+        p = ask_open_filename_native(self, title=c.t("UI_BUTTON_CHANGE_ICON"))
         if p:
             vdir = os.path.join(self.app.active_path, c.VERSIONS_DIR, version)
             ext = os.path.splitext(p)[1].lower()
@@ -309,11 +328,12 @@ class VersionManagerDialog(QDialog):
                 shutil.copy(p, target)
                 self.update_preview()
                 self.app.logic.refresh_version_list(self.app)
-                messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_SAVE_SUCCESS_MSG)
+                messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), c.t("UI_SAVE_SUCCESS_MSG"))
             except Exception as e:
-                messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))
+                messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(e))
 
     def move_to_backup(self):
+        """Move the selected version folder to the backup directory."""
         version = self.combo_versions.currentText()
         if not version: return
         try:
@@ -322,21 +342,23 @@ class VersionManagerDialog(QDialog):
             shutil.move(os.path.join(self.app.active_path, c.VERSIONS_DIR, version), backup_dir)
             self.refresh_versions()
             self.app.logic.refresh_version_list(self.app)
-            messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_VERSION_MOVED_MSG)
-        except Exception as e: messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))
+            messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), c.t("UI_VERSION_MOVED_MSG"))
+        except Exception as e: messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(e))
 
     def delete_permanently(self):
+        """Permanently delete the selected version after confirmation."""
         version = self.combo_versions.currentText()
         if not version: return
-        if messagebox.askyesno(self, c.UI_CONFIRM_DELETE_TITLE, c.UI_CONFIRM_PERMANENT_DELETE.format(version=version)):
+        if messagebox.askyesno(self, c.t("UI_CONFIRM_DELETE_TITLE"), c.t("UI_CONFIRM_PERMANENT_DELETE", version=version)):
             try:
                 shutil.rmtree(os.path.join(self.app.active_path, c.VERSIONS_DIR, version))
                 self.refresh_versions()
                 self.app.logic.refresh_version_list(self.app)
-                messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_VERSION_DELETED_MSG)
-            except Exception as e: messagebox.showerror(self, c.UI_ERROR_TITLE, str(e))
+                messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), c.t("UI_VERSION_DELETED_MSG"))
+            except Exception as e: messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(e))
 
     def create_shortcut(self):
+        """Create a desktop shortcut for the selected version."""
         version = self.combo_versions.currentText()
         if not version: return
         self.app.logic.create_version_shortcut(self.app, version)

@@ -48,7 +48,7 @@ def _compute_compatibility(arch, cpu_flags, gl_ver):
             return "1.13.0 - 1.21.124"
         if "2.0" in gl_ver:
             return "1.13.0 - 1.20.20"
-    return c.UI_INCOMPATIBLE_TEXT
+    return c.t("UI_INCOMPATIBLE_TEXT")
 
 
 def get_compatibility_range(app):
@@ -61,8 +61,8 @@ def get_compatibility_range(app):
 def check_requirements_dialog(app):
     """Analiza hardware y muestra resultado en diálogo."""
     from src.gui.progress_dialog import ProgressDialog
-    from src.core.app_logic import LogicWorker
-    app._prog = ProgressDialog(app, c.UI_ANALYZING_TITLE, c.UI_ANALYZING_HW_MSG)
+    from src.core.worker import LogicWorker
+    app._prog = ProgressDialog(app, c.t("UI_ANALYZING_TITLE"), c.t("UI_ANALYZING_HW_MSG"))
     app._prog.show()
 
     def task():
@@ -88,33 +88,34 @@ def check_requirements_dialog(app):
         compat_ver = _compute_compatibility(arch2, cpu_flags, gl_ver)
         has_sse = all(f in cpu_flags for f in ["ssse3", "sse4_1", "sse4_2", "popcnt"])
 
-        return (f"--- {c.UI_HW_CPU_INFO} ---\n" +
-                f"{c.UI_HW_MODEL}: {cpu}\n" +
-                c.UI_HW_ARCH.format(arch=arch) +
-                c.UI_HW_CPU_EXT.format(status='✅' if has_sse else '⚠️') +
-                f"\n--- {c.UI_HW_RAM_INFO} ---\n" +
-                f"{c.UI_HW_RAM_TOTAL}: {ram}\n" +
-                f"\n--- {c.UI_HW_GPU_INFO} ---\n" +
-                c.UI_HW_OPENGL_ES.format(gl_ver=gl_ver) +
+        return (f"--- {c.t("UI_HW_CPU_INFO")} ---\n" +
+                f"{c.t("UI_HW_MODEL")}: {cpu}\n" +
+                c.t("UI_HW_ARCH", arch=arch) +
+                c.t("UI_HW_CPU_EXT", status='✅' if has_sse else '⚠️') +
+                f"\n--- {c.t("UI_HW_RAM_INFO")} ---\n" +
+                f"{c.t("UI_HW_RAM_TOTAL")}: {ram}\n" +
+                f"\n--- {c.t("UI_HW_GPU_INFO")} ---\n" +
+                c.t("UI_HW_OPENGL_ES", gl_ver=gl_ver) +
                 f"\n----------------------------\n" +
-                f"{c.UI_HARDWARE_ANALYSIS_RECOMMENDATION.format(compat_ver=compat_ver)}")
+                f"{c.t("UI_HARDWARE_ANALYSIS_RECOMMENDATION", compat_ver=compat_ver)}")
 
     app._worker = LogicWorker(task)
     app._worker.finished.connect(lambda res: [app._prog.accept(), show_hw_results(app, res)])
-    app._worker.error.connect(lambda e: [app._prog.accept(), messagebox.showerror(app, c.UI_ERROR_TITLE, e)])
+    app._worker.error.connect(lambda e: [app._prog.accept(), messagebox.showerror(app, c.t("UI_ERROR_TITLE"), e)])
     app._worker.start()
 
 
 def show_hw_results(app, txt):
+    """Display hardware analysis results in a read-only dialog."""
     from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton
     d = QDialog(app)
-    d.setWindowTitle(c.UI_HARDWARE_ANALYSIS_TITLE)
+    d.setWindowTitle(c.t("UI_HARDWARE_ANALYSIS_TITLE"))
     l = QVBoxLayout(d)
     t = QTextEdit()
     t.setPlainText(txt)
     t.setReadOnly(True)
     l.addWidget(t)
-    b = QPushButton(c.UI_BUTTON_CLOSE)
+    b = QPushButton(c.t("UI_BUTTON_CLOSE"))
     b.clicked.connect(d.accept)
     l.addWidget(b)
     d.exec()

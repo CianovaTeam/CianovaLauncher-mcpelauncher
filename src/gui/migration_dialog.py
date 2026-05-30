@@ -10,15 +10,17 @@ from src.gui.progress_dialog import ProgressDialog
 from src import constants as c
 
 class MigrationDialog(QDialog):
+    """Dialog for migrating Minecraft data between installations (local, Flatpak, custom)."""
     def __init__(self, parent):
         super().__init__(parent)
         self.parent_app = parent
-        self.setWindowTitle(c.UI_MIGRATION_MANAGER_TITLE)
+        self.setWindowTitle(c.t("UI_MIGRATION_MANAGER_TITLE"))
         self.resize(600, 700)
 
         self.setup_ui()
 
     def setup_ui(self):
+        """Build the dialog UI with source, destination, options, and method sections."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -31,7 +33,7 @@ class MigrationDialog(QDialog):
         self.scroll_area.setWidget(self.scroll_content)
         self.main_layout.addWidget(self.scroll_area)
 
-        title = QLabel(c.UI_MIGRATION_TITLE)
+        title = QLabel(c.t("UI_MIGRATION_TITLE"))
         title.setObjectName("HeaderLabel")
         title.setStyleSheet("font-size: 22px;")
         title.setAlignment(Qt.AlignCenter)
@@ -42,26 +44,26 @@ class MigrationDialog(QDialog):
         self.frame_src.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
         src_layout = QVBoxLayout(self.frame_src)
 
-        src_layout.addWidget(QLabel(c.UI_SOURCE_LABEL))
+        src_layout.addWidget(QLabel(c.t("UI_SOURCE_LABEL")))
 
         self.combo_src = QComboBox()
-        self.combo_src.addItems(c.UI_SOURCE_MODES_DISPLAY)
+        self.combo_src.addItems(c.t("UI_SOURCE_MODES_DISPLAY"))
         self.combo_src.currentTextChanged.connect(self.update_src_path_ui)
         src_layout.addWidget(self.combo_src)
 
         self.frame_flatpak_id = QFrame()
         fid_layout = QHBoxLayout(self.frame_flatpak_id)
-        fid_layout.addWidget(QLabel(c.UI_LABEL_APP_ID))
+        fid_layout.addWidget(QLabel(c.t("UI_LABEL_APP_ID")))
         self.entry_flatpak_src_id = QLineEdit()
         self.entry_flatpak_src_id.setText(c.DEFAULT_FLATPAK_ID)
         fid_layout.addWidget(self.entry_flatpak_src_id)
         src_layout.addWidget(self.frame_flatpak_id)
 
         self.entry_src = QLineEdit()
-        self.entry_src.setPlaceholderText(c.UI_PLACEHOLDER_SOURCE_PATH)
+        self.entry_src.setPlaceholderText(c.t("UI_PLACEHOLDER_SOURCE_PATH"))
         src_layout.addWidget(self.entry_src)
 
-        btn_browse_src = QPushButton(c.UI_BUTTON_BROWSE_FOLDER)
+        btn_browse_src = QPushButton(c.t("UI_BUTTON_BROWSE_FOLDER"))
         btn_browse_src.clicked.connect(self.browse_src)
         src_layout.addWidget(btn_browse_src, 0, Qt.AlignRight)
 
@@ -76,13 +78,13 @@ class MigrationDialog(QDialog):
         self.frame_dst.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
         dst_layout = QVBoxLayout(self.frame_dst)
 
-        dst_layout.addWidget(QLabel(c.UI_DESTINATION_LABEL))
+        dst_layout.addWidget(QLabel(c.t("UI_DESTINATION_LABEL")))
 
         dst_sel_layout = QHBoxLayout()
-        dst_sel_layout.addWidget(QLabel(f"👤 {c.UI_LABEL_PROFILE}"))
+        dst_sel_layout.addWidget(QLabel(f"👤 {c.t("UI_LABEL_PROFILE")}"))
         self.combo_dst_profile = QComboBox()
         self.combo_dst_profile.addItems(self.parent_app.logic.get_profiles(self.parent_app))
-        self.combo_dst_profile.setCurrentText(self.parent_app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT))
+        self.combo_dst_profile.setCurrentText(self.parent_app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT")))
         self.combo_dst_profile.currentTextChanged.connect(self.update_dst_path_info)
         dst_sel_layout.addWidget(self.combo_dst_profile)
         dst_layout.addLayout(dst_sel_layout)
@@ -99,22 +101,22 @@ class MigrationDialog(QDialog):
         self.frame_opts.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
         opts_layout = QVBoxLayout(self.frame_opts)
 
-        opts_layout.addWidget(QLabel(c.UI_WHAT_TO_MIGRATE))
+        opts_layout.addWidget(QLabel(c.t("UI_WHAT_TO_MIGRATE")))
 
-        self.cb_versions = QCheckBox(c.UI_MIGRATE_VERSIONS)
+        self.cb_versions = QCheckBox(c.t("UI_MIGRATE_VERSIONS"))
         self.cb_versions.setChecked(True)
         self.cb_versions.stateChanged.connect(self.on_migration_option_change)
         opts_layout.addWidget(self.cb_versions)
 
-        self.cb_worlds = QCheckBox(c.UI_MIGRATE_WORLDS)
+        self.cb_worlds = QCheckBox(c.t("UI_MIGRATE_WORLDS"))
         self.cb_worlds.stateChanged.connect(self.on_migration_option_change)
         opts_layout.addWidget(self.cb_worlds)
 
-        self.cb_resources = QCheckBox(c.UI_MIGRATE_RESOURCES)
+        self.cb_resources = QCheckBox(c.t("UI_MIGRATE_RESOURCES"))
         self.cb_resources.stateChanged.connect(self.on_migration_option_change)
         opts_layout.addWidget(self.cb_resources)
 
-        self.cb_all = QCheckBox(c.UI_MIGRATE_ALL)
+        self.cb_all = QCheckBox(c.t("UI_MIGRATE_ALL"))
         self.cb_all.setStyleSheet("font-weight: bold;")
         self.cb_all.stateChanged.connect(self.on_all_migration_toggle)
         opts_layout.addWidget(self.cb_all)
@@ -126,29 +128,29 @@ class MigrationDialog(QDialog):
         self.frame_method.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
         method_layout = QVBoxLayout(self.frame_method)
 
-        method_layout.addWidget(QLabel(c.UI_MIGRATION_METHOD))
+        method_layout.addWidget(QLabel(c.t("UI_MIGRATION_METHOD")))
 
-        self.rb_copy = QRadioButton(c.UI_METHOD_COPY)
+        self.rb_copy = QRadioButton(c.t("UI_METHOD_COPY"))
         self.rb_copy.setChecked(True)
         method_layout.addWidget(self.rb_copy)
 
-        self.rb_move = QRadioButton(c.UI_METHOD_MOVE)
+        self.rb_move = QRadioButton(c.t("UI_METHOD_MOVE"))
         method_layout.addWidget(self.rb_move)
 
-        self.rb_link = QRadioButton(c.UI_METHOD_LINK)
+        self.rb_link = QRadioButton(c.t("UI_METHOD_LINK"))
         method_layout.addWidget(self.rb_link)
 
         self.scroll_layout.addWidget(self.frame_method)
 
         # --- Acción ---
-        self.btn_migrate = QPushButton(c.UI_BUTTON_START_MIGRATION)
+        self.btn_migrate = QPushButton(c.t("UI_BUTTON_START_MIGRATION"))
         self.btn_migrate.setObjectName("ActionButton")
         self.btn_migrate.setFixedHeight(40)
         self.btn_migrate.clicked.connect(self.start_migration)
         self.main_layout.addWidget(self.btn_migrate)
 
         self.setStyleSheet("background-color: #2b2b2b; color: white;")
-        self.update_src_path_ui(c.UI_SOURCE_MODES_DISPLAY[0])
+        self.update_src_path_ui(c.t("UI_SOURCE_MODES_DISPLAY")[0])
         self.update_dst_path_info()
 
     def on_all_migration_toggle(self, state):
@@ -166,13 +168,14 @@ class MigrationDialog(QDialog):
             self.cb_all.setChecked(False)
 
     def update_src_path_ui(self, choice):
-        if choice == c.UI_SOURCE_MODES_DISPLAY[0]: # Local (.local)
+        """Update the source path field and validation based on the selected mode."""
+        if choice == c.t("UI_SOURCE_MODES_DISPLAY")[0]: # Local (.local)
             path = os.path.join(os.path.expanduser("~"), c.LOCAL_SHARE_DIR)
             self.entry_src.setText(path)
             self.entry_src.setEnabled(False)
             self.frame_flatpak_id.hide()
             self.validate_source_path(path)
-        elif choice == c.UI_SOURCE_MODES_DISPLAY[1]: # Flatpak (por ID)
+        elif choice == c.t("UI_SOURCE_MODES_DISPLAY")[1]: # Flatpak (por ID)
             self.entry_src.setEnabled(False)
             self.frame_flatpak_id.show()
             app_id = self.entry_flatpak_src_id.text().strip() or c.DEFAULT_FLATPAK_ID
@@ -185,37 +188,41 @@ class MigrationDialog(QDialog):
             self.lbl_src_validation.setText("")
 
     def validate_source_path(self, path):
+        """Check whether the given path contains a valid mcpelauncher installation."""
         if not path:
             self.lbl_src_validation.setText("")
             return False
         if os.path.exists(path):
             if "mcpelauncher" in path or os.path.exists(os.path.join(path, c.VERSIONS_DIR)):
-                self.lbl_src_validation.setText(c.UI_VALID_FOLDER_DETECTED)
+                self.lbl_src_validation.setText(c.t("UI_VALID_FOLDER_DETECTED"))
                 self.lbl_src_validation.setStyleSheet("color: green; font-size: 10px;")
                 return True
             else:
-                self.lbl_src_validation.setText(c.UI_INVALID_FOLDER_WARNING)
+                self.lbl_src_validation.setText(c.t("UI_INVALID_FOLDER_WARNING"))
                 self.lbl_src_validation.setStyleSheet("color: orange; font-size: 10px;")
                 return False
         else:
-            self.lbl_src_validation.setText(c.UI_FOLDER_NOT_EXISTS)
+            self.lbl_src_validation.setText(c.t("UI_FOLDER_NOT_EXISTS"))
             self.lbl_src_validation.setStyleSheet("color: red; font-size: 10px;")
             return False
 
     def browse_src(self):
-        d = ask_directory_native(self, title=c.UI_SELECT_SOURCE_FOLDER)
+        """Open a folder picker to select the source directory manually."""
+        d = ask_directory_native(self, title=c.t("UI_SELECT_SOURCE_FOLDER"))
         if d:
             self.entry_src.setEnabled(True)
             self.entry_src.setText(d)
-            self.combo_src.setCurrentText(c.UI_SOURCE_MODES_DISPLAY[2])
+            self.combo_src.setCurrentText(c.t("UI_SOURCE_MODES_DISPLAY")[2])
             self.validate_source_path(d)
 
     def update_dst_path_info(self):
+        """Update the displayed destination path based on the selected profile."""
         profile = self.combo_dst_profile.currentText()
         path = os.path.join(self.parent_app.active_path, c.PROFILES_DIR, profile)
         self.lbl_dst.setText(f"Ruta: {path}")
 
     def start_migration(self):
+        """Validate inputs and start the migration process in a background thread."""
         src = self.entry_src.text().strip()
         profile = self.combo_dst_profile.currentText()
         dst = os.path.join(self.parent_app.active_path, c.PROFILES_DIR, profile)
@@ -230,27 +237,27 @@ class MigrationDialog(QDialog):
         migrate_resources = self.cb_resources.isChecked()
 
         if not os.path.exists(src):
-            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_FOLDER_NOT_EXISTS)
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), c.t("UI_FOLDER_NOT_EXISTS"))
             return
         if src == dst:
-            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_SAME_FOLDER)
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), c.t("UI_ERROR_SAME_FOLDER"))
             return
         if not any([migrate_all, migrate_versions, migrate_worlds, migrate_resources]):
-            messagebox.showwarning(self, c.UI_INFO_TITLE, c.UI_ERROR_NOTHING_SELECTED)
+            messagebox.showwarning(self, c.t("UI_INFO_TITLE"), c.t("UI_ERROR_NOTHING_SELECTED"))
             return
 
         items = []
         if migrate_all: items.append("TODO")
         else:
-            if migrate_versions: items.append(c.UI_MIGRATE_VERSIONS_SIMPLE)
-            if migrate_worlds: items.append(c.UI_MIGRATE_WORLDS_SIMPLE)
-            if migrate_resources: items.append(c.UI_MIGRATE_RESOURCES_SIMPLE)
+            if migrate_versions: items.append(c.t("UI_MIGRATE_VERSIONS_SIMPLE"))
+            if migrate_worlds: items.append(c.t("UI_MIGRATE_WORLDS_SIMPLE"))
+            if migrate_resources: items.append(c.t("UI_MIGRATE_RESOURCES_SIMPLE"))
 
-        msg = c.UI_MIGRATION_CONFIRM_MSG.format(src=src, dst=dst, method=method.upper(), items=', '.join(items))
-        if not messagebox.askyesno(self, c.UI_CONFIRM_TITLE, msg):
+        msg = c.t("UI_MIGRATION_CONFIRM_MSG", src=src, dst=dst, method=method.upper(), items=', '.join(items))
+        if not messagebox.askyesno(self, c.t("UI_CONFIRM_TITLE"), msg):
             return
 
-        self.progress_dialog = ProgressDialog(self, c.UI_MIGRATING_TITLE, c.UI_MIGRATING_MSG)
+        self.progress_dialog = ProgressDialog(self, c.t("UI_MIGRATING_TITLE"), c.t("UI_MIGRATING_MSG"))
         self.progress_dialog.show()
 
         thread = threading.Thread(target=self._run_migration, args=(src, dst, method, migrate_all, migrate_versions, migrate_worlds, migrate_resources))
@@ -301,10 +308,10 @@ class MigrationDialog(QDialog):
 
     def on_migration_finished(self, count):
         self.progress_dialog.accept()
-        messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_MIGRATION_SUCCESS_MSG.format(count=count))
+        messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), c.t("UI_MIGRATION_SUCCESS_MSG", count=count))
         self.parent_app.logic.refresh_version_list(self.parent_app)
         self.accept()
 
     def on_migration_error(self, err):
         self.progress_dialog.accept()
-        messagebox.showerror(self, c.UI_ERROR_TITLE, f"Error: {err}")
+        messagebox.showerror(self, c.t("UI_ERROR_TITLE"), f"Error: {err}")

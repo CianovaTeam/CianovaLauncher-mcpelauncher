@@ -27,12 +27,14 @@ from src.gui.tabs.about_tab import AboutTab
 from src.utils.logger import logger
 
 class VisualLabel(QLabel):
+    """A transparent overlay label used for background and sticker display."""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setStyleSheet("background: transparent; border: none;")
 
 class CianovaLauncherApp(QMainWindow):
+    """Main application window managing tabs, theming, and top-level logic."""
     def __init__(self, launcher_path=".", force_flatpak_ui=False, force_nvidia_ui=False):
         super().__init__()
 
@@ -81,7 +83,7 @@ class CianovaLauncherApp(QMainWindow):
         language_manager.load_language(lang)
 
         # UI Setup
-        self.setWindowTitle(c.UI_TITLE_VERSION)
+        self.setWindowTitle(c.t("UI_TITLE_VERSION"))
         size_str = self.config.get(c.CONFIG_KEY_WINDOW_SIZE, "700x550")
         try:
             w, h = map(int, size_str.split('x'))
@@ -109,10 +111,10 @@ class CianovaLauncherApp(QMainWindow):
         self.about_tab = AboutTab(self.tab_widget, self)
         self.about_tab.setObjectName("AboutTab")
 
-        self.tab_widget.addTab(self.play_tab, c.UI_TAB_PLAY)
-        self.tab_widget.addTab(self.tools_tab, c.UI_TAB_TOOLS)
-        self.tab_widget.addTab(self.settings_tab, c.UI_TAB_SETTINGS)
-        self.tab_widget.addTab(self.about_tab, c.UI_TAB_ABOUT)
+        self.tab_widget.addTab(self.play_tab, c.t("UI_TAB_PLAY"))
+        self.tab_widget.addTab(self.tools_tab, c.t("UI_TAB_TOOLS"))
+        self.tab_widget.addTab(self.settings_tab, c.t("UI_TAB_SETTINGS"))
+        self.tab_widget.addTab(self.about_tab, c.t("UI_TAB_ABOUT"))
 
         # Visuals (BG and Sticker)
         self.bg_label = VisualLabel(self.central_widget)
@@ -168,6 +170,7 @@ class CianovaLauncherApp(QMainWindow):
         self.update_floating_labels()
 
     def update_sticker_visibility(self, index):
+        """Show or hide the sticker based on the current tab index."""
         # Sticker visible in Play (0) and Tools (1)
         self.sticker_label.setVisible(index in [0, 1])
 
@@ -182,6 +185,7 @@ class CianovaLauncherApp(QMainWindow):
             pass
 
     def update_background(self):
+        """Update the background image position, zoom, and opacity from config."""
         bg_path = self.config.get(c.CONFIG_KEY_BG_PATH)
         if not bg_path or not os.path.exists(bg_path):
             self.bg_label.clear()
@@ -227,6 +231,7 @@ class CianovaLauncherApp(QMainWindow):
         except: pass
 
     def update_sticker(self):
+        """Update the sticker (image or text) based on current configuration."""
         mode = self.config.get(c.CONFIG_KEY_STICKER_MODE, "none")
         if mode == "none":
             self.sticker_label.clear()
@@ -301,16 +306,18 @@ class CianovaLauncherApp(QMainWindow):
         self.sticker_label.raise_()
 
     def restore_default_settings(self):
-        if messagebox.askyesno(self, c.UI_CONFIRM_TITLE, c.UI_RESTORE_DEFAULTS_CONFIRM):
+        """Restore all settings to factory defaults after user confirmation."""
+        if messagebox.askyesno(self, c.t("UI_CONFIRM_TITLE"), c.t("UI_RESTORE_DEFAULTS_CONFIRM")):
             self.config_manager.restore_defaults()
-            messagebox.showinfo(self, c.UI_RESTORE_DEFAULTS_SUCCESS_TITLE, c.UI_RESTORE_DEFAULTS_SUCCESS_MSG)
+            messagebox.showinfo(self, c.t("UI_RESTORE_DEFAULTS_SUCCESS_TITLE"), c.t("UI_RESTORE_DEFAULTS_SUCCESS_MSG"))
             self.close()
 
     def change_appearance(self, type_change, value):
+        """Change a visual setting (e.g. color theme) and update the UI."""
         if type_change == "color":
             self.config[c.CONFIG_KEY_COLOR_THEME] = value
             # Dynamic color change is complex with current QSS setup, usually requires reload
-            messagebox.showinfo(self, c.UI_RESTART_REQUIRED_TITLE, c.UI_RESTART_MSG)
+            messagebox.showinfo(self, c.t("UI_RESTART_REQUIRED_TITLE"), c.t("UI_RESTART_MSG"))
         self.config_manager.save_config()
         self.apply_theme_settings()
 
@@ -342,23 +349,7 @@ class CianovaLauncherApp(QMainWindow):
         input_border = "#444444" if mode == "Dark" else "#cccccc"
 
         section_opacity = section_opacity_val / 100.0
-
-        def hex_to_rgba(hex_color, opacity):
-            if not hex_color or not hex_color.startswith("#"): return hex_color
-            h = hex_color.lstrip('#')
-            if len(h) == 3: h = "".join([x*2 for x in h])
-            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-            return f"rgba({r}, {g}, {b}, {int(opacity * 255)})"
-
-        def adjust_color(hex_color, amount):
-            if not hex_color or not hex_color.startswith("#"): return hex_color
-            h = hex_color.lstrip('#')
-            if len(h) == 3: h = "".join([x*2 for x in h])
-            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-            r = max(0, min(255, r + amount))
-            g = max(0, min(255, g + amount))
-            b = max(0, min(255, b + amount))
-            return f"#{r:02x}{g:02x}{b:02x}"
+        from src.utils.colors import hex_to_rgba, adjust_color
 
         frame_bg_base = "#3a3a3a" if mode == "Dark" else "#e8e8e8"
         frame_bg_opaque = hex_to_rgba(frame_bg_base, 1.0)
@@ -619,6 +610,7 @@ class CianovaLauncherApp(QMainWindow):
         self.apply_theme_settings()
 
     def update_floating_labels(self):
+        """Hide or show floating status labels based on their text content."""
         # In PySide6, we can iterate over widgets to hide empty FloatingLabels
         for widget in self.findChildren(QLabel, "FloatingLabel"):
             text = widget.text().strip()
@@ -632,27 +624,37 @@ class CianovaLauncherApp(QMainWindow):
                 widget.show()
 
     def show_info(self, title, msg):
+        """Show an information dialog with the given title and message."""
         messagebox.showinfo(self, title, msg)
 
     # Tool openers
-    def install_apk_dialog(self): InstallDialog(self).exec()
-    def open_skin_tool(self): SkinPackTool(self).exec()
+    def install_apk_dialog(self):
+        """Open the APK installation dialog."""
+        InstallDialog(self).exec()
+    def open_skin_tool(self):
+        """Open the skin pack creator tool."""
+        SkinPackTool(self).exec()
     def open_migration_tool(self):
+        """Open the data migration tool dialog."""
         try: MigrationDialog(self).exec()
-        except Exception as e: messagebox.showerror(self, c.UI_ERROR_TITLE, f"Error: {e}")
+        except Exception as e: messagebox.showerror(self, c.t("UI_ERROR_TITLE"), f"Error: {e}")
     def open_game_config_tool(self):
+        """Open the Minecraft game options editor dialog."""
         try: GameConfigDialog(self).exec()
-        except Exception as e: messagebox.showerror(self, c.UI_ERROR_TITLE, f"Error: {e}")
+        except Exception as e: messagebox.showerror(self, c.t("UI_ERROR_TITLE"), f"Error: {e}")
     def open_addon_manager(self):
+        """Open the addon (worlds, resource packs, behavior packs) manager dialog."""
         try: AddonManagerDialog(self).exec()
-        except Exception as e: messagebox.showerror(self, c.UI_ERROR_TITLE, f"Error: {e}")
+        except Exception as e: messagebox.showerror(self, c.t("UI_ERROR_TITLE"), f"Error: {e}")
 
     def open_version_manager(self):
+        """Open the version manager dialog for renaming, deleting, and shortcuts."""
         from src.gui.version_manager_dialog import VersionManagerDialog
         try: VersionManagerDialog(self, self).exec()
-        except Exception as e: messagebox.showerror(self, c.UI_ERROR_TITLE, f"Error: {e}")
+        except Exception as e: messagebox.showerror(self, c.t("UI_ERROR_TITLE"), f"Error: {e}")
 
     def sync_gamemode_ui(self, value):
+        """Synchronize the gamemode toggle between Play and Settings tabs."""
         self.config[c.CONFIG_KEY_GAMEMODE_ENABLED] = value
         if hasattr(self.play_tab, "check_gamemode"):
             if self.play_tab.check_gamemode.isChecked() != value:
@@ -663,6 +665,7 @@ class CianovaLauncherApp(QMainWindow):
                 cb.setChecked(value)
 
     def sync_discord_rpc_ui(self, value):
+        """Synchronize the Discord RPC toggle and start or stop the service."""
         self.config[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = value
         if value:
             self._discord_rpc.start()
@@ -671,6 +674,7 @@ class CianovaLauncherApp(QMainWindow):
             self._discord_rpc.stop()
 
     def sync_close_on_launch_ui(self, value):
+        """Synchronize the close-on-launch toggle between Play and Settings tabs."""
         self.config[c.CONFIG_KEY_CLOSE_ON_LAUNCH] = value
         if hasattr(self.play_tab, "check_close_on_launch"):
             if self.play_tab.check_close_on_launch.isChecked() != value:
@@ -680,9 +684,11 @@ class CianovaLauncherApp(QMainWindow):
                 self.settings_tab.check_close_on_launch.setChecked(value)
 
     def manage_desktop_shortcut(self):
+        """Open the version manager to manage desktop shortcuts."""
         self.open_version_manager()
 
     def check_version_update(self):
+        """Compare stored version with current launcher version and show changelog on update."""
         config_ver = self.config.get(c.CONFIG_KEY_VERSION, "0.0.0")
         current_ver = c.VERSION_LAUNCHER
 
@@ -701,8 +707,8 @@ class CianovaLauncherApp(QMainWindow):
                 self.show_update_changelog(current_ver)
             elif rv_tuple < cv_tuple:
                 logger.warning(f"Downgrade detected: {config_ver} -> {current_ver}")
-                messagebox.showwarning(self, c.UI_DOWNGRADE_WARNING_TITLE, 
-                                     c.UI_DOWNGRADE_WARNING_MSG.format(old=config_ver))
+                messagebox.showwarning(self, c.t("UI_DOWNGRADE_WARNING_TITLE"), 
+                                     c.t("UI_DOWNGRADE_WARNING_MSG", old=config_ver))
             
             # Update version in config
             self.config[c.CONFIG_KEY_VERSION] = current_ver
@@ -711,6 +717,7 @@ class CianovaLauncherApp(QMainWindow):
             logger.error(f"Error comparing versions: {e}")
 
     def show_update_changelog(self, version):
+        """Display the changelog dialog for the given version."""
         from src.gui.changelog_dialog import ChangelogDialog
         dialog = ChangelogDialog(self, version)
         dialog.exec()

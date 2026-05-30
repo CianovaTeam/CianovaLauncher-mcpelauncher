@@ -24,7 +24,7 @@ def get_disabled_packs_path(app):
     """Retorna la ruta a disabled_packs dentro del perfil actual"""
     if not app.active_path:
         return None
-    current_profile = app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)
+    current_profile = app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT"))
     return os.path.join(app.active_path, c.PROFILES_DIR, current_profile, c.DISABLED_PACKS_DIR)
 
 def strip_mc_codes(text):
@@ -58,11 +58,11 @@ def scan_all_addons(app):
 
     # Carpetas a escanear (Activadas)
     folders = {
-        "resource_packs": c.UI_TYPE_RESOURCE,
-        "behavior_packs": c.UI_TYPE_BEHAVIOR,
-        "minecraftWorlds": c.UI_TYPE_WORLD,
-        "skin_packs": c.UI_TYPE_SKIN,
-        "custom_skins": c.UI_TYPE_SKIN,
+        "resource_packs": c.t("UI_TYPE_RESOURCE"),
+        "behavior_packs": c.t("UI_TYPE_BEHAVIOR"),
+        "minecraftWorlds": c.t("UI_TYPE_WORLD"),
+        "skin_packs": c.t("UI_TYPE_SKIN"),
+        "custom_skins": c.t("UI_TYPE_SKIN"),
     }
 
     # Escanear packs activos
@@ -78,7 +78,7 @@ def scan_all_addons(app):
                         if not info.get("is_valid", True): continue
                         addon_list.append({
                             **info,
-                            "type_label": c.UI_TYPE_SKINPACK if info.get("real_type") == "skin_packs" else type_label,
+                            "type_label": c.t("UI_TYPE_SKINPACK") if info.get("real_type") == "skin_packs" else type_label,
                             "folder": folder,
                             "enabled": True,
                             "path": item_path
@@ -99,7 +99,7 @@ def scan_all_addons(app):
                             if not info.get("is_valid", True): continue
                             addon_list.append({
                                 **info,
-                                "type_label": c.UI_TYPE_SKINPACK if info.get("real_type") == "skin_packs" else folders.get(folder, c.UI_TYPE_RESOURCE),
+                                "type_label": c.t("UI_TYPE_SKINPACK") if info.get("real_type") == "skin_packs" else folders.get(folder, c.t("UI_TYPE_RESOURCE")),
                                 "folder": folder,
                                 "enabled": False,
                                 "path": item_path
@@ -323,10 +323,10 @@ def install_single_pack(file_path, com_mojang, manual_type=None):
             shutil.rmtree(temp_dir)
             return ("NEED_TYPE", file_path)
         dest_folder = {
-            c.UI_TYPE_RESOURCE: "resource_packs",
-            c.UI_TYPE_BEHAVIOR: "behavior_packs",
-            c.UI_TYPE_SKIN: "skin_packs",
-            c.UI_TYPE_WORLD: "minecraftWorlds"
+            c.t("UI_TYPE_RESOURCE"): "resource_packs",
+            c.t("UI_TYPE_BEHAVIOR"): "behavior_packs",
+            c.t("UI_TYPE_SKIN"): "skin_packs",
+            c.t("UI_TYPE_WORLD"): "minecraftWorlds"
         }.get(pack_type, "resource_packs")
         final_dest = os.path.join(com_mojang, dest_folder)
         os.makedirs(final_dest, exist_ok=True)
@@ -346,10 +346,10 @@ def detect_pack_type(manifest_path):
             modules = data.get("modules", [])
             for mod in modules:
                 m_type = mod.get("type")
-                if m_type == "resources": return c.UI_TYPE_RESOURCE
-                if m_type == "data": return c.UI_TYPE_BEHAVIOR
-                if m_type == "skin_pack": return c.UI_TYPE_SKIN
-                if m_type == "world_template": return c.UI_TYPE_WORLD
+                if m_type == "resources": return c.t("UI_TYPE_RESOURCE")
+                if m_type == "data": return c.t("UI_TYPE_BEHAVIOR")
+                if m_type == "skin_pack": return c.t("UI_TYPE_SKIN")
+                if m_type == "world_template": return c.t("UI_TYPE_WORLD")
     except: pass
     return None
 
@@ -369,9 +369,9 @@ def install_mcaddon(file_path, com_mojang):
                     p_type = detect_pack_type(manifest)
                     if p_type:
                         dest_folder = {
-                            c.UI_TYPE_RESOURCE: "resource_packs",
-                            c.UI_TYPE_BEHAVIOR: "behavior_packs",
-                            c.UI_TYPE_SKIN: "skin_packs"
+                            c.t("UI_TYPE_RESOURCE"): "resource_packs",
+                            c.t("UI_TYPE_BEHAVIOR"): "behavior_packs",
+                            c.t("UI_TYPE_SKIN"): "skin_packs"
                         }.get(p_type, "resource_packs")
                         target = os.path.join(com_mojang, dest_folder, item)
                         if os.path.exists(target): shutil.rmtree(target)

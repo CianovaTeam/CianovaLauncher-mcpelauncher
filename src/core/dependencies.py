@@ -6,10 +6,11 @@ from src.gui import custom_dialogs as messagebox
 
 
 def verify_dependencies(app):
+    """Check for missing package dependencies and show results."""
     if app.running_in_flatpak:
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QLabel, QHBoxLayout
         d = QDialog(app)
-        d.setWindowTitle(c.UI_FLATPAK_RUNTIME_INFO_TITLE)
+        d.setWindowTitle(c.t("UI_FLATPAK_RUNTIME_INFO_TITLE"))
         d.resize(650, 500)
         l = QVBoxLayout(d)
         l.addWidget(QLabel("<b>Flatpak Runtimes Requeridos:</b>"))
@@ -44,7 +45,7 @@ def verify_dependencies(app):
         b_save.clicked.connect(update_list)
         btn_row.addWidget(b_save)
 
-        b_close = QPushButton(c.UI_BUTTON_CLOSE)
+        b_close = QPushButton(c.t("UI_BUTTON_CLOSE"))
         b_close.clicked.connect(d.accept)
         btn_row.addWidget(b_close)
         l.addLayout(btn_row)
@@ -59,14 +60,14 @@ def verify_dependencies(app):
     }
     detected = next((m for m in manager_map if shutil.which(m.lower())), None)
     if not detected:
-        messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_PKG_MANAGER_NOT_SUPPORTED)
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_PKG_MANAGER_NOT_SUPPORTED"))
         return
 
     check_cmd, install_cmd = manager_map[detected]
     pkgs = sorted(list(set(c.DEPENDENCY_MAP[detected])))
     from src.gui.progress_dialog import ProgressDialog
-    from src.core.app_logic import LogicWorker
-    app._prog = ProgressDialog(app, c.UI_VERIFYING_TITLE, c.UI_STARTING_MSG)
+    from src.core.worker import LogicWorker
+    app._prog = ProgressDialog(app, c.t("UI_VERIFYING_TITLE"), c.t("UI_STARTING_MSG"))
     app._prog.show()
 
     def task():
@@ -74,32 +75,33 @@ def verify_dependencies(app):
 
     app._worker = LogicWorker(task)
     app._worker.finished.connect(lambda missing: [app._prog.accept(), show_dep_results(app, missing, install_cmd)])
-    app._worker.error.connect(lambda e: [app._prog.accept(), messagebox.showerror(app, c.UI_ERROR_TITLE, e)])
+    app._worker.error.connect(lambda e: [app._prog.accept(), messagebox.showerror(app, c.t("UI_ERROR_TITLE"), e)])
     app._worker.start()
 
 
 def show_dep_results(app, missing, icmd):
+    """Display missing dependencies and offer to install them with elevated privileges."""
     if not missing:
-        messagebox.showinfo(app, c.UI_RESULT_TITLE, c.UI_DEPENDENCIES_OK)
+        messagebox.showinfo(app, c.t("UI_RESULT_TITLE"), c.t("UI_DEPENDENCIES_OK"))
         return
     from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QLabel
     d = QDialog(app)
-    d.setWindowTitle(c.UI_MISSING_DEPS_TITLE)
+    d.setWindowTitle(c.t("UI_MISSING_DEPS_TITLE"))
     l = QVBoxLayout(d)
-    l.addWidget(QLabel(c.UI_MISSING_DEPS_MSG))
+    l.addWidget(QLabel(c.t("UI_MISSING_DEPS_MSG")))
     t = QTextEdit()
     t.setPlainText("\n".join(missing))
     l.addWidget(t)
 
     def install():
         cmd = f"pkexec {icmd} {' '.join(missing)}"
-        if messagebox.askyesno(d, c.UI_INFO_TITLE, c.UI_INSTALL_PROMPT.format(full_cmd=cmd)):
+        if messagebox.askyesno(d, c.t("UI_INFO_TITLE"), c.t("UI_INSTALL_PROMPT", full_cmd=cmd)):
             term = next((t for t in ["gnome-terminal", "konsole", "xfce4-terminal", "xterm"] if shutil.which(t)), None)
             if term:
                 subprocess.Popen([term, "-e", f'bash -c "{cmd}; read -p OK"'])
             d.accept()
 
-    b = QPushButton(c.UI_BUTTON_INSTALL_ROOT)
+    b = QPushButton(c.t("UI_BUTTON_INSTALL_ROOT"))
     b.clicked.connect(install)
     l.addWidget(b)
     d.exec()

@@ -6,10 +6,11 @@ from src.gui import custom_dialogs as messagebox
 from src import constants as c
 
 class GameConfigDialog(QDialog):
+    """Dialog for editing Minecraft options.txt through a visual UI or raw text editor."""
     def __init__(self, parent):
         super().__init__(parent)
         self.parent_app = parent
-        self.setWindowTitle(c.UI_GAME_CONFIG_TITLE)
+        self.setWindowTitle(c.t("UI_GAME_CONFIG_TITLE"))
         self.resize(650, 700)
 
         self.options_path = os.path.join(self.parent_app.active_path, c.MINECRAFT_PE_DIR_ALT, c.OPTIONS_FILE)
@@ -19,6 +20,7 @@ class GameConfigDialog(QDialog):
         self.load_options()
 
     def setup_ui(self):
+        """Build the dialog with a tabbed interface (visual + raw editor)."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -28,8 +30,8 @@ class GameConfigDialog(QDialog):
         # Tabs
         self.tab_visual = QWidget()
         self.tab_editor = QWidget()
-        self.tab_widget.addTab(self.tab_visual, c.UI_TAB_VISUAL)
-        self.tab_widget.addTab(self.tab_editor, c.UI_TAB_EDITOR)
+        self.tab_widget.addTab(self.tab_visual, c.t("UI_TAB_VISUAL"))
+        self.tab_widget.addTab(self.tab_editor, c.t("UI_TAB_EDITOR"))
 
         self.setup_visual_tab()
         self.setup_editor_tab()
@@ -37,18 +39,20 @@ class GameConfigDialog(QDialog):
         self.setStyleSheet("background-color: #2b2b2b; color: white;")
 
     def setup_editor_tab(self):
+        """Set up the raw text editor tab with a QTextEdit and save button."""
         layout = QVBoxLayout(self.tab_editor)
         self.text_editor = QTextEdit()
         self.text_editor.setStyleSheet("font-family: 'Courier New'; font-size: 13px; background-color: #1e1e1e; color: #d4d4d4;")
         layout.addWidget(self.text_editor)
 
-        btn_save = QPushButton(c.UI_BUTTON_SAVE_FILE)
+        btn_save = QPushButton(c.t("UI_BUTTON_SAVE_FILE"))
         btn_save.setFixedHeight(c.BTN_HEIGHT)
         btn_save.clicked.connect(lambda: self.save_options(True))
         btn_save.setStyleSheet(f"background-color: {c.COLOR_BLUE_BUTTON}; color: white; font-weight: bold;")
         layout.addWidget(btn_save)
 
     def setup_visual_tab(self):
+        """Set up the visual editor tab with categorized sliders, checkboxes, and combos."""
         layout = QVBoxLayout(self.tab_visual)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -63,54 +67,56 @@ class GameConfigDialog(QDialog):
 
         # Sections
         # Graphics
-        self.create_section_label(c.UI_GC_GRAPHICS)
-        self.view_distance = self.create_slider_setting(c.UI_GC_VIEW_DISTANCE, 4, 32)
-        self.max_fps = self.create_entry_setting(c.UI_GC_MAX_FPS)
-        self.vsync = self.create_checkbox_setting(c.UI_GC_VSYNC)
-        self.gamma = self.create_slider_setting(c.UI_GC_GAMMA, 0, 100, is_float=True) # 0 to 1.0 scaled to 0-100
-        self.fullscreen = self.create_checkbox_setting(c.UI_GC_FULLSCREEN)
-        self.fancyskies = self.create_checkbox_setting(c.UI_GC_FANCY_SKIES)
-        self.smoothlighting = self.create_checkbox_setting(c.UI_GC_SMOOTH_LIGHTING)
-        self.graphics_mode = self.create_combo_setting(c.UI_GC_GRAPHICS_MODE, c.UI_GC_GRAPHICS_MODE_MAP)
+        self.create_section_label(c.t("UI_GC_GRAPHICS"))
+        self.view_distance = self.create_slider_setting(c.t("UI_GC_VIEW_DISTANCE"), 4, 32)
+        self.max_fps = self.create_entry_setting(c.t("UI_GC_MAX_FPS"))
+        self.vsync = self.create_checkbox_setting(c.t("UI_GC_VSYNC"))
+        self.gamma = self.create_slider_setting(c.t("UI_GC_GAMMA"), 0, 100, is_float=True) # 0 to 1.0 scaled to 0-100
+        self.fullscreen = self.create_checkbox_setting(c.t("UI_GC_FULLSCREEN"))
+        self.fancyskies = self.create_checkbox_setting(c.t("UI_GC_FANCY_SKIES"))
+        self.smoothlighting = self.create_checkbox_setting(c.t("UI_GC_SMOOTH_LIGHTING"))
+        self.graphics_mode = self.create_combo_setting(c.t("UI_GC_GRAPHICS_MODE"), c.t("UI_GC_GRAPHICS_MODE_MAP"))
 
         # Gameplay
-        self.create_section_label(c.UI_GC_GAMEPLAY)
-        self.difficulty = self.create_combo_setting(c.UI_GC_DIFFICULTY, c.UI_GC_DIFFICULTY_MAP)
-        self.perspective = self.create_combo_setting(c.UI_GC_PERSPECTIVE, c.UI_GC_PERSPECTIVE_MAP)
-        self.game_lang = self.create_entry_setting(c.UI_GC_LANGUAGE)
+        self.create_section_label(c.t("UI_GC_GAMEPLAY"))
+        self.difficulty = self.create_combo_setting(c.t("UI_GC_DIFFICULTY"), c.t("UI_GC_DIFFICULTY_MAP"))
+        self.perspective = self.create_combo_setting(c.t("UI_GC_PERSPECTIVE"), c.t("UI_GC_PERSPECTIVE_MAP"))
+        self.game_lang = self.create_entry_setting(c.t("UI_GC_LANGUAGE"))
 
         # Controls
-        self.create_section_label(c.UI_GC_CONTROLS)
-        self.sensitivity = self.create_slider_setting(c.UI_GC_SENSITIVITY, 1, 200, is_float=True) # 0.01 to 2.0 scaled
-        self.invert_mouse = self.create_checkbox_setting(c.UI_GC_INVERT_MOUSE)
-        self.autojump = self.create_checkbox_setting(c.UI_GC_AUTO_JUMP)
-        self.lefthanded = self.create_checkbox_setting(c.UI_GC_LEFT_HANDED)
-        self.swapjumpsneak = self.create_checkbox_setting(c.UI_GC_SWAP_JUMP_SNEAK)
+        self.create_section_label(c.t("UI_GC_CONTROLS"))
+        self.sensitivity = self.create_slider_setting(c.t("UI_GC_SENSITIVITY"), 1, 200, is_float=True) # 0.01 to 2.0 scaled
+        self.invert_mouse = self.create_checkbox_setting(c.t("UI_GC_INVERT_MOUSE"))
+        self.autojump = self.create_checkbox_setting(c.t("UI_GC_AUTO_JUMP"))
+        self.lefthanded = self.create_checkbox_setting(c.t("UI_GC_LEFT_HANDED"))
+        self.swapjumpsneak = self.create_checkbox_setting(c.t("UI_GC_SWAP_JUMP_SNEAK"))
 
         # Audio
-        self.create_section_label(c.UI_GC_AUDIO)
-        self.sound_vol = self.create_slider_setting(c.UI_GC_SOUND_VOLUME, 0, 100, is_float=True)
-        self.music_vol = self.create_slider_setting(c.UI_GC_MUSIC_VOLUME, 0, 100, is_float=True)
+        self.create_section_label(c.t("UI_GC_AUDIO"))
+        self.sound_vol = self.create_slider_setting(c.t("UI_GC_SOUND_VOLUME"), 0, 100, is_float=True)
+        self.music_vol = self.create_slider_setting(c.t("UI_GC_MUSIC_VOLUME"), 0, 100, is_float=True)
 
         # Privacy
-        self.create_section_label(c.UI_GC_PRIVACY)
-        self.server_visible = self.create_checkbox_setting(c.UI_GC_SERVER_VISIBLE)
-        self.xbox_visible = self.create_checkbox_setting(c.UI_GC_XBOX_VISIBLE)
-        self.autoupdate = self.create_checkbox_setting(c.UI_GC_AUTO_UPDATE)
+        self.create_section_label(c.t("UI_GC_PRIVACY"))
+        self.server_visible = self.create_checkbox_setting(c.t("UI_GC_SERVER_VISIBLE"))
+        self.xbox_visible = self.create_checkbox_setting(c.t("UI_GC_XBOX_VISIBLE"))
+        self.autoupdate = self.create_checkbox_setting(c.t("UI_GC_AUTO_UPDATE"))
 
-        btn_save = QPushButton(c.UI_BUTTON_SAVE_SETTINGS)
+        btn_save = QPushButton(c.t("UI_BUTTON_SAVE_SETTINGS"))
         btn_save.setObjectName("ActionButton")
         btn_save.setFixedHeight(40)
         btn_save.clicked.connect(lambda: self.save_options(False))
         self.scroll_layout.addWidget(btn_save)
 
     def create_section_label(self, text):
+        """Add a section header label to the visual tab."""
         lbl = QLabel(text)
         lbl.setObjectName("HeaderLabel")
         lbl.setStyleSheet("margin-top: 15px;")
         self.scroll_layout.addWidget(lbl)
 
     def create_slider_setting(self, label, min_val, max_val, is_float=False):
+        """Create a labeled horizontal slider with a value readout."""
         f = QFrame()
         l = QHBoxLayout(f)
         l.addWidget(QLabel(label))
@@ -131,11 +137,13 @@ class GameConfigDialog(QDialog):
         return (s, v, is_float)
 
     def create_checkbox_setting(self, label):
+        """Create a labeled checkbox for boolean settings."""
         cb = QCheckBox(label)
         self.scroll_layout.addWidget(cb)
         return cb
 
     def create_entry_setting(self, label):
+        """Create a labeled text entry for string settings."""
         f = QFrame()
         l = QHBoxLayout(f)
         l.addWidget(QLabel(label))
@@ -146,6 +154,7 @@ class GameConfigDialog(QDialog):
         return e
 
     def create_combo_setting(self, label, options):
+        """Create a labeled combo box for choice-based settings."""
         f = QFrame()
         l = QHBoxLayout(f)
         l.addWidget(QLabel(label))
@@ -156,8 +165,9 @@ class GameConfigDialog(QDialog):
         return cb
 
     def load_options(self):
+        """Read options.txt and populate the visual UI and text editor."""
         if not os.path.exists(self.options_path):
-            messagebox.showwarning(self, c.UI_INFO_TITLE, c.UI_FILE_NOT_FOUND_WARN)
+            messagebox.showwarning(self, c.t("UI_INFO_TITLE"), c.t("UI_FILE_NOT_FOUND_WARN"))
             return
         try:
             with open(self.options_path, "r", encoding="utf-8") as f:
@@ -170,9 +180,10 @@ class GameConfigDialog(QDialog):
                         self.options_data[key.strip()] = val.strip()
             self.update_visual_ui()
         except Exception as e:
-            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_READING_FILE.format(e=e))
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), c.t("UI_ERROR_READING_FILE", e=e))
 
     def update_visual_ui(self):
+        """Sync the visual UI widgets with the currently loaded options data."""
         d = self.options_data
         if "gfx_viewdistance" in d: self.view_distance[0].setValue(int(d["gfx_viewdistance"]) // 16)
         if "gfx_max_framerate" in d: self.max_fps.setText(d["gfx_max_framerate"])
@@ -197,6 +208,7 @@ class GameConfigDialog(QDialog):
         if "auto_update_enabled" in d: self.autoupdate.setChecked(d["auto_update_enabled"] == "1")
 
     def save_options(self, from_editor=False):
+        """Write the current options back to options.txt, either from visual UI or raw editor."""
         try:
             if from_editor:
                 content = self.text_editor.toPlainText()
@@ -221,13 +233,14 @@ class GameConfigDialog(QDialog):
 
             os.makedirs(os.path.dirname(self.options_path), exist_ok=True)
             with open(self.options_path, "w", encoding="utf-8") as f: f.write(content)
-            messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_SAVE_FILE_SUCCESS)
+            messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), c.t("UI_SAVE_FILE_SUCCESS"))
             self.parent_app.logic.check_shader_status(self.parent_app)
             self.load_options()
         except Exception as e:
-            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_SAVING_FILE.format(e=e))
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), c.t("UI_ERROR_SAVING_FILE", e=e))
 
     def sync_data_from_ui(self):
+        """Copy all visual widget values into the internal options_data dict."""
         d = self.options_data
         d["gfx_viewdistance"] = str(self.view_distance[0].value() * 16)
         d["gfx_max_framerate"] = self.max_fps.text()

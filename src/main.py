@@ -100,9 +100,9 @@ if __name__ == "__main__":
 
     # New Setup Wizard v3.0
     force_wizard = "--first-wizard" in sys.argv
-    if not window.config.get("accepted_terms", False) or force_wizard:
+    if not window.config.get(c.CONFIG_KEY_ACCEPTED_TERMS, False) or force_wizard:
         logger.info("Triggering Setup Wizard (Accepted terms: {} | Forced: {})".format(
-            window.config.get("accepted_terms"), force_wizard
+            window.config.get(c.CONFIG_KEY_ACCEPTED_TERMS), force_wizard
         ))
         wizard = SetupWizard(window)
         if wizard.exec() != SetupWizard.Accepted:

@@ -12,6 +12,7 @@ import threading
 from PySide6.QtCore import QThread, Signal
 
 class AddonWorker(QThread):
+    """Background worker that scans all addons (worlds, resource packs, behavior packs)."""
     finished = Signal(list)
     error = Signal(str)
 
@@ -27,6 +28,7 @@ class AddonWorker(QThread):
             self.error.emit(str(e))
 
 class AddonActionWorker(QThread):
+    """Background worker for addon actions like toggle, delete, and install."""
     finished = Signal(object)
     error = Signal(str)
 
@@ -43,10 +45,11 @@ class AddonActionWorker(QThread):
             self.error.emit(str(e))
 
 class AddonManagerDialog(QDialog):
+    """Dialog for browsing, searching, toggling, and importing addons (worlds, resource/behavior packs)."""
     def __init__(self, parent):
         super().__init__(parent)
         self.app = parent
-        self.setWindowTitle(c.UI_ADDON_MANAGER_TITLE)
+        self.setWindowTitle(c.t("UI_ADDON_MANAGER_TITLE"))
         self.resize(950, 750)
 
         self.addons_data = []
@@ -58,6 +61,7 @@ class AddonManagerDialog(QDialog):
         self.refresh_list()
 
     def setup_ui(self):
+        """Build the dialog layout with search bar, tabs (worlds/RP/BP), and filter controls."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(20, 20, 20, 20)
         self.main_layout.setSpacing(15)
@@ -69,7 +73,7 @@ class AddonManagerDialog(QDialog):
         # Row 1: Search and Main buttons
         row1 = QHBoxLayout()
         self.entry_search = QLineEdit()
-        self.entry_search.setPlaceholderText(c.UI_SEARCH_PLACEHOLDER)
+        self.entry_search.setPlaceholderText(c.t("UI_SEARCH_PLACEHOLDER"))
         self.entry_search.setMinimumWidth(300)
         self.entry_search.textChanged.connect(self.on_search_delay)
         row1.addWidget(self.entry_search)
@@ -82,7 +86,7 @@ class AddonManagerDialog(QDialog):
 
         row1.addStretch()
 
-        btn_import = QPushButton(f"📥 {c.UI_BUTTON_IMPORT_FILE}")
+        btn_import = QPushButton(f"📥 {c.t("UI_BUTTON_IMPORT_FILE")}")
         btn_import.setFixedHeight(35)
         btn_import.setStyleSheet(f"background-color: {c.COLOR_GREEN_BUTTON}; color: white; font-weight: bold;")
         btn_import.clicked.connect(self.import_file)
@@ -91,14 +95,14 @@ class AddonManagerDialog(QDialog):
 
         # Row 2: Status Indicators
         row2 = QHBoxLayout()
-        profile = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.UI_PROFILE_DEFAULT)
-        install_mode = c.UI_INSTALL_MODES.get(self.app.config.get(c.CONFIG_KEY_INSTALL_MODE), "Unknown")
+        profile = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT"))
+        install_mode = c.t("UI_INSTALL_MODES").get(self.app.config.get(c.CONFIG_KEY_INSTALL_MODE), "Unknown")
 
-        lbl_profile = QLabel(f"👤 {c.UI_LABEL_PROFILE} {profile}")
+        lbl_profile = QLabel(f"👤 {c.t("UI_LABEL_PROFILE")} {profile}")
         lbl_profile.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-size: 11px;")
         row2.addWidget(lbl_profile)
 
-        lbl_mode = QLabel(f"📦 {c.UI_LABEL_INSTALLATION} {install_mode}")
+        lbl_mode = QLabel(f"📦 {c.t("UI_LABEL_INSTALLATION")} {install_mode}")
         lbl_mode.setStyleSheet("color: gray; font-size: 11px;")
         row2.addWidget(lbl_mode)
         row2.addStretch()
@@ -111,9 +115,9 @@ class AddonManagerDialog(QDialog):
 
         self.tabs = {}
         tab_configs = [
-            (c.UI_TAB_WORLDS, "worlds"),
-            (c.UI_TAB_RP, "rp"),
-            (c.UI_TAB_BP, "bp")
+            (c.t("UI_TAB_WORLDS"), "worlds"),
+            (c.t("UI_TAB_RP"), "rp"),
+            (c.t("UI_TAB_BP"), "bp")
         ]
         for tab_display_name, tab_id in tab_configs:
             tab = QWidget()
@@ -135,11 +139,13 @@ class AddonManagerDialog(QDialog):
         self.setStyleSheet("background-color: #2b2b2b; color: white;")
 
     def on_search_delay(self):
+        """Start a debounce timer to re-render the list after the user stops typing."""
         self._search_timer.start(300)
 
     def refresh_list(self):
+        """Start a background scan of all addons and show a progress dialog."""
         from src.gui.progress_dialog import ProgressDialog
-        self.progress = ProgressDialog(self, c.UI_ANALYZING_TITLE, c.UI_SCANNING_RESOURCES)
+        self.progress = ProgressDialog(self, c.t("UI_ANALYZING_TITLE"), c.t("UI_SCANNING_RESOURCES"))
         self.progress.show()
 
         self.worker = AddonWorker(self.app)
@@ -148,15 +154,18 @@ class AddonManagerDialog(QDialog):
         self.worker.start()
 
     def on_scan_finished(self, data):
+        """Handle the completed addon scan and render the filtered list."""
         self.addons_data = data
         self.progress.accept()
         self.render_filtered_list()
 
     def on_scan_error(self, err):
+        """Display an error message when addon scanning fails."""
         self.progress.accept()
-        messagebox.showerror(self, c.UI_ERROR_TITLE, err)
+        messagebox.showerror(self, c.t("UI_ERROR_TITLE"), err)
 
     def render_filtered_list(self):
+        """Rebuild the visible addon list filtered by search query and active tab."""
         current_idx = self.tab_widget.currentIndex()
         if current_idx not in self.tabs: return
         layout, content_widget, tab_id = self.tabs[current_idx]
@@ -187,6 +196,7 @@ class AddonManagerDialog(QDialog):
             self.create_item_ui(layout, addon)
 
     def create_item_ui(self, layout, addon):
+        """Create a single addon item widget with icon, info, and action buttons."""
         item_frame = QFrame()
         item_frame.setStyleSheet(f"background-color: #333333; border-radius: 12px;")
         item_layout = QHBoxLayout(item_frame)
@@ -215,7 +225,7 @@ class AddonManagerDialog(QDialog):
         info_layout.addWidget(lbl_name)
 
         if addon["folder"] != "minecraftWorlds":
-            status_text = c.UI_STATUS_ACTIVE if addon["enabled"] else c.UI_STATUS_DISABLED
+            status_text = c.t("UI_STATUS_ACTIVE") if addon["enabled"] else c.t("UI_STATUS_DISABLED")
             type_str = f"[{addon['type_label']}] - {status_text}"
             lbl_type = QLabel(type_str)
             lbl_type.setStyleSheet(f"font-size: 11px; color: {c.COLOR_PRIMARY_GREEN if addon['enabled'] else 'gray'};")
@@ -232,7 +242,7 @@ class AddonManagerDialog(QDialog):
         # Actions
         actions_layout = QHBoxLayout()
         if addon["folder"] != "minecraftWorlds":
-            btn_text = c.UI_BUTTON_DEACTIVATE if addon["enabled"] else c.UI_BUTTON_ACTIVATE
+            btn_text = c.t("UI_BUTTON_DEACTIVATE") if addon["enabled"] else c.t("UI_BUTTON_ACTIVATE")
             btn_color = c.COLOR_RED_BUTTON if addon["enabled"] else c.COLOR_GREEN_BUTTON
 
             btn_toggle = QPushButton(btn_text)
@@ -241,7 +251,7 @@ class AddonManagerDialog(QDialog):
             btn_toggle.clicked.connect(lambda checked=False, a=addon: self.toggle(a))
             actions_layout.addWidget(btn_toggle)
         else:
-            btn_exp = QPushButton(c.UI_BUTTON_EXPORT)
+            btn_exp = QPushButton(c.t("UI_BUTTON_EXPORT"))
             btn_exp.setFixedSize(130, 40)
             btn_exp.setStyleSheet(f"background-color: {c.COLOR_BLUE_BUTTON}; color: white; font-weight: bold; border-radius: 8px;")
             btn_exp.clicked.connect(lambda: self.export_world(addon))
@@ -257,17 +267,19 @@ class AddonManagerDialog(QDialog):
         layout.addWidget(item_frame)
 
     def export_world(self, addon):
-        dest_dir = dialogs.ask_directory_native(self, title=c.UI_SELECT_DEST_FOLDER_TITLE)
+        """Export the selected world as a .mcworld file to a chosen directory."""
+        dest_dir = dialogs.ask_directory_native(self, title=c.t("UI_SELECT_DEST_FOLDER_TITLE"))
         if dest_dir:
             success, msg = addon_manager.export_world(addon["path"], dest_dir)
             if success:
-                messagebox.showinfo(self, c.UI_SUCCESS_TITLE, c.UI_WORLD_EXPORTED_SUCCESS.format(path=msg))
+                messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), c.t("UI_WORLD_EXPORTED_SUCCESS", path=msg))
             else:
-                messagebox.showerror(self, c.UI_ERROR_TITLE, msg)
+                messagebox.showerror(self, c.t("UI_ERROR_TITLE"), msg)
 
     def toggle(self, addon):
+        """Enable or disable the given addon (resource/behavior pack) in a background thread."""
         from src.gui.progress_dialog import ProgressDialog
-        self.progress_action = ProgressDialog(self, c.UI_INFO_TITLE, c.UI_TOGGLING_STATUS)
+        self.progress_action = ProgressDialog(self, c.t("UI_INFO_TITLE"), c.t("UI_TOGGLING_STATUS"))
         self.progress_action.show()
 
         def on_finished(new_path):
@@ -278,7 +290,7 @@ class AddonManagerDialog(QDialog):
 
         def on_error(err):
             self.progress_action.accept()
-            messagebox.showerror(self, c.UI_ERROR_TITLE, str(err))
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(err))
 
         self.action_worker = AddonActionWorker(addon_manager.toggle_addon, self.app, addon)
         self.action_worker.finished.connect(on_finished)
@@ -286,9 +298,10 @@ class AddonManagerDialog(QDialog):
         self.action_worker.start()
 
     def delete(self, addon):
-        if messagebox.askyesno(self, c.UI_CONFIRM_DELETE_TITLE, f"{c.UI_BUTTON_DELETE} {addon['name']}?"):
+        """Delete the given addon after user confirmation."""
+        if messagebox.askyesno(self, c.t("UI_CONFIRM_DELETE_TITLE"), f"{c.t("UI_BUTTON_DELETE")} {addon['name']}?"):
             from src.gui.progress_dialog import ProgressDialog
-            self.progress_action = ProgressDialog(self, c.UI_INFO_TITLE, c.UI_DELETING_RESOURCE)
+            self.progress_action = ProgressDialog(self, c.t("UI_INFO_TITLE"), c.t("UI_DELETING_RESOURCE"))
             self.progress_action.show()
 
             def on_finished(success):
@@ -299,7 +312,7 @@ class AddonManagerDialog(QDialog):
 
             def on_error(err):
                 self.progress_action.accept()
-                messagebox.showerror(self, c.UI_ERROR_TITLE, str(err))
+                messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(err))
 
             self.action_worker = AddonActionWorker(addon_manager.delete_addon, addon["path"])
             self.action_worker.finished.connect(on_finished)
@@ -307,17 +320,18 @@ class AddonManagerDialog(QDialog):
             self.action_worker.start()
 
     def import_file(self):
+        """Open a file picker for .mcpack/.mcaddon/.mcworld files and install them."""
         file_path = dialogs.ask_open_filename_native(
             self,
-            title=c.UI_OPEN_FILE_TITLE,
-            filetypes=[(c.UI_MCPACK_FILES_TYPE, "*.mcpack *.mcaddon *.mcworld *.mcworldtemplate"), (c.UI_ALL_FILES_TYPE, "*.*")]
+            title=c.t("UI_OPEN_FILE_TITLE"),
+            filetypes=[(c.t("UI_MCPACK_FILES_TYPE"), "*.mcpack *.mcaddon *.mcworld *.mcworldtemplate"), (c.t("UI_ALL_FILES_TYPE"), "*.*")]
         )
         if not file_path: return
         self._install_task([file_path])
 
     def _install_task(self, file_paths):
         from src.gui.progress_dialog import ProgressDialog
-        self.progress_action = ProgressDialog(self, c.UI_INFO_TITLE, c.UI_INSTALLING_PACK)
+        self.progress_action = ProgressDialog(self, c.t("UI_INFO_TITLE"), c.t("UI_INSTALLING_PACK"))
         self.progress_action.show()
 
         def run_install(paths):
@@ -331,7 +345,7 @@ class AddonManagerDialog(QDialog):
 
         def on_error(err):
             self.progress_action.accept()
-            messagebox.showerror(self, c.UI_ERROR_TITLE, str(err))
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(err))
 
         self.action_worker = AddonActionWorker(run_install, file_paths)
         self.action_worker.finished.connect(on_finished)

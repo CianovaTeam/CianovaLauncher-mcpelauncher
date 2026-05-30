@@ -1,9 +1,10 @@
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QTextEdit
 from PySide6.QtCore import Qt
 from src import constants as c
-from src.utils.image_manager import ImageManager
 
 class CustomDialog(QDialog):
+    """A themed dialog with icon, message, and customizable action buttons."""
+
     def __init__(self, parent, title, message, icon_type="info", options=["OK"]):
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -37,15 +38,10 @@ class CustomDialog(QDialog):
         }
         color, icon_char = icon_map.get(icon_type, icon_map["info"])
 
-        # Icon Label
+        # Icon Label — sin fondo, solo el emoji limpio
         self.icon_label = QLabel(icon_char)
-        self.icon_label.setFixedSize(70, 70)
-        self.icon_label.setStyleSheet(f"""
-            font-size: 45px;
-            color: white;
-            background-color: {color};
-            border-radius: 15px;
-        """)
+        self.icon_label.setFixedSize(50, 50)
+        self.icon_label.setStyleSheet("font-size: 36px;")
         self.icon_label.setAlignment(Qt.AlignCenter)
         self.content_layout.addWidget(self.icon_label)
 
@@ -99,6 +95,7 @@ class CustomDialog(QDialog):
                 QPushButton {{
                     background-color: {bg_color};
                     color: white;
+                    border: none;
                     border-radius: 8px;
                     font-weight: bold;
                 }}
@@ -125,30 +122,36 @@ class CustomDialog(QDialog):
         """)
 
     def close_with_result(self, value):
+        """Close the dialog and store the selected button value as the result."""
         self.result_value = value
         self.accept()
 
 # Helper functions to mimic messagebox
 def showinfo(parent, title, message):
+    """Display an informational message dialog."""
     dialog = CustomDialog(parent, title, message, icon_type="info", options=["OK"])
     dialog.exec()
 
 def showwarning(parent, title, message):
+    """Display a warning message dialog."""
     dialog = CustomDialog(parent, title, message, icon_type="warning", options=["OK"])
     dialog.exec()
 
 def showerror(parent, title, message):
+    """Display an error message dialog."""
     dialog = CustomDialog(parent, title, message, icon_type="error", options=["OK"])
     dialog.exec()
 
 def askyesno(parent, title, message):
-    options = [getattr(c, "UI_YES", "Sí"), getattr(c, "UI_NO", "No")]
+    """Display a yes/no question dialog and return the user's choice."""
+    options = [c.t("UI_YES"), c.t("UI_NO")]
     dialog = CustomDialog(parent, title, message, icon_type="question", options=options)
     result = dialog.exec()
     return dialog.result_value == options[0]
 
 def askokcancel(parent, title, message):
-    options = ["OK", getattr(c, "UI_CANCEL", "Cancelar")]
+    """Display an OK/Cancel question dialog and return the user's choice."""
+    options = ["OK", c.t("UI_CANCEL")]
     dialog = CustomDialog(parent, title, message, icon_type="question", options=options)
     result = dialog.exec()
     return dialog.result_value == options[0]

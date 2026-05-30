@@ -10,17 +10,21 @@ import json
 import threading
 from src.gui import custom_dialogs as messagebox
 from src.utils.dialogs import ask_open_filename_native
+from src.utils.logger import logger
 from src import constants as c
 
 class VersionFetcher(QThread):
+    """Thread that fetches available version data from a remote manifest URL."""
     finished = Signal(list)
     error = Signal(str)
 
     def __init__(self, arch):
+        """Initialize the fetcher with the target CPU architecture."""
         super().__init__()
         self.arch = arch
 
     def run(self):
+        """Fetch version manifest data and emit finished or error signal."""
         try:
             url = c.VERSION_MANIFEST_URL.format(arch=self.arch)
             with urllib.request.urlopen(url, timeout=10) as response:
@@ -33,6 +37,8 @@ class VersionFetcher(QThread):
             self.error.emit(str(e))
 
 class GooglePlayTab(QWidget):
+    """Tab widget for searching and installing versions from Google Play."""
+
     def __init__(self, parent_dialog):
         super().__init__()
         self.dialog = parent_dialog
@@ -43,12 +49,13 @@ class GooglePlayTab(QWidget):
         self.load_versions("x86_64")
 
     def setup_ui(self):
+        """Build the UI layout for the Google Play tab."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
         # Login Section
-        self.btn_login = QPushButton(c.UI_BUTTON_LOGIN_GOOGLE)
+        self.btn_login = QPushButton(c.t("UI_BUTTON_LOGIN_GOOGLE"))
         self.btn_login.setFixedHeight(40)
         self.btn_login.clicked.connect(self.do_login)
         layout.addWidget(self.btn_login)
@@ -62,31 +69,31 @@ class GooglePlayTab(QWidget):
         selectors_layout = QHBoxLayout()
 
         # Arch
-        selectors_layout.addWidget(QLabel(c.UI_LABEL_SELECT_ARCH))
+        selectors_layout.addWidget(QLabel(c.t("UI_LABEL_SELECT_ARCH")))
         self.combo_arch = QComboBox()
         self.combo_arch.addItems(["x86_64", "x86"])
         self.combo_arch.currentTextChanged.connect(self.load_versions)
         selectors_layout.addWidget(self.combo_arch, 1)
 
         # Filter
-        selectors_layout.addWidget(QLabel(c.UI_LABEL_FILTER_VERSIONS))
+        selectors_layout.addWidget(QLabel(c.t("UI_LABEL_FILTER_VERSIONS")))
         self.combo_filter = QComboBox()
-        self.combo_filter.addItems([c.UI_FILTER_STABLE, c.UI_FILTER_ALL, c.UI_FILTER_BETA])
-        self.combo_filter.setCurrentText(c.UI_FILTER_STABLE)
+        self.combo_filter.addItems([c.t("UI_FILTER_STABLE"), c.t("UI_FILTER_ALL"), c.t("UI_FILTER_BETA")])
+        self.combo_filter.setCurrentText(c.t("UI_FILTER_STABLE"))
         self.combo_filter.currentTextChanged.connect(self.apply_filter)
         selectors_layout.addWidget(self.combo_filter, 1)
 
         layout.addLayout(selectors_layout)
 
         # Version Selection
-        layout.addWidget(QLabel(c.UI_LABEL_SELECT_VERSION))
+        layout.addWidget(QLabel(c.t("UI_LABEL_SELECT_VERSION")))
         self.combo_versions = QComboBox()
         layout.addWidget(self.combo_versions)
 
         layout.addStretch()
 
         # Progress Section
-        self.status_label = QLabel(c.UI_STATUS_LOGIN_REQUIRED)
+        self.status_label = QLabel(c.t("UI_STATUS_LOGIN_REQUIRED"))
         self.status_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.status_label)
 
@@ -94,7 +101,7 @@ class GooglePlayTab(QWidget):
         self.progress_bar.setVisible(False)
         layout.addWidget(self.progress_bar)
 
-        self.btn_download = QPushButton(c.UI_BUTTON_INSTALL_NOW)
+        self.btn_download = QPushButton(c.t("UI_BUTTON_INSTALL_NOW"))
         self.btn_download.setObjectName("ActionButton")
         self.btn_download.setFixedHeight(50)
         self.btn_download.clicked.connect(self.start_download_flow)
@@ -104,12 +111,13 @@ class GooglePlayTab(QWidget):
         self.update_session_status()
 
     def do_login(self):
+        """Launch the Google login flow and monitor for session token."""
         # Avoid double-launch
         if getattr(self, "_login_poll_timer", None) and self._login_poll_timer.isActive():
             return
 
         self.btn_login.setEnabled(False)
-        self.lbl_session_status.setText(c.UI_STATUS_LOGIN_IN_PROGRESS)
+        self.lbl_session_status.setText(c.t("UI_STATUS_LOGIN_IN_PROGRESS"))
         self.lbl_session_status.setStyleSheet(
             f"color: {c.COLOR_PRIMARY_GREEN}; font-weight: bold; font-size: 11px;"
         )
@@ -144,7 +152,7 @@ class GooglePlayTab(QWidget):
             return
 
         self.lbl_session_status.setText(
-            c.UI_STATUS_LOGIN_WAITING.format(s=self._login_poll_count * 2)
+            c.t("UI_STATUS_LOGIN_WAITING", s=self._login_poll_count * 2)
         )
 
         if self._login_poll_count >= self._login_poll_max:
@@ -153,13 +161,14 @@ class GooglePlayTab(QWidget):
             self.update_session_status()
 
     def update_session_status(self):
+        """Update the UI to reflect the current Google session state."""
         is_active = self.app.logic.check_google_session(self.app)
         if is_active:
-            self.lbl_session_status.setText(c.UI_STATUS_SESSION_ACTIVE)
+            self.lbl_session_status.setText(c.t("UI_STATUS_SESSION_ACTIVE"))
             self.lbl_session_status.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-weight: bold; font-size: 11px;")
             self.btn_download.setEnabled(True)
         else:
-            self.lbl_session_status.setText(c.UI_STATUS_SESSION_INACTIVE)
+            self.lbl_session_status.setText(c.t("UI_STATUS_SESSION_INACTIVE"))
             self.lbl_session_status.setStyleSheet("color: #ef4444; font-weight: bold; font-size: 11px;")
             self.btn_download.setEnabled(False)
 
@@ -179,6 +188,7 @@ class GooglePlayTab(QWidget):
         """)
 
     def load_versions(self, arch):
+        """Fetch available versions for the given architecture in a background thread."""
         # Stop any ongoing fetch
         if self.fetcher and self.fetcher.isRunning():
             self.fetcher.terminate()
@@ -186,7 +196,7 @@ class GooglePlayTab(QWidget):
 
         self.all_versions_data = []
         self.combo_versions.clear()
-        self.combo_versions.addItem(c.UI_LABEL_SEARCHING)
+        self.combo_versions.addItem(c.t("UI_LABEL_SEARCHING"))
         self.combo_versions.setEnabled(False)
 
         self.fetcher = VersionFetcher(arch)
@@ -195,16 +205,19 @@ class GooglePlayTab(QWidget):
         self.fetcher.start()
 
     def on_versions_loaded(self, data):
+        """Handle successfully loaded version data and apply the current filter."""
         self.all_versions_data = data
         self.apply_filter()
 
     def on_versions_error(self, err):
-        print(f"Error loading versions: {err}")
+        """Display an error message when version loading fails."""
+        logger.error(f"Error loading versions: {err}")
         self.combo_versions.clear()
         self.combo_versions.addItem(f"❌ Error al cargar (Verificar Internet)")
         self.combo_versions.setEnabled(True)
 
     def apply_filter(self, _text=None):
+        """Filter the version list by stable/beta/all and populate the combo box."""
         self.combo_versions.clear()
         self.combo_versions.setEnabled(True)
         
@@ -217,16 +230,16 @@ class GooglePlayTab(QWidget):
         # whichever version is currently being offered. Most reliable path:
         # specific old vcodes from the manifest are often rejected with
         # status=2 even on accounts that own the app.
-        self.combo_versions.addItem(c.UI_VERSION_LATEST_LABEL, (0, "latest"))
+        self.combo_versions.addItem(c.t("UI_VERSION_LATEST_LABEL"), (0, "latest"))
 
         # data is list of lists [[vcode, vname, isbeta], ...]
         # Reversed to show newest first
         for ver in reversed(self.all_versions_data):
             is_beta = len(ver) > 2 and bool(ver[2])
 
-            if filter_type == c.UI_FILTER_STABLE and is_beta:
+            if filter_type == c.t("UI_FILTER_STABLE") and is_beta:
                 continue
-            if filter_type == c.UI_FILTER_BETA and not is_beta:
+            if filter_type == c.t("UI_FILTER_BETA") and not is_beta:
                 continue
 
             display = f"{ver[1]} ({ver[0]})"
@@ -236,9 +249,10 @@ class GooglePlayTab(QWidget):
 
 
     def start_download_flow(self):
+        """Begin downloading and installing the selected Google Play version."""
         version_data = self.combo_versions.currentData()
         if not version_data:
-            print("[cianova] start_download_flow: no version selected", flush=True)
+            logger.warning("start_download_flow: no version selected")
             return
 
         version_code, version_name = version_data
@@ -250,15 +264,14 @@ class GooglePlayTab(QWidget):
         target_root = self.dialog.get_target_root()
         flatpak_id = self.dialog.entry_flatpak_id.text().strip() if is_target_flatpak else None
 
-        print(f"[cianova] start_download_flow: vcode={version_code} vname={version_name} "
-              f"arch={arch} mode={mode_key} target_root={target_root} flatpak_id={flatpak_id}",
-              flush=True)
+        logger.info(f"start_download_flow: vcode={version_code} vname={version_name} "
+              f"arch={arch} mode={mode_key} target_root={target_root} flatpak_id={flatpak_id}")
 
         self.btn_download.setEnabled(False)
-        self.btn_download.setText(c.UI_STATUS_DOWNLOADING)
+        self.btn_download.setText(c.t("UI_STATUS_DOWNLOADING"))
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
-        self.status_label.setText(c.UI_STATUS_DOWNLOADING)
+        self.status_label.setText(c.t("UI_STATUS_DOWNLOADING"))
 
         # This will call logic to start gplaydl and then extraction
         self.app.logic.download_and_install_google(
@@ -270,25 +283,30 @@ class GooglePlayTab(QWidget):
         )
 
     def update_progress(self, value):
+        """Update the progress bar to the given percentage value."""
         self.progress_bar.setValue(value)
 
     def on_finished(self, success, message):
+        """Handle completion of the download and install process."""
         self.btn_download.setEnabled(True)
-        self.btn_download.setText(c.UI_BUTTON_INSTALL_NOW)
+        self.btn_download.setText(c.t("UI_BUTTON_INSTALL_NOW"))
         self.progress_bar.setVisible(False)
         if success:
-            messagebox.showinfo(self, c.UI_SUCCESS_TITLE, message)
+            messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), message)
             self.dialog.accept()
         else:
-            messagebox.showerror(self, c.UI_ERROR_TITLE, message)
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), message)
 
 class LocalApkTab(QWidget):
+    """Tab widget for installing Minecraft from a local APK file."""
+
     def __init__(self, parent_dialog):
         super().__init__()
         self.dialog = parent_dialog
         self.setup_ui()
 
     def setup_ui(self):
+        """Build the UI layout for the local APK installation tab."""
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(20, 20, 20, 20)
         self.layout.setSpacing(15)
@@ -298,13 +316,13 @@ class LocalApkTab(QWidget):
         self.frame_apk.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
         apk_layout = QVBoxLayout(self.frame_apk)
 
-        lbl_apk_title = QLabel(c.UI_APK_FILE_LABEL)
+        lbl_apk_title = QLabel(c.t("UI_APK_FILE_LABEL"))
         lbl_apk_title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
         apk_layout.addWidget(lbl_apk_title)
 
         apk_input_layout = QHBoxLayout()
         self.entry_apk = QLineEdit()
-        self.entry_apk.setPlaceholderText(c.UI_SELECT_APK_PLACEHOLDER)
+        self.entry_apk.setPlaceholderText(c.t("UI_SELECT_APK_PLACEHOLDER"))
         self.entry_apk.setReadOnly(True)
         apk_input_layout.addWidget(self.entry_apk)
 
@@ -328,19 +346,19 @@ class LocalApkTab(QWidget):
         self.frame_name.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
         name_layout = QVBoxLayout(self.frame_name)
 
-        lbl_name_title = QLabel(c.UI_VERSION_NAME_LABEL)
+        lbl_name_title = QLabel(c.t("UI_VERSION_NAME_LABEL"))
         lbl_name_title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
         name_layout.addWidget(lbl_name_title)
 
         self.entry_name = QLineEdit()
-        self.entry_name.setPlaceholderText(c.UI_VERSION_NAME_PLACEHOLDER)
+        self.entry_name.setPlaceholderText(c.t("UI_VERSION_NAME_PLACEHOLDER"))
         name_layout.addWidget(self.entry_name)
 
         self.layout.addWidget(self.frame_name)
         self.layout.addStretch()
 
         # Botón de Acción
-        self.btn_install = QPushButton(c.UI_BUTTON_INSTALL_NOW)
+        self.btn_install = QPushButton(c.t("UI_BUTTON_INSTALL_NOW"))
         self.btn_install.setObjectName("ActionButton")
         self.btn_install.setFixedHeight(50)
         self.btn_install.setEnabled(False)
@@ -348,7 +366,8 @@ class LocalApkTab(QWidget):
         self.layout.addWidget(self.btn_install)
 
     def browse_apk(self):
-        path = ask_open_filename_native(self, title=c.UI_SELECT_APK_TITLE, filetypes=[(c.UI_APK_FILES_TYPE, "*.apk")])
+        """Open a file picker to select an APK and analyze its architecture."""
+        path = ask_open_filename_native(self, title=c.t("UI_SELECT_APK_TITLE"), filetypes=[(c.t("UI_APK_FILES_TYPE"), "*.apk")])
         if path:
             self.entry_apk.setText(path)
             # Guess version
@@ -359,6 +378,7 @@ class LocalApkTab(QWidget):
             self.check_architecture(path)
 
     def check_architecture(self, apk_path):
+        """Inspect the APK to determine x86, ARM support and compatibility."""
         found_x86 = False
         found_x64 = False
         found_arm = False
@@ -379,7 +399,7 @@ class LocalApkTab(QWidget):
                     if "lib/armeabi" in n or "lib/arm64" in n:
                         found_arm = True
         except Exception as e:
-            self.lbl_arch.setText(c.UI_ERROR_READING_APK.format(e=e))
+            self.lbl_arch.setText(c.t("UI_ERROR_READING_APK", e=e))
             self.lbl_arch.setStyleSheet("color: red; font-weight: bold;")
             self.btn_install.setEnabled(False)
             return
@@ -389,17 +409,17 @@ class LocalApkTab(QWidget):
         color = "gray"
 
         if not has_assets or not has_lib:
-            msg = c.UI_APK_INVALID
+            msg = c.t("UI_APK_INVALID")
             color = "red"
         elif found_x86 or found_x64:
-            msg = c.UI_APK_COMPATIBLE_X86
+            msg = c.t("UI_APK_COMPATIBLE_X86")
             color = "green"
             is_compatible = True
         elif found_arm:
-            msg = c.UI_APK_INCOMPATIBLE_ARM
+            msg = c.t("UI_APK_INCOMPATIBLE_ARM")
             color = "red"
         else:
-            msg = c.UI_APK_INVALID
+            msg = c.t("UI_APK_INVALID")
             color = "orange"
 
         self.lbl_arch.setText(msg)
@@ -407,13 +427,14 @@ class LocalApkTab(QWidget):
         self.btn_install.setEnabled(is_compatible)
 
     def start_install(self):
+        """Validate inputs and trigger APK installation via the app logic."""
         apk = self.entry_apk.text().strip()
         name = self.entry_name.text().strip()
         if not apk or not os.path.exists(apk):
-            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_SELECT_VALID_APK)
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), c.t("UI_ERROR_SELECT_VALID_APK"))
             return
         if not name:
-            messagebox.showerror(self, c.UI_ERROR_TITLE, c.UI_ERROR_WRITE_VERSION_NAME)
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), c.t("UI_ERROR_WRITE_VERSION_NAME"))
             return
 
         target_root = self.dialog.get_target_root()
@@ -427,16 +448,19 @@ class LocalApkTab(QWidget):
         )
 
 class InstallDialog(QDialog):
+    """Dialog for installing new Minecraft versions from APK files or Google Play."""
+
     def __init__(self, parent):
         super().__init__(parent)
         self.parent_app = parent
-        self.setWindowTitle(c.UI_INSTALL_NEW_VERSION_TITLE)
+        self.setWindowTitle(c.t("UI_INSTALL_NEW_VERSION_TITLE"))
         self.resize(600, 700)
 
         self.target_mode_val = c.MODE_INSTALL_FLATPAK if parent.running_in_flatpak else c.MODE_INSTALL_LOCAL
         self.setup_ui()
 
     def setup_ui(self):
+        """Build the full dialog UI with tabs, mode selection, and styling."""
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(15, 15, 15, 15)
         self.main_layout.setSpacing(10)
@@ -446,8 +470,8 @@ class InstallDialog(QDialog):
         self.google_tab = GooglePlayTab(self)
         self.local_tab = LocalApkTab(self)
 
-        self.tabs.addTab(self.google_tab, c.UI_INSTALL_TAB_GOOGLE)
-        self.tabs.addTab(self.local_tab, c.UI_INSTALL_TAB_LOCAL)
+        self.tabs.addTab(self.google_tab, c.t("UI_INSTALL_TAB_GOOGLE"))
+        self.tabs.addTab(self.local_tab, c.t("UI_INSTALL_TAB_LOCAL"))
         self.main_layout.addWidget(self.tabs)
 
         # 3. Modo de Instalación (Global para ambas pestañas)
@@ -455,21 +479,21 @@ class InstallDialog(QDialog):
         self.frame_mode.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
         mode_layout = QVBoxLayout(self.frame_mode)
 
-        lbl_mode_title = QLabel(c.UI_INSTALL_MODE_DEST_LABEL)
+        lbl_mode_title = QLabel(c.t("UI_INSTALL_MODE_DEST_LABEL"))
         lbl_mode_title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
         mode_layout.addWidget(lbl_mode_title)
 
         if self.parent_app.running_in_flatpak:
             modes_available = [
-                (c.MODE_INSTALL_OWN, c.UI_INSTALL_MODE_OWN),
-                (c.MODE_INSTALL_SHARED, c.UI_INSTALL_MODE_SHARED),
-                (c.MODE_INSTALL_FLATPAK, c.UI_INSTALL_MODE_FLATPAK_DESC),
+                (c.MODE_INSTALL_OWN, c.t("UI_INSTALL_MODE_OWN")),
+                (c.MODE_INSTALL_SHARED, c.t("UI_INSTALL_MODE_SHARED")),
+                (c.MODE_INSTALL_FLATPAK, c.t("UI_INSTALL_MODE_FLATPAK_DESC")),
             ]
             default_mode = c.MODE_INSTALL_OWN
         else:
             modes_available = [
-                (c.MODE_INSTALL_LOCAL, c.UI_INSTALL_MODE_LOCAL),
-                (c.MODE_INSTALL_FLATPAK, c.UI_INSTALL_MODE_FLATPAK_DESC),
+                (c.MODE_INSTALL_LOCAL, c.t("UI_INSTALL_MODE_LOCAL")),
+                (c.MODE_INSTALL_FLATPAK, c.t("UI_INSTALL_MODE_FLATPAK_DESC")),
             ]
             default_mode = c.MODE_INSTALL_LOCAL
 
@@ -477,7 +501,7 @@ class InstallDialog(QDialog):
         self.radio_buttons = []
 
         for mode_key, mode_display in modes_available:
-            rb = QRadioButton(mode_display if mode_key != c.MODE_INSTALL_FLATPAK else c.UI_FLATPAK_CUSTOM_ID_LABEL)
+            rb = QRadioButton(mode_display if mode_key != c.MODE_INSTALL_FLATPAK else c.t("UI_FLATPAK_CUSTOM_ID_LABEL"))
             rb.setChecked(mode_key == default_mode)
             rb.toggled.connect(lambda checked, k=mode_key: self.set_target_mode(k) if checked else None)
             mode_layout.addWidget(rb)
@@ -494,11 +518,13 @@ class InstallDialog(QDialog):
         self.setStyleSheet("background-color: #2b2b2b; color: white;")
 
     def set_target_mode(self, mode_key):
+        """Update the selected installation mode and toggle the Flatpak ID field."""
         self.target_mode_val = mode_key
         if hasattr(self, 'entry_flatpak_id'):
             self.entry_flatpak_id.setEnabled(mode_key == c.MODE_INSTALL_FLATPAK)
 
     def get_target_root(self):
+        """Resolve the installation root path based on the selected mode."""
         mode_key = self.target_mode_val
         if mode_key == c.MODE_INSTALL_FLATPAK:
             custom_id = self.entry_flatpak_id.text().strip() or c.DEFAULT_FLATPAK_ID

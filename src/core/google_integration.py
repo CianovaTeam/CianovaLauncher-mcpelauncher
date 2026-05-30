@@ -1,5 +1,4 @@
 import os
-import sys
 import shutil
 import subprocess
 import threading
@@ -14,22 +13,11 @@ from PySide6.QtCore import QTimer, QProcess, QObject, Signal
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
 from src.core.version_ops import resolve_version
-
-# Debug logger gated by CIANOVA_DEBUG=1 (set by run.sh).
-_CIANOVA_DEBUG = os.environ.get("CIANOVA_DEBUG", "") not in ("", "0", "false", "False")
-
-
-def dbg(msg, *args):
-    if not _CIANOVA_DEBUG:
-        return
-    try:
-        formatted = msg % args if args else msg
-    except Exception:
-        formatted = f"{msg} {args}"
-    print(f"[cianova] {formatted}", flush=True, file=sys.stderr)
+from src.utils.logger import logger
 
 
 class InstallSignals(QObject):
+    """Qt signals for reporting Google download/install progress and completion."""
     progress = Signal(int)
     status = Signal(str)
     finished = Signal(bool, str)
@@ -44,7 +32,7 @@ def get_signin_workdir(app):
     try:
         os.makedirs(d, exist_ok=True)
     except Exception as e:
-        print(f"Could not create signin workdir: {e}")
+        logger.error(f"Could not create signin workdir: {e}")
     return d
 
 
@@ -141,9 +129,9 @@ def _exchange_access_token(email, access_token):
             text = e.read().decode("utf-8", errors="replace")
         except Exception:
             text = ""
-        print(f"OAuth exchange HTTP {e.code}: {text[:300]}")
+        logger.error(f"OAuth exchange HTTP {e.code}: {text[:300]}")
     except Exception as e:
-        print(f"OAuth exchange request failed: {e}")
+        logger.error(f"OAuth exchange request failed: {e}")
         return None
 
     parsed = {}
@@ -153,10 +141,10 @@ def _exchange_access_token(email, access_token):
             parsed[k.strip()] = v.strip()
 
     if "Error" in parsed:
-        print(f"OAuth exchange error: {parsed.get('Error')} (full: {parsed})")
+        logger.error(f"OAuth exchange error: {parsed.get('Error')} (full: {parsed})")
         return None
     if "Token" not in parsed:
-        print(f"OAuth exchange: no Token in response: {parsed}")
+        logger.error(f"OAuth exchange: no Token in response: {parsed}")
         return None
     return parsed
 
@@ -197,7 +185,7 @@ def _write_playdl_conf(workdir, fields):
         os.chmod(conf_path, 0o600)
         return True
     except Exception as e:
-        print(f"Error escribiendo playdl.conf: {e}")
+        logger.error(f"Error escribiendo playdl.conf: {e}")
         return False
 
 
@@ -212,7 +200,7 @@ def launch_google_login(app, on_finished=None):
     """
     bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_SIGNIN_UI, "playdl-signin-ui-qt")
     workdir = get_signin_workdir(app)
-    dbg("launch_google_login: bin=%s workdir=%s flatpak=%s", bin_path, workdir, app.running_in_flatpak)
+    logger.debug("launch_google_login: bin=%s workdir=%s flatpak=%s", bin_path, workdir, app.running_in_flatpak)
 
     proc = QProcess(app)
     proc.setWorkingDirectory(workdir)
@@ -236,7 +224,7 @@ def launch_google_login(app, on_finished=None):
             if data:
                 state["stdout"] += data
         except Exception as e:
-            print(f"Signin stdout read error: {e}")
+            logger.error(f"Signin stdout read error: {e}")
 
     proc.readyReadStandardOutput.connect(_drain)
 
@@ -247,16 +235,16 @@ def launch_google_login(app, on_finished=None):
         except Exception:
             text = ""
         fields = _parse_signin_output(text)
-        dbg("signin-ui finished code=%s stdout_len=%d fields=%s",
+        logger.debug("signin-ui finished code=%s stdout_len=%d fields=%s",
             code, len(text), {k: (len(v) if v else 0) for k, v in fields.items()})
 
         access_token = fields.get("user_token", "").strip()
         email = fields.get("user_email", "").strip()
         wrote = False
         if access_token:
-            dbg("exchanging access_token (len=%d) email=%s", len(access_token), email)
+            logger.debug("exchanging access_token (len=%d) email=%s", len(access_token), email)
             exchanged = _exchange_access_token(email, access_token)
-            dbg("exchange result: %s", "OK" if exchanged else "FAIL")
+            logger.debug("exchange result: %s", "OK" if exchanged else "FAIL")
             if exchanged:
                 master_fields = {
                     "user_email": exchanged.get("Email") or email,
@@ -264,16 +252,16 @@ def launch_google_login(app, on_finished=None):
                     "user_token": exchanged["Token"],
                 }
                 wrote = _write_playdl_conf(workdir, master_fields)
-                dbg("playdl.conf written=%s path=%s", wrote, os.path.join(workdir, "playdl.conf"))
+                logger.debug("playdl.conf written=%s path=%s", wrote, os.path.join(workdir, "playdl.conf"))
             else:
                 try:
-                    messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_GOOGLE_TOKEN_EXCHANGE_FAILED)
+                    messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_GOOGLE_TOKEN_EXCHANGE_FAILED"))
                 except Exception:
                     pass
 
         if not wrote and code == 0 and not access_token:
             try:
-                messagebox.showwarning(app, c.UI_ERROR_TITLE, c.UI_GOOGLE_SIGNIN_NO_TOKEN)
+                messagebox.showwarning(app, c.t("UI_ERROR_TITLE"), c.t("UI_GOOGLE_SIGNIN_NO_TOKEN"))
             except Exception:
                 pass
 
@@ -284,16 +272,16 @@ def launch_google_login(app, on_finished=None):
 
     def _on_error(err):
         try:
-            messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_GOOGLE_LOGIN_LAUNCH_ERROR.format(error=err))
+            messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_GOOGLE_LOGIN_LAUNCH_ERROR", error=err))
         except Exception:
-            print(f"Signin launch error: {err}")
+            logger.error(f"Signin launch error: {err}")
 
     proc.errorOccurred.connect(_on_error)
     app._signin_proc = proc
     proc.start()
     if not proc.waitForStarted(3000):
-        messagebox.showerror(app, c.UI_ERROR_TITLE,
-                             c.UI_GOOGLE_SIGNIN_LAUNCH_FAILED.format(bin_path=bin_path))
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                             c.t("UI_GOOGLE_SIGNIN_LAUNCH_FAILED", bin_path=bin_path))
         return None
     return proc
 
@@ -342,15 +330,15 @@ def _write_device_conf(workdir, arch):
         with open(path, "w") as f:
             f.write(body)
     except Exception as e:
-        print(f"device.conf write error: {e}")
+        logger.error(f"device.conf write error: {e}")
         return None
     return path
 
 
 _DELIVERY_STATUS_MESSAGES = {
-    "2": c.UI_GOOGLE_DELIVERY_STATUS_2,
-    "3": c.UI_GOOGLE_DELIVERY_STATUS_3,
-    "5": c.UI_GOOGLE_DELIVERY_STATUS_5,
+    "2": c.t("UI_GOOGLE_DELIVERY_STATUS_2"),
+    "3": c.t("UI_GOOGLE_DELIVERY_STATUS_3"),
+    "5": c.t("UI_GOOGLE_DELIVERY_STATUS_5"),
 }
 
 
@@ -364,17 +352,16 @@ def _map_gplaydl_error(returncode, tail_text):
         msg = _DELIVERY_STATUS_MESSAGES.get(m.group(1))
         if msg:
             return msg
-        return c.UI_GOOGLE_DELIVERY_STATUS_UNKNOWN.format(status=m.group(1))
+        return c.t("UI_GOOGLE_DELIVERY_STATUS_UNKNOWN", status=m.group(1))
 
     if "no downloadauthcookie" in tail_text:
         return _DELIVERY_STATUS_MESSAGES["2"]
     if "bad token" in tail_text or "BadAuthentication" in tail_text:
-        return c.UI_GOOGLE_SESSION_EXPIRED
+        return c.t("UI_GOOGLE_SESSION_EXPIRED")
     if "MissingDroidguard" in tail_text:
-        return c.UI_GOOGLE_DROIDGUARD_REQUIRED
+        return c.t("UI_GOOGLE_DROIDGUARD_REQUIRED")
 
-    return c.UI_GOOGLE_DOWNLOAD_ERROR.format(
-        code=returncode, tail=tail_text[-600:] or "(empty)"
+    return c.t("UI_GOOGLE_DOWNLOAD_ERROR", code=returncode, tail=tail_text[-600:] or "(empty)"
     )
 
 
@@ -383,7 +370,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
     """
     Inicia el proceso de descarga con gplaydl y luego extrae usando el método actual.
     """
-    dbg("download_and_install_google: vcode=%s vname=%s arch=%s target_root=%s flatpak=%s id=%s",
+    logger.debug("download_and_install_google: vcode=%s vname=%s arch=%s target_root=%s flatpak=%s id=%s",
         vcode, vname, arch, target_root, is_target_flatpak, flatpak_id)
 
     signals = InstallSignals()
@@ -393,7 +380,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
 
     def run_flow():
         temp_apk = os.path.join(tempfile.gettempdir(), f"minecraft_{vcode}.apk")
-        dbg("run_flow: temp_apk=%s", temp_apk)
+        logger.debug("run_flow: temp_apk=%s", temp_apk)
         device_conf = os.path.join(target_root, "device.conf")
         try:
             # 0. Prepare device.conf
@@ -401,7 +388,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                 f.write(f"config.native_platforms = [\n    {arch}\n]\n")
 
             # 1. Download
-            signals.status.emit(c.UI_STATUS_DOWNLOADING)
+            signals.status.emit(c.t("UI_STATUS_DOWNLOADING"))
 
             bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYDL, "gplaydl")
             signin_cwd = get_signin_workdir(app)
@@ -441,16 +428,16 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                 if fs:
                     cmd = [fs, "--host"] + cmd
 
-            dbg("gplaydl cwd=%s", signin_cwd)
-            dbg("gplaydl cmd=%s", " ".join(cmd))
-            dbg("device.conf=%s exists=%s", dev_conf, os.path.exists(dev_conf) if dev_conf else False)
-            dbg("playdl.conf exists=%s token_len=%d email=%s",
+            logger.debug("gplaydl cwd=%s", signin_cwd)
+            logger.debug("gplaydl cmd=%s", " ".join(cmd))
+            logger.debug("device.conf=%s exists=%s", dev_conf, os.path.exists(dev_conf) if dev_conf else False)
+            logger.debug("playdl.conf exists=%s token_len=%d email=%s",
                 os.path.exists(os.path.join(signin_cwd, "playdl.conf")), len(token), user_email)
 
             process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        bufsize=0, cwd=signin_cwd)
-            dbg("gplaydl pid=%s", process.pid)
+            logger.debug("gplaydl pid=%s", process.pid)
 
             stdout_tail = []
             stderr_tail = []
@@ -492,35 +479,35 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                         p_val = int(m.group(1))
                         if p_val != last_pct:
                             last_pct = p_val
-                            dbg("progress %d%%", p_val)
+                            logger.debug("progress %d%%", p_val)
                             signals.progress.emit(p_val)
                 m = re.search(r"Downloaded (\d+)%", buf)
                 if m:
                     p_val = int(m.group(1))
                     if p_val != last_pct:
                         last_pct = p_val
-                        dbg("progress %d%%", p_val)
+                        logger.debug("progress %d%%", p_val)
                         signals.progress.emit(p_val)
 
             process.wait()
             t_err.join(timeout=2)
-            dbg("gplaydl exit=%s temp_apk_exists=%s",
+            logger.debug("gplaydl exit=%s temp_apk_exists=%s",
                 process.returncode, os.path.exists(temp_apk))
             if stderr_tail:
-                dbg("gplaydl stderr tail:\n%s", "".join(stderr_tail).strip())
-            if _CIANOVA_DEBUG and stdout_tail:
-                dbg("gplaydl stdout last 5 lines:\n%s",
+                logger.debug("gplaydl stderr tail:\n%s", "".join(stderr_tail).strip())
+            if stdout_tail:
+                logger.debug("gplaydl stdout last 5 lines:\n%s",
                     "".join(stdout_tail[-5:]).strip())
 
             if process.returncode != 0 or not os.path.exists(temp_apk):
                 combined = "".join(stderr_tail) + "\n" + "".join(stdout_tail)
                 err_msg = _map_gplaydl_error(process.returncode, combined)
-                dbg("download FAILED → mapped msg:\n%s", err_msg)
+                logger.debug("download FAILED → mapped msg:\n%s", err_msg)
                 signals.finished.emit(False, err_msg)
                 return
 
             # 2. Extract
-            signals.status.emit(c.UI_STATUS_EXTRACTING)
+            signals.status.emit(c.t("UI_STATUS_EXTRACTING"))
 
             target_dir = os.path.join(target_root, c.VERSIONS_DIR, vname)
             if os.path.exists(target_dir):
@@ -532,7 +519,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             for split_path in sorted(glob.glob(base_no_ext + ".*.apk")):
                 if split_path != temp_apk:
                     apk_inputs.append(split_path)
-            dbg("extract inputs (%d): %s",
+            logger.debug("extract inputs (%d): %s",
                 len(apk_inputs),
                 ", ".join(f"{os.path.basename(p)}({os.path.getsize(p)//1024}K)"
                           for p in apk_inputs if os.path.exists(p)))
@@ -563,11 +550,11 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                     bundled_lib + os.pathsep + extract_env.get("LD_LIBRARY_PATH", "")
                 )
 
-            dbg("extract cmd=%s", " ".join(extract_cmd))
-            dbg("extract LD_LIBRARY_PATH=%s", extract_env.get("LD_LIBRARY_PATH", ""))
+            logger.debug("extract cmd=%s", " ".join(extract_cmd))
+            logger.debug("extract LD_LIBRARY_PATH=%s", extract_env.get("LD_LIBRARY_PATH", ""))
             extract_proc = subprocess.run(extract_cmd, capture_output=True, text=True,
                                           env=extract_env)
-            dbg("extract exit=%s stdout_tail=%r stderr_tail=%r",
+            logger.debug("extract exit=%s stdout_tail=%r stderr_tail=%r",
                 extract_proc.returncode,
                 extract_proc.stdout[-300:] if extract_proc.stdout else "",
                 extract_proc.stderr[-300:] if extract_proc.stderr else "")
@@ -590,20 +577,20 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                             target_dir = new_target
                             final_vname = real
                         except OSError as e:
-                            print(f"Rename latest→{real} failed: {e}")
+                            logger.error(f"Rename latest→{real} failed: {e}")
 
             if extract_proc.returncode == 0:
                 if target_root == app.active_path:
-                    from src.core.app_logic import refresh_version_list
+                    from src.core.install_ops import refresh_version_list
                     QTimer.singleShot(0, lambda: refresh_version_list(app))
-                signals.finished.emit(True, c.UI_EXTRACTION_SUCCESS_MSG.format(ver_name=final_vname))
+                signals.finished.emit(True, c.t("UI_EXTRACTION_SUCCESS_MSG", ver_name=final_vname))
             else:
-                signals.finished.emit(False, c.UI_EXTRACTION_ERROR_MSG.format(err_msg=extract_proc.stderr))
+                signals.finished.emit(False, c.t("UI_EXTRACTION_ERROR_MSG", err_msg=extract_proc.stderr))
 
         except Exception as e:
             import traceback as _tb
             tb_text = _tb.format_exc()
-            dbg("run_flow EXCEPTION:\n%s", tb_text)
+            logger.debug("run_flow EXCEPTION:\n%s", tb_text)
             if os.path.exists(temp_apk):
                 try:
                     os.remove(temp_apk)

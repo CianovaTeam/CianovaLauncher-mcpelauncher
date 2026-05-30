@@ -12,8 +12,9 @@ from src.utils.logger import logger
 
 
 def get_installed_versions(app):
+    """Return a sorted list of installed version folder names."""
     if not app.active_path:
-        from src.core.app_logic import detect_installation
+        from src.core.install_ops import detect_installation
         detect_installation(app)
     if not app.active_path:
         return []
@@ -34,6 +35,7 @@ def get_installed_versions(app):
 
 
 def resolve_version(path):
+    """Extract the version string from version_name.txt or manifest.json."""
     try:
         vt = os.path.join(path, "version_name.txt")
         if os.path.exists(vt):
@@ -52,16 +54,17 @@ def resolve_version(path):
 
 
 def process_apk(app, apk_path, ver_name, target_root=None, is_target_flatpak=None, flatpak_id=None):
+    """Extract an APK into a named version directory using the configured extractor."""
     current_root = target_root if target_root else app.active_path
     if not current_root:
-        messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_NO_TARGET_PATH_ERROR)
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_NO_TARGET_PATH_ERROR"))
         return
 
     target_dir = os.path.join(current_root, c.VERSIONS_DIR, ver_name)
     use_flatpak_logic = is_target_flatpak if is_target_flatpak is not None else app.is_flatpak
 
     from src.gui.progress_dialog import ProgressDialog
-    progress_dialog = ProgressDialog(app, c.UI_EXTRACTING_APK_TITLE, c.UI_EXTRACTING_APK_MSG)
+    progress_dialog = ProgressDialog(app, c.t("UI_EXTRACTING_APK_TITLE"), c.t("UI_EXTRACTING_APK_MSG"))
     progress_dialog.show()
 
     def run_extraction():
@@ -90,58 +93,59 @@ def process_apk(app, apk_path, ver_name, target_root=None, is_target_flatpak=Non
             def finish():
                 progress_dialog.accept()
                 if process.returncode == 0:
-                    messagebox.showinfo(app, c.UI_SUCCESS_TITLE, c.UI_EXTRACTION_SUCCESS_MSG.format(ver_name=ver_name))
+                    messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"), c.t("UI_EXTRACTION_SUCCESS_MSG", ver_name=ver_name))
                     if current_root == app.active_path:
-                        from src.core.app_logic import refresh_version_list
+                        from src.core.install_ops import refresh_version_list
                         refresh_version_list(app)
                 else:
-                    messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_EXTRACTION_ERROR_MSG.format(err_msg=process.stderr))
+                    messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_EXTRACTION_ERROR_MSG", err_msg=process.stderr))
             QTimer.singleShot(0, finish)
         except Exception as e:
-            QTimer.singleShot(0, lambda: [progress_dialog.accept(), messagebox.showerror(app, c.UI_ERROR_TITLE, str(e))])
+            QTimer.singleShot(0, lambda: [progress_dialog.accept(), messagebox.showerror(app, c.t("UI_ERROR_TITLE"), str(e))])
 
     threading.Thread(target=run_extraction).start()
 
 
 def delete_version_dialog(app):
+    """Show a dialog to move or permanently delete the selected version."""
     version = app.play_tab.get()
     if not version:
         return
 
     from PySide6.QtWidgets import QDialog, QVBoxLayout, QPushButton, QLabel
     dialog = QDialog(app)
-    dialog.setWindowTitle(c.UI_MANAGE_VERSION_TITLE)
+    dialog.setWindowTitle(c.t("UI_MANAGE_VERSION_TITLE"))
     l = QVBoxLayout(dialog)
-    l.addWidget(QLabel(c.UI_MANAGE_VERSION_PROMPT.format(version=version)))
+    l.addWidget(QLabel(c.t("UI_MANAGE_VERSION_PROMPT", version=version)))
 
     def do_move():
         try:
             backup_dir = os.path.join(app.home, c.BACKUP_DIR)
             os.makedirs(backup_dir, exist_ok=True)
             shutil.move(os.path.join(app.active_path, c.VERSIONS_DIR, version), backup_dir)
-            from src.core.app_logic import refresh_version_list
+            from src.core.install_ops import refresh_version_list
             refresh_version_list(app)
-            messagebox.showinfo(app, c.UI_SUCCESS_TITLE, c.UI_VERSION_MOVED_MSG)
+            messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"), c.t("UI_VERSION_MOVED_MSG"))
             dialog.accept()
         except Exception as e:
-            messagebox.showerror(app, c.UI_ERROR_TITLE, str(e))
+            messagebox.showerror(app, c.t("UI_ERROR_TITLE"), str(e))
 
     def do_delete():
-        if messagebox.askyesno(dialog, c.UI_CONFIRM_DELETE_TITLE, c.UI_CONFIRM_PERMANENT_DELETE.format(version=version)):
+        if messagebox.askyesno(dialog, c.t("UI_CONFIRM_DELETE_TITLE"), c.t("UI_CONFIRM_PERMANENT_DELETE", version=version)):
             try:
                 shutil.rmtree(os.path.join(app.active_path, c.VERSIONS_DIR, version))
-                from src.core.app_logic import refresh_version_list
+                from src.core.install_ops import refresh_version_list
                 refresh_version_list(app)
-                messagebox.showinfo(app, c.UI_SUCCESS_TITLE, c.UI_VERSION_DELETED_MSG)
+                messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"), c.t("UI_VERSION_DELETED_MSG"))
                 dialog.accept()
             except Exception as e:
-                messagebox.showerror(app, c.UI_ERROR_TITLE, str(e))
+                messagebox.showerror(app, c.t("UI_ERROR_TITLE"), str(e))
 
-    btn_move = QPushButton(c.UI_MOVE_TO_BACKUP)
+    btn_move = QPushButton(c.t("UI_MOVE_TO_BACKUP"))
     btn_move.clicked.connect(do_move)
     l.addWidget(btn_move)
 
-    btn_del = QPushButton(c.UI_DELETE_PERMANENTLY)
+    btn_del = QPushButton(c.t("UI_DELETE_PERMANENTLY"))
     btn_del.clicked.connect(do_delete)
     l.addWidget(btn_del)
 
@@ -149,12 +153,13 @@ def delete_version_dialog(app):
 
 
 def rename_version(app, old_name, new_name):
+    """Rename a version folder and update related config entries."""
     vdir = os.path.join(app.active_path, c.VERSIONS_DIR)
     old_path = os.path.join(vdir, old_name)
     new_path = os.path.join(vdir, new_name)
 
     if os.path.exists(new_path):
-        messagebox.showerror(app, c.UI_ERROR_TITLE, "A version with that name already exists.")
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), "A version with that name already exists.")
         return False
 
     try:
@@ -169,11 +174,11 @@ def rename_version(app, old_name, new_name):
             app.config[c.CONFIG_KEY_LAST_VERSION] = new_name
             app.config_manager.save_config()
 
-        from src.core.app_logic import refresh_version_list
+        from src.core.install_ops import refresh_version_list
         refresh_version_list(app)
         return True
     except Exception as e:
-        messagebox.showerror(app, c.UI_ERROR_TITLE, str(e))
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), str(e))
         return False
 
 
@@ -207,7 +212,7 @@ def create_version_shortcut(app, version):
         content = f"""[Desktop Entry]
 Type=Application
 Name={c.APP_NAME} - {version}
-Comment={c.UI_SHORTCUT_COMMENT}
+Comment={c.t("UI_SHORTCUT_COMMENT")}
 Exec={exec_cmd}
 Icon={icon_path}
 Terminal=false
@@ -219,7 +224,7 @@ Keywords=minecraft;mcpe;bedrock;
         os.chmod(shortcut_path, 0o755)
         logger.info(f"Start menu shortcut created for version {version} at {shortcut_path}")
 
-        if messagebox.askyesno(app, c.UI_CONFIRM_TITLE, c.UI_PROMPT_DESKTOP_SHORTCUT):
+        if messagebox.askyesno(app, c.t("UI_CONFIRM_TITLE"), c.t("UI_PROMPT_DESKTOP_SHORTCUT")):
             desktop_dir = os.path.join(app.home, "Desktop")
             try:
                 xdg_desktop = subprocess.check_output(["xdg-user-dir", "DESKTOP"], text=True).strip()
@@ -235,7 +240,7 @@ Keywords=minecraft;mcpe;bedrock;
                 os.chmod(desktop_shortcut, 0o755)
                 logger.info(f"Desktop shortcut created at {desktop_shortcut}")
 
-        messagebox.showinfo(app, c.UI_SUCCESS_TITLE, c.UI_SHORTCUT_CREATED_MSG.format(name=version))
+        messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"), c.t("UI_SHORTCUT_CREATED_MSG", name=version))
     except Exception as e:
         logger.error(f"Error creating shortcut: {e}")
-        messagebox.showerror(app, c.UI_ERROR_TITLE, c.UI_SHORTCUT_CREATION_ERROR_MSG.format(e=e))
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_SHORTCUT_CREATION_ERROR_MSG", e=e))

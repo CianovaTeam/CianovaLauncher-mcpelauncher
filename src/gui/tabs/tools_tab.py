@@ -4,12 +4,13 @@ from PySide6.QtCore import Qt
 from src import constants as c
 
 class ToolsTab(QWidget):
+    """Tools tab displaying grouped utility buttons for management, customization, files, and system tasks."""
     def __init__(self, parent, app):
         super().__init__(parent)
         self.app = app
 
         self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(5, 5, 5, 5)
+        self.main_layout.setContentsMargins(c.SECTION_PADDING, 5, c.SECTION_PADDING, c.SECTION_PADDING)
 
         # Header
         self.header_layout = QHBoxLayout()
@@ -17,7 +18,7 @@ class ToolsTab(QWidget):
 
         self.lbl_tools_status = QLabel("")
         self.lbl_tools_status.setObjectName("FloatingLabel")
-        self.lbl_tools_status.setStyleSheet("font-weight: bold;")
+        self.lbl_tools_status.setStyleSheet("font-size: 12px; font-weight: bold;")
         self.header_layout.addWidget(self.lbl_tools_status)
 
         self.header_layout.addStretch()
@@ -44,52 +45,54 @@ class ToolsTab(QWidget):
         self.refresh_tools_ui()
 
     def get_tools_data(self):
+        """Return the grouped tool definitions with icons, labels, and callbacks."""
         groups = [
             {
-                "title": c.UI_SECTION_MANAGEMENT,
+                "title": c.t("UI_SECTION_MANAGEMENT"),
                 "icon": "⚙️",
                 "tools": [
-                    {"text": c.UI_BUTTON_INSTALL_APK, "icon": "📥", "cmd": self.app.install_apk_dialog, "color": None},
-                    {"text": c.UI_BUTTON_MANAGE_SHORTCUT, "icon": "🗑️", "cmd": self.app.open_version_manager, "color": None},
-                    {"text": c.UI_BUTTON_MIGRATE_DATA, "icon": "🚀", "cmd": self.app.open_migration_tool, "color": None},
+                    {"text": c.t("UI_BUTTON_INSTALL_APK"), "icon": "📥", "cmd": self.app.install_apk_dialog, "color": None},
+                    {"text": c.t("UI_BUTTON_MANAGE_SHORTCUT"), "icon": "🗑️", "cmd": self.app.open_version_manager, "color": None},
+                    {"text": c.t("UI_BUTTON_MIGRATE_DATA"), "icon": "🚀", "cmd": self.app.open_migration_tool, "color": None},
                 ]
             },
             {
-                "title": c.UI_SECTION_CUSTOMIZATION,
+                "title": c.t("UI_SECTION_CUSTOMIZATION"),
                 "icon": "🎨",
                 "tools": [
-                    {"text": c.UI_BUTTON_SKIN_PACK_CREATOR, "icon": "👕", "cmd": self.app.open_skin_tool, "color": None},
-                    {"text": c.UI_BUTTON_GAME_CONFIG, "icon": "🛠️", "cmd": self.app.open_game_config_tool, "color": None},
-                    {"text": c.UI_BUTTON_DISABLE_SHADERS, "icon": "✨", "cmd": lambda: self.app.logic.disable_shaders(self.app), "color": c.COLOR_YELLOW_BUTTON, "show_status": True},
+                    {"text": c.t("UI_BUTTON_SKIN_PACK_CREATOR"), "icon": "👕", "cmd": self.app.open_skin_tool, "color": None},
+                    {"text": c.t("UI_BUTTON_GAME_CONFIG"), "icon": "🛠️", "cmd": self.app.open_game_config_tool, "color": None},
+                    {"text": c.t("UI_BUTTON_DISABLE_SHADERS"), "icon": "✨", "cmd": lambda: self.app.logic.disable_shaders(self.app), "color": c.COLOR_YELLOW_BUTTON, "show_status": True},
                 ]
             },
             {
-                "title": c.UI_SECTION_FILES,
+                "title": c.t("UI_SECTION_FILES"),
                 "icon": "📂",
                 "tools": [
-                    {"text": c.UI_BUTTON_ADDON_MANAGER, "icon": "📦", "cmd": self.app.open_addon_manager, "color": None},
-                    {"text": c.UI_BUTTON_OPEN_DATA_FOLDER, "icon": "📁", "cmd": lambda: self.app.logic.open_data_folder(self.app), "color": None},
-                    {"text": c.UI_BUTTON_OPEN_SCREENSHOTS, "icon": "📸", "cmd": lambda: self.app.logic.export_screenshots_dialog(self.app), "color": None},
+                    {"text": c.t("UI_BUTTON_ADDON_MANAGER"), "icon": "📦", "cmd": self.app.open_addon_manager, "color": None},
+                    {"text": c.t("UI_BUTTON_OPEN_DATA_FOLDER"), "icon": "📁", "cmd": lambda: self.app.logic.open_data_folder(self.app), "color": None},
+                    {"text": c.t("UI_BUTTON_OPEN_SCREENSHOTS"), "icon": "📸", "cmd": lambda: self.app.logic.export_screenshots_dialog(self.app), "color": None},
                 ]
             },
             {
-                "title": c.UI_SECTION_SYSTEM,
+                "title": c.t("UI_SECTION_SYSTEM"),
                 "icon": "💻",
                 "tools": [
                     {
-                        "text": c.UI_BUTTON_VERIFY_DEPS_FLATPAK if self.app.running_in_flatpak else c.UI_BUTTON_VERIFY_DEPS_LOCAL,
+                        "text": c.t("UI_BUTTON_VERIFY_DEPS_FLATPAK") if self.app.running_in_flatpak else c.t("UI_BUTTON_VERIFY_DEPS_LOCAL"),
                         "icon": "📦", "cmd": lambda: self.app.logic.verify_dependencies(self.app), "color": None
                     },
-                    {"text": c.UI_BUTTON_VERIFY_HW, "icon": "🔍", "cmd": lambda: self.app.logic.check_requirements_dialog(self.app), "color": None},
-                    {"text": c.UI_LABEL_COMPATIBLE_RANGE, "icon": "✅", "cmd": None, "show_compat": True}
+                    {"text": c.t("UI_BUTTON_VERIFY_HW"), "icon": "🔍", "cmd": lambda: self.app.logic.check_requirements_dialog(self.app), "color": None},
+                    {"text": c.t("UI_LABEL_COMPATIBLE_RANGE"), "icon": "✅", "cmd": None, "show_compat": True}
                 ]
             }
         ]
         return groups
 
     def refresh_tools_ui(self):
+        """Rebuild the tools area, honoring the current layout style (list, columns, or grid)."""
         # Clear layout safely
-        from src.core.app_logic import clear_layout
+        from src.core.ui_utils import clear_layout
         clear_layout(self.scroll_layout)
 
         layout_style = self.app.config.get(c.CONFIG_KEY_TOOLS_LAYOUT, c.STYLE_COLUMNS)
@@ -103,7 +106,7 @@ class ToolsTab(QWidget):
             self._render_grid(groups)
 
         # Footer Credits
-        footer = QLabel(c.CREDITOS)
+        footer = QLabel(c.t("CREDITOS"))
         footer.setStyleSheet("color: gray; font-size: 11px;")
         footer.setAlignment(Qt.AlignCenter)
         self.scroll_layout.addWidget(footer)
@@ -144,7 +147,7 @@ class ToolsTab(QWidget):
         parent_layout.addWidget(btn)
 
         if tool.get("show_status"):
-            self.lbl_shader_status = QLabel(c.UI_LABEL_SHADERS_STATUS)
+            self.lbl_shader_status = QLabel(c.t("UI_LABEL_SHADERS_STATUS"))
             self.lbl_shader_status.setStyleSheet("font-size: 11px; color: gray;")
             self.lbl_shader_status.setAlignment(Qt.AlignCenter)
             parent_layout.addWidget(self.lbl_shader_status)

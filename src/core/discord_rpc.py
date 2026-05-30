@@ -1,3 +1,5 @@
+import os
+import stat
 import time
 import threading
 from src import constants as c
@@ -34,9 +36,9 @@ class DiscordRPC:
             return
         if self._running:
             return
-        self._client_id = self.app.config.get(c.CONFIG_KEY_DISCORD_CLIENT_ID) or c.DISCORD_DEFAULT_CLIENT_ID
+        self._client_id = c.DISCORD_DEFAULT_CLIENT_ID
         if not self._client_id:
-            logger.debug("Discord RPC: no client ID configured")
+            logger.debug("Discord RPC: no DISCORD_DEFAULT_CLIENT_ID configured in constants.py")
             return
         self._running = True
         self._thread = threading.Thread(target=self._run, daemon=True)
@@ -68,8 +70,31 @@ class DiscordRPC:
         with self._lock:
             self._last_presence = (details, state, start)
 
+    def _find_discord_socket(self):
+        """Look for Discord's IPC socket in known locations and symlink to standard path."""
+        uid = os.getuid()
+        runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{uid}")
+        standard = os.path.join(runtime_dir, "discord-ipc-0")
+
+        candidates = [
+            standard,
+            os.path.join(runtime_dir, "app", "com.discordapp.Discord", "discord-ipc-0"),
+            os.path.join(runtime_dir, "app", "com.vesktop.Vesktop", "discord-ipc-0"),
+        ]
+
+        for path in candidates:
+            try:
+                if stat.S_ISSOCK(os.stat(path).st_mode) and path != standard:
+                    if os.path.lexists(standard):
+                        os.unlink(standard)
+                    os.symlink(path, standard)
+                    break
+            except (OSError, FileNotFoundError):
+                continue
+
     def _connect(self):
         try:
+            self._find_discord_socket()
             self._rpc = Presence(self._client_id)
             self._rpc.connect()
             self._connected = True
@@ -83,6 +108,7 @@ class DiscordRPC:
     def _run(self):
         retry_interval = 30
         last_retry = 0
+        sent_idle = False
 
         while self._running:
             now = time.time()
@@ -100,12 +126,12 @@ class DiscordRPC:
             if presence:
                 details, state, start = presence
                 try:
-                    kwargs = {"details": details}
-                    if state:
-                        kwargs["state"] = state
-                    if start is not None:
-                        kwargs["start"] = start
-                    self._rpc.update(**kwargs)
+                    self._rpc.update(
+                        details=details,
+                        state=state,
+                        start=start,
+                    )
+                    sent_idle = False
                 except Exception as e:
                     logger.debug(f"Discord RPC update failed: {e}")
                     self._connected = False
@@ -114,17 +140,8 @@ class DiscordRPC:
                     except Exception:
                         pass
                     self._rpc = None
-            else:
-                try:
-                    self._rpc.update(details=_DETAILS_IDLE)
-                except Exception as e:
-                    logger.debug(f"Discord RPC idle update failed: {e}")
-                    self._connected = False
-                    try:
-                        self._rpc.close()
-                    except Exception:
-                        pass
-                    self._rpc = None
+            elif not sent_idle:
+                sent_idle = True
 
             time.sleep(15)
 

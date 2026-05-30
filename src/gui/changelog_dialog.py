@@ -6,16 +6,18 @@ from src.utils.resource_path import resource_path
 from src.utils.image_manager import ImageManager
 
 class ChangelogDialog(QDialog):
+    """Dialog that displays the markdown changelog for the current or specified version."""
     def __init__(self, parent, version=None):
         super().__init__(parent)
         ver_str = version if version else c.VERSION_LAUNCHER
-        self.setWindowTitle(c.UI_WELCOME_NEW_VERSION_TITLE.format(ver=ver_str))
+        self.setWindowTitle(c.t("UI_WELCOME_NEW_VERSION_TITLE", ver=ver_str))
         self.resize(700, 600)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
         self.setup_ui(ver_str)
 
     def setup_ui(self, version):
+        """Build the dialog with header icon, markdown view, and close button."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
@@ -26,7 +28,7 @@ class ChangelogDialog(QDialog):
         icon_lbl.setPixmap(ImageManager.get_image("icon.png", size=(48, 48)))
         header.addWidget(icon_lbl)
 
-        title = QLabel(c.UI_WELCOME_NEW_VERSION_TITLE.format(ver=version))
+        title = QLabel(c.t("UI_WELCOME_NEW_VERSION_TITLE", ver=version))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         header.addWidget(title, 1)
         layout.addLayout(header)
@@ -64,6 +66,7 @@ class ChangelogDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def load_changelog(self):
+        """Read the Changelog.md file from the Docs directory and return its contents."""
         try:
             path = resource_path("Docs/Changelog.md")
             if not os.path.exists(path):
