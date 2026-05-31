@@ -4,10 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="google-site-verification" content="F9ba1ud4KA0SpmFHazxBWKsq-lY5T4Vla0ab7TTZfHg" />
+  <meta name="description" content="Cianova Launcher — Interfaz gráfica moderna para gestionar Minecraft Bedrock Edition en Linux. PySide6, Flatpak, perfiles, Google Play y personalización visual." />
   <title>Cianova Launcher</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300..900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300..900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300..900&display=swap" rel="stylesheet" /></noscript>
   <link rel="icon" type="image/png" href="icon.png" />
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -221,11 +223,18 @@
     .carousel-btn svg { width: 20px; height: 20px; }
     .carousel-dots { display: flex; gap: 8px; align-items: center; }
     .carousel-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--border); border: none; cursor: pointer;
+      width: 32px; height: 24px; border-radius: 0;
+      background: transparent; border: none; cursor: pointer;
       transition: all 0.2s;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 6px;
     }
-    .carousel-dot.active { background: var(--emerald); width: 24px; border-radius: 4px; }
+    .carousel-dot::after {
+      content: ''; display: block;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border); transition: all 0.2s;
+    }
+    .carousel-dot.active::after { background: var(--emerald); width: 24px; border-radius: 4px; }
 
     /* ── Download ── */
     .download-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
@@ -282,8 +291,8 @@
     .download-card .btn { width: 100%; justify-content: center; margin-top: auto; }
     .download-note {
       grid-column: 1 / -1;
-      font-size: 0.9rem; color: var(--text-muted);
-      background: var(--bg-card); border: 1px solid var(--border);
+      font-size: 0.9rem; color: var(--text-secondary);
+      background: var(--bg-secondary); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 18px 22px;
     }
     .download-note a { color: var(--text-secondary); }
@@ -327,7 +336,7 @@
     footer {
       text-align: center; padding: 48px 24px;
       border-top: 1px solid var(--border);
-      color: var(--text-muted); font-size: 0.9rem;
+      color: var(--text-secondary); font-size: 0.9rem;
       position: relative; z-index: 1;
     }
     footer a { color: var(--text-secondary); }
@@ -363,7 +372,7 @@
 
   <header>
     <a href="#" class="logo">
-      <img src="icon.png" alt="Cianova Launcher" />
+      <img src="icon.png" alt="Cianova Launcher" width="42" height="42" />
       Cianova Launcher
     </a>
     <nav>
@@ -374,6 +383,7 @@
     </nav>
   </header>
 
+  <main>
   <!-- ═══ HERO ═══ -->
   <section class="hero" id="hero">
     <div class="hero-content">
@@ -403,7 +413,7 @@
         </div>
       </div>
       <div class="hero-icon-wrap">
-        <img src="icon.png" alt="Cianova Launcher" class="hero-icon" />
+        <img src="icon.png" alt="Cianova Launcher" class="hero-icon" width="300" height="300" />
       </div>
     </div>
   </section>
@@ -420,7 +430,7 @@
       <div class="features-track" id="featuresTrack">
         <div class="feat-card">
           <div class="feat-header">
-            <div class="feat-icon"><img src="assets/icons/profiles.svg" alt="" /></div>
+            <div class="feat-icon"><img src="assets/icons/profiles.svg" alt="" width="22" height="22" /></div>
             <span class="feat-metric">Symlink isolation</span>
           </div>
           <h3>Profile Management</h3>
@@ -428,7 +438,7 @@
         </div>
         <div class="feat-card">
           <div class="feat-header">
-            <div class="feat-icon"><img src="assets/icons/versions.svg" alt="" /></div>
+            <div class="feat-icon"><img src="assets/icons/versions.svg" alt="" width="22" height="22" /></div>
             <span class="feat-metric">1-click switch</span>
           </div>
           <h3>Version Selector</h3>
@@ -436,7 +446,7 @@
         </div>
         <div class="feat-card">
           <div class="feat-header">
-            <div class="feat-icon"><img src="assets/icons/google.svg" alt="" /></div>
+            <div class="feat-icon"><img src="assets/icons/google.svg" alt="" width="22" height="22" /></div>
             <span class="feat-metric">APK + Play Store</span>
           </div>
           <h3>Google Play &amp; Local APK</h3>
@@ -444,7 +454,7 @@
         </div>
         <div class="feat-card">
           <div class="feat-header">
-            <div class="feat-icon"><img src="assets/icons/resource.svg" alt="" /></div>
+            <div class="feat-icon"><img src="assets/icons/resource.svg" alt="" width="22" height="22" /></div>
             <span class="feat-metric">.mcpack import</span>
           </div>
           <h3>Resource Pack Manager</h3>
@@ -452,7 +462,7 @@
         </div>
         <div class="feat-card">
           <div class="feat-header">
-            <div class="feat-icon"><img src="assets/icons/config.svg" alt="" /></div>
+            <div class="feat-icon"><img src="assets/icons/config.svg" alt="" width="22" height="22" /></div>
             <span class="feat-metric">Visual editor</span>
           </div>
           <h3>Game Configurator</h3>
@@ -460,7 +470,7 @@
         </div>
         <div class="feat-card">
           <div class="feat-header">
-            <div class="feat-icon"><img src="assets/icons/palette.svg" alt="" /></div>
+            <div class="feat-icon"><img src="assets/icons/palette.svg" alt="" width="22" height="22" /></div>
             <span class="feat-metric">12 themes</span>
           </div>
           <h3>Visual Customization</h3>
@@ -468,7 +478,7 @@
         </div>
         <div class="feat-card">
           <div class="feat-header">
-            <div class="feat-icon"><img src="assets/icons/compat.svg" alt="" /></div>
+            <div class="feat-icon"><img src="assets/icons/compat.svg" alt="" width="22" height="22" /></div>
             <span class="feat-metric">Nvidia / Zink</span>
           </div>
           <h3>Compatibility Options</h3>
@@ -476,7 +486,7 @@
         </div>
         <div class="feat-card">
           <div class="feat-header">
-            <div class="feat-icon"><img src="assets/icons/check.svg" alt="" /></div>
+            <div class="feat-icon"><img src="assets/icons/check.svg" alt="" width="22" height="22" /></div>
             <span class="feat-metric">Auto-detect</span>
           </div>
           <h3>System &amp; Dependency Checks</h3>
@@ -485,12 +495,12 @@
       </div>
     </div>
     <div class="carousel-controls">
-      <button class="carousel-btn" onclick="slideFeatures(-1)" aria-label="Previous">
-        <img src="assets/icons/arrow-left.svg" alt="" />
+      <button class="carousel-btn" onclick="slideFeatures(-1)" aria-label="Previous slide">
+        <img src="assets/icons/arrow-left.svg" alt="" width="20" height="20" />
       </button>
       <div class="carousel-dots" id="carouselDots"></div>
-      <button class="carousel-btn" onclick="slideFeatures(1)" aria-label="Next">
-        <img src="assets/icons/arrow-right.svg" alt="" />
+      <button class="carousel-btn" onclick="slideFeatures(1)" aria-label="Next slide">
+        <img src="assets/icons/arrow-right.svg" alt="" width="20" height="20" />
       </button>
     </div>
   </section>
@@ -598,7 +608,7 @@
     </p>
     <div class="support-grid">
       <div class="support-card">
-        <h3><img src="assets/icons/check.svg" class="icon" alt="" /> System Health</h3>
+        <h3><img src="assets/icons/check.svg" class="icon" alt="" width="22" height="22" /> System Health</h3>
         <p>Built-in tools to check your setup:</p>
         <ul>
           <li>Hardware compatibility &amp; recommended version range</li>
@@ -608,7 +618,7 @@
         </ul>
       </div>
       <div class="support-card">
-        <h3><img src="assets/icons/docs.svg" class="icon" alt="" /> Documentation</h3>
+        <h3><img src="assets/icons/docs.svg" class="icon" alt="" width="22" height="22" /> Documentation</h3>
         <div class="support-link-group">
           <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/MANUAL%20DE%20USO.md" target="_blank" class="support-link"><img src="assets/icons/docs.svg" class="icon" alt="" /> User Manual</a>
           <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/Changelog.md" target="_blank" class="support-link"><img src="assets/icons/versions.svg" class="icon" alt="" /> Changelog</a>
@@ -617,7 +627,7 @@
         </div>
       </div>
       <div class="support-card">
-        <h3><img src="assets/icons/faq.svg" class="icon" alt="" /> Frequently Asked Questions</h3>
+        <h3><img src="assets/icons/faq.svg" class="icon" alt="" width="22" height="22" /> Frequently Asked Questions</h3>
         <div class="faq-item">
           <h4>Does it include Minecraft?</h4>
           <p>No. You must own Minecraft Bedrock on Google Play. The launcher can download official versions via Google Play (requires your account), or you can install APKs that you obtain by your own means. Cianova Launcher does not distribute game files.</p>
@@ -636,14 +646,14 @@
         </div>
       </div>
       <div class="support-card">
-        <h3><img src="assets/icons/community.svg" class="icon" alt="" /> Community</h3>
+        <h3><img src="assets/icons/community.svg" class="icon" alt="" width="22" height="22" /> Community</h3>
         <p style="margin-bottom: 22px;">
           Built in the open — help, ideas, and contributions are always welcome.
         </p>
         <div style="display:flex; flex-direction:column; gap:16px;">
           <div style="display:flex; gap:12px; align-items:flex-start;">
             <div style="flex-shrink:0; width:36px; height:36px; border-radius:8px; background:rgba(0,230,118,0.08); display:flex; align-items:center; justify-content:center;">
-              <img src="assets/icons/community.svg" style="width:18px;height:18px;" alt="" />
+              <img src="assets/icons/community.svg" width="18" height="18" alt="" />
             </div>
             <div>
               <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/discussions" target="_blank" style="font-weight:600; font-size:0.95rem;">Discussions</a>
@@ -652,7 +662,7 @@
           </div>
           <div style="display:flex; gap:12px; align-items:flex-start;">
             <div style="flex-shrink:0; width:36px; height:36px; border-radius:8px; background:rgba(0,230,118,0.08); display:flex; align-items:center; justify-content:center;">
-              <img src="assets/icons/faq.svg" style="width:18px;height:18px;" alt="" />
+              <img src="assets/icons/faq.svg" width="18" height="18" alt="" />
             </div>
             <div>
               <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/issues" target="_blank" style="font-weight:600; font-size:0.95rem;">Issues</a>
@@ -661,7 +671,7 @@
           </div>
           <div style="display:flex; gap:12px; align-items:flex-start;">
             <div style="flex-shrink:0; width:36px; height:36px; border-radius:8px; background:rgba(0,230,118,0.08); display:flex; align-items:center; justify-content:center;">
-              <img src="assets/icons/profiles.svg" style="width:18px;height:18px;" alt="" />
+              <img src="assets/icons/profiles.svg" width="18" height="18" alt="" />
             </div>
             <div>
               <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" style="font-weight:600; font-size:0.95rem;">Source Code</a>
@@ -673,6 +683,8 @@
     </div>
   </section>
 
+  </main>
+
   <footer>
     <div class="footer-links">
       <a href="#hero">Home</a>
@@ -682,7 +694,7 @@
       <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank">GitHub</a>
     </div>
     <p>
-      Made with <span class="footer-heart"><img src="assets/icons/heart.svg" alt="" style="width:16px;height:16px;vertical-align:middle;" /></span> and &#x1F916; for the Linux community &mdash;
+      Made with <span class="footer-heart"><img src="assets/icons/heart.svg" alt="" width="16" height="16" style="vertical-align:middle;" /></span> and &#x1F916; for the Linux community &mdash;
       <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/LICENCE%20%26%20TERMINOS%20y%20CONDICIONES.md" target="_blank">GPL v3.0</a>
     </p>
   </footer>
@@ -693,6 +705,7 @@
     const cards = track.querySelectorAll('.feat-card');
     let currentSlide = 0;
     let visibleSlides = getVisibleSlides();
+    let cachedCardWidth = 0;
 
     function getVisibleSlides() {
       if (window.innerWidth <= 480) return 1;
@@ -710,6 +723,7 @@
       for (let i = 0; i < total; i++) {
         const dot = document.createElement('button');
         dot.className = 'carousel-dot' + (i === currentSlide ? ' active' : '');
+        dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
         dot.onclick = function() { goToSlide(i); };
         dots.appendChild(dot);
       }
@@ -719,7 +733,7 @@
       const max = getMaxSlide();
       currentSlide = Math.max(0, Math.min(index, max));
       const gap = 20;
-      const cardWidth = cards[0].offsetWidth;
+      const cardWidth = cachedCardWidth || cards[0].offsetWidth;
       const offset = currentSlide * (cardWidth + gap);
       track.style.transform = 'translateX(-' + offset + 'px)';
       updateDots();
@@ -739,6 +753,7 @@
     function recalc() {
       visibleSlides = getVisibleSlides();
       currentSlide = Math.min(currentSlide, getMaxSlide());
+      cachedCardWidth = cards[0].offsetWidth;
       buildDots();
       goToSlide(currentSlide);
     }
