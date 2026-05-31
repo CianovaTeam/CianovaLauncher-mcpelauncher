@@ -233,7 +233,7 @@ class SettingsTab(QWidget):
         fl_close = QHBoxLayout(f_close)
         self.check_close_on_launch = QCheckBox(c.t("UI_CHECKBOX_CLOSE_ON_LAUNCH"))
         self.check_close_on_launch.setChecked(self.app.config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH, False))
-        self.check_close_on_launch.stateChanged.connect(lambda state: self.app.sync_close_on_launch_ui(state == Qt.Checked))
+        self.check_close_on_launch.stateChanged.connect(lambda state: self.app.sync_close_on_launch_ui(state == Qt.Checked.value))
         fl_close.addWidget(self.check_close_on_launch)
         layout.addWidget(f_close)
 
@@ -262,7 +262,7 @@ class SettingsTab(QWidget):
         layout.addWidget(self.f_custom_vars)
 
         self.checks[c.CONFIG_KEY_CUSTOM_ENV_ENABLED].stateChanged.connect(self.toggle_custom_env)
-        self.checks[c.CONFIG_KEY_GAMEMODE_ENABLED].stateChanged.connect(lambda state: self.app.sync_gamemode_ui(state == Qt.Checked))
+        self.checks[c.CONFIG_KEY_GAMEMODE_ENABLED].stateChanged.connect(lambda state: self.app.sync_gamemode_ui(state == Qt.Checked.value))
 
         # Discord Rich Presence
         f_discord = QFrame()
@@ -277,7 +277,18 @@ class SettingsTab(QWidget):
         fl_discord.addWidget(btn_info_discord)
         layout.addWidget(f_discord)
         self.checks[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = self.check_discord_rpc
-        self.check_discord_rpc.stateChanged.connect(lambda state: self.app.sync_discord_rpc_ui(state == Qt.Checked))
+        self.check_discord_rpc.stateChanged.connect(lambda state: self.app.sync_discord_rpc_ui(state == Qt.Checked.value))
+
+        # Discord Client ID personalizado
+        f_client_id = QFrame()
+        ci_layout = QHBoxLayout(f_client_id)
+        ci_layout.setContentsMargins(0, 5, 0, 5)
+        ci_layout.addWidget(QLabel(c.t("UI_DISCORD_RPC_CLIENT_ID_LABEL")))
+        self.entry_discord_client_id = QLineEdit()
+        self.entry_discord_client_id.setText(self.app.config.get(c.CONFIG_KEY_DISCORD_RPC_CLIENT_ID, ""))
+        self.entry_discord_client_id.setPlaceholderText(c.DISCORD_DEFAULT_CLIENT_ID)
+        ci_layout.addWidget(self.entry_discord_client_id, 1)
+        layout.addWidget(f_client_id)
 
         self.scroll_layout.addWidget(frame)
 
@@ -807,6 +818,7 @@ class SettingsTab(QWidget):
             self.app.config[key] = cb.isChecked()
 
         self.app.config[c.CONFIG_KEY_CUSTOM_ENV_VARS] = self.entry_custom_vars.text()
+        self.app.config[c.CONFIG_KEY_DISCORD_RPC_CLIENT_ID] = self.entry_discord_client_id.text().strip()
 
         if mode_key == c.MODE_BIN_CUSTOM:
             for key, (e, b, f) in self.inputs.items():

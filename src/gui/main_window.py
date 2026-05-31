@@ -1,9 +1,11 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QTabWidget, QPushButton, QFrame, QScrollArea, QComboBox, QApplication)
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPainterPath
 import os
 import sys
+import time
+import tempfile
 import subprocess
 import shlex
 
@@ -16,10 +18,11 @@ from src.gui import custom_dialogs as messagebox
 from src.gui.install_dialog import InstallDialog
 from src.gui.skin_pack_tool import SkinPackTool
 from src.gui.addon_manager_dialog import AddonManagerDialog
-from src.gui.migration_dialog import MigrationDialog
+from src.gui.migration_wizard import MigrationWizard
 from src.gui.game_config_dialog import GameConfigDialog
 from src.core import app_logic
 from src.core.discord_rpc import DiscordRPC
+from src.core.update_checker import UpdateChecker
 from src.gui.tabs.play_tab import PlayTab
 from src.gui.tabs.tools_tab import ToolsTab
 from src.gui.tabs.settings_tab import SettingsTab
@@ -362,6 +365,22 @@ class CianovaLauncherApp(QMainWindow):
         else:
             bg_qss = f"background-color: {bg};"
 
+        # Generate down-arrow pixmap for QComboBox (stylesheets suppress native arrow)
+        arrow_size = 12
+        arrow_pixmap = QPixmap(arrow_size, arrow_size)
+        arrow_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(arrow_pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        path = QPainterPath()
+        path.moveTo(arrow_size // 2, arrow_size - 1)
+        path.lineTo(1, 2)
+        path.lineTo(arrow_size - 1, 2)
+        path.closeSubpath()
+        painter.fillPath(path, QColor(input_text))
+        painter.end()
+        arrow_path = os.path.join(tempfile.gettempdir(), "cianova_combo_arrow.png")
+        arrow_pixmap.save(arrow_path)
+
         # Fixed semi-transparent background for floating labels
         floating_label_bg = "rgba(85, 85, 85, 180)"
         floating_label_border = f"1px solid {hex_to_rgba('#ffffff', 0.2)}"
@@ -447,12 +466,10 @@ class CianovaLauncherApp(QMainWindow):
                 border-bottom-right-radius: 6px;
             }}
             QComboBox::down-arrow {{
-                image: none;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 4px solid {accent};
-                width: 0; height: 0;
-                margin-right: 8px;
+                image: url("{arrow_path}");
+                width: {arrow_size}px;
+                height: {arrow_size}px;
+                margin-right: 4px;
             }}
             QComboBox QAbstractItemView {{
                 background-color: {input_bg};
@@ -636,7 +653,7 @@ class CianovaLauncherApp(QMainWindow):
         SkinPackTool(self).exec()
     def open_migration_tool(self):
         """Open the data migration tool dialog."""
-        try: MigrationDialog(self).exec()
+        try: MigrationWizard(self).exec()
         except Exception as e: messagebox.showerror(self, c.t("UI_ERROR_TITLE"), f"Error: {e}")
     def open_game_config_tool(self):
         """Open the Minecraft game options editor dialog."""
@@ -657,48 +674,63 @@ class CianovaLauncherApp(QMainWindow):
         """Synchronize the gamemode toggle between Play and Settings tabs."""
         self.config[c.CONFIG_KEY_GAMEMODE_ENABLED] = value
         if hasattr(self.play_tab, "check_gamemode"):
-            if self.play_tab.check_gamemode.isChecked() != value:
-                self.play_tab.check_gamemode.setChecked(value)
+            self.play_tab.check_gamemode.blockSignals(True)
+            self.play_tab.check_gamemode.setChecked(value)
+            self.play_tab.check_gamemode.blockSignals(False)
         if hasattr(self.settings_tab, "checks"):
             cb = self.settings_tab.checks.get(c.CONFIG_KEY_GAMEMODE_ENABLED)
-            if cb and cb.isChecked() != value:
+            if cb:
+                cb.blockSignals(True)
                 cb.setChecked(value)
+                cb.blockSignals(False)
 
     def sync_discord_rpc_ui(self, value):
-        """Synchronize the Discord RPC toggle and start or stop the service."""
+        """Synchronize the Discord RPC toggle between Play and Settings tabs."""
         self.config[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = value
+        self._sync_discord_play(value)
+        self._sync_discord_settings(value)
         if value:
             self._discord_rpc.start()
             self._discord_rpc.set_idle()
         else:
             self._discord_rpc.stop()
 
+    def _sync_discord_play(self, value):
+        if hasattr(self.play_tab, "check_discord"):
+            blocked = self.play_tab.check_discord.blockSignals(True)
+            self.play_tab.check_discord.setChecked(value)
+            self.play_tab.check_discord.blockSignals(blocked)
+
+    def _sync_discord_settings(self, value):
+        if hasattr(self.settings_tab, "check_discord_rpc"):
+            blocked = self.settings_tab.check_discord_rpc.blockSignals(True)
+            self.settings_tab.check_discord_rpc.setChecked(value)
+            self.settings_tab.check_discord_rpc.blockSignals(blocked)
+
     def sync_close_on_launch_ui(self, value):
         """Synchronize the close-on-launch toggle between Play and Settings tabs."""
         self.config[c.CONFIG_KEY_CLOSE_ON_LAUNCH] = value
         if hasattr(self.play_tab, "check_close_on_launch"):
-            if self.play_tab.check_close_on_launch.isChecked() != value:
-                self.play_tab.check_close_on_launch.setChecked(value)
+            self.play_tab.check_close_on_launch.blockSignals(True)
+            self.play_tab.check_close_on_launch.setChecked(value)
+            self.play_tab.check_close_on_launch.blockSignals(False)
         if hasattr(self.settings_tab, "check_close_on_launch"):
-            if self.settings_tab.check_close_on_launch.isChecked() != value:
-                self.settings_tab.check_close_on_launch.setChecked(value)
+            self.settings_tab.check_close_on_launch.blockSignals(True)
+            self.settings_tab.check_close_on_launch.setChecked(value)
+            self.settings_tab.check_close_on_launch.blockSignals(False)
 
     def manage_desktop_shortcut(self):
         """Open the version manager to manage desktop shortcuts."""
         self.open_version_manager()
 
     def check_version_update(self):
-        """Compare stored version with current launcher version and show changelog on update."""
+        """Compare stored version with current launcher version and show changelog on update.
+        Also schedules a remote update check if enough time has passed."""
         config_ver = self.config.get(c.CONFIG_KEY_VERSION, "0.0.0")
         current_ver = c.VERSION_LAUNCHER
 
-        if config_ver == current_ver:
-            return
-
         try:
-            # Simple version comparison (works for X.Y.Z)
             def ver_to_tuple(v): return tuple(map(int, (v.split('.') + ['0','0'])[:3]))
-            
             cv_tuple = ver_to_tuple(config_ver)
             rv_tuple = ver_to_tuple(current_ver)
 
@@ -707,14 +739,38 @@ class CianovaLauncherApp(QMainWindow):
                 self.show_update_changelog(current_ver)
             elif rv_tuple < cv_tuple:
                 logger.warning(f"Downgrade detected: {config_ver} -> {current_ver}")
-                messagebox.showwarning(self, c.t("UI_DOWNGRADE_WARNING_TITLE"), 
+                messagebox.showwarning(self, c.t("UI_DOWNGRADE_WARNING_TITLE"),
                                      c.t("UI_DOWNGRADE_WARNING_MSG", old=config_ver))
-            
-            # Update version in config
+
             self.config[c.CONFIG_KEY_VERSION] = current_ver
             self.config_manager.save_config()
         except Exception as e:
             logger.error(f"Error comparing versions: {e}")
+
+        QTimer.singleShot(3000, self._check_remote_update)
+
+    def _check_remote_update(self):
+        """Fetch version.json from GitHub Pages and notify if a newer version exists."""
+        last_check = self.config.get(c.CONFIG_KEY_UPDATE_LAST_CHECK, 0)
+        ignored = self.config.get(c.CONFIG_KEY_UPDATE_IGNORE, "")
+        now = int(time.time())
+
+        if now - last_check < c.UPDATE_CHECK_INTERVAL:
+            return
+
+        self._update_checker = UpdateChecker(self)
+        self._update_checker.check(on_result=lambda ok, ver, err: self._on_remote_check(ok, ver, ignored))
+
+        self.config[c.CONFIG_KEY_UPDATE_LAST_CHECK] = now
+        self.config_manager.save_config()
+
+    def _on_remote_check(self, available, remote_ver, ignored):
+        """Handle the remote check result. Show dialog if update found and not ignored."""
+        if not available or remote_ver == ignored:
+            return
+
+        messagebox.showinfo(self, c.t("UI_INFO_TITLE"),
+                          c.t("UI_UPDATE_AVAILABLE", version=remote_ver))
 
     def show_update_changelog(self, version):
         """Display the changelog dialog for the given version."""

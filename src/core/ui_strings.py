@@ -575,3 +575,38 @@ UI_FLATPAK_VERIFICATION_ERROR = "Error verificando Flatpak:\n{e}"
 UI_SECTION_FLATPAK_RUNTIMES = "Gestión de Runtimes (Flatpak)"
 UI_BUTTON_UPDATE_RUNTIMES = "Actualizar Runtimes Requeridos"
 
+# Migration Wizard UI Strings
+UI_WIZARD_STEP_SOURCE_TITLE = "Selecciona el origen"
+UI_WIZARD_SOURCE_LOCAL_DESC = "Para usuarios que vengan de CCMC Launcher, MCPETools o instalaciones con datos almacenados en local compartido"
+UI_WIZARD_SOURCE_FLATPAK_DESC = "Para usuarios que vengan de un launcher Flatpak, incluido el Oficial o similares"
+UI_WIZARD_SOURCE_CUSTOM_DESC = "Selecciona manualmente la carpeta de origen"
+UI_WIZARD_SOURCE_CUSTOM_PLACEHOLDER = "Selecciona o escribe la ruta de la carpeta de origen..."
+
+UI_WIZARD_STEP_PROFILE_TITLE = "Selecciona el perfil destino"
+UI_WIZARD_PROFILE_DEFAULT_ONLY = "Solo existe el perfil Default. Los datos se guardarán ahí."
+
+UI_WIZARD_STEP_CONTENT_TITLE = "¿Qué deseas migrar?"
+UI_WIZARD_CONTENT_ALL_DESC = "Migra todas las versiones, mundos y recursos sin personalizar"
+UI_WIZARD_CONTENT_CUSTOM = "Personalizado"
+UI_WIZARD_CONTENT_CUSTOM_DESC = "Elige manualmente qué elementos migrar"
+
+UI_WIZARD_STEP_METHOD_TITLE = "Elige el método de migración"
+UI_WIZARD_METHOD_SUB = "Selecciona una opción para continuar:"
+UI_WIZARD_METHOD_COPY_TITLE = "Copiar (Duplicar)"
+UI_WIZARD_METHOD_COPY_DESC = "Copia los datos al nuevo destino sin modificar el origen. Ocupa el doble de espacio pero conserva todo intacto por si algo sale mal."
+UI_WIZARD_METHOD_MOVE_TITLE = "Mover (Trasladar)"
+UI_WIZARD_METHOD_MOVE_DESC = "Mueve los datos completamente al nuevo destino. Los archivos originales se eliminan. Recomendado si ya no usarás el launcher anterior."
+UI_WIZARD_METHOD_LINK_TITLE = "Symlink (Sincronizar)"
+UI_WIZARD_METHOD_LINK_DESC = "Crea un enlace simbólico entre origen y destino. Los datos permanecen en su ubicación original y se reflejan en el launcher. Ideal para conservar espacio en disco."
+
+UI_WIZARD_STEP_SUMMARY_TITLE = "Resumen de migración"
+UI_WIZARD_SUMMARY_LABEL_SOURCE = "Origen"
+UI_WIZARD_SUMMARY_LABEL_DEST = "Destino"
+UI_WIZARD_SUMMARY_LABEL_PROFILE = "Perfil"
+UI_WIZARD_SUMMARY_LABEL_ITEMS = "Elementos"
+UI_WIZARD_SUMMARY_LABEL_METHOD = "Método"
+UI_BUTTON_MIGRATE = "🚀 Migrar"
+
+# ── Update checker ──
+UI_UPDATE_AVAILABLE = "Versión {version} disponible. Actualiza CianovaLauncher para obtener las novedades."
+

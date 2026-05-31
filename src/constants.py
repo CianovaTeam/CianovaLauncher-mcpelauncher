@@ -37,7 +37,7 @@ APP_NAME = "CianovaLauncher"
 VERSION_LAUNCHER = "3.0"
 BINARY_VERSION_INFO = "v1.7.4-official"  # Default for Flatpak or if not found
 BINARY_VERSION_FALLBACK = "PreCompiled Binaries from mcpelauncher Github"
-DEVELOPERS = "@PlaGaDev, @ShaggyLinux, @Leimsoto"
+DEVELOPERS = "@PlaGaDev"
 UPDATE_NAME = "The Qt6 Evolution"
 CHANGELOG = f"{UPDATE_NAME}: {APP_NAME} {VERSION_LAUNCHER}"
 CREDITOS = f"Dev: {DEVELOPERS}\nProyecto: {APP_NAME}"
@@ -148,6 +148,10 @@ THEME_COLOR_MAP = {
     "ocean": "#0e7490"      # Deep Teal/Ocean
 }
 VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/minecraft-linux/mcpelauncher-versiondb/master/versions.{arch}.json.min"
+
+# ── Update checker ──
+UPDATE_CHECK_URL = "https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/version.json"
+UPDATE_CHECK_INTERVAL = 86400  # 24h between automatic checks
 
 
 # ═══════════════════════════════════════════

@@ -63,7 +63,7 @@ class CustomDialog(QDialog):
         else:
             self.msg_widget = QLabel(message)
             self.msg_widget.setWordWrap(True)
-            self.msg_widget.setStyleSheet("font-size: 14px; color: white;")
+            self.msg_widget.setStyleSheet("font-size: 14px; color: white; background: transparent;")
             self.msg_widget.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
 
         msg_layout.addWidget(self.msg_widget)
@@ -107,13 +107,13 @@ class CustomDialog(QDialog):
             btn.clicked.connect(lambda checked=False, val=opt: self.close_with_result(val))
             self.btn_layout.addWidget(btn)
 
-        # Styling the dialog itself (Dark mode by default to match ctk)
+        # Styling the dialog itself (Dark mode by default)
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: #333333;
+                background-color: #242424;
             }}
             #MainFrame {{
-                background-color: #333333;
+                background-color: #242424;
             }}
             QLabel, QTextEdit {{
                 color: white;

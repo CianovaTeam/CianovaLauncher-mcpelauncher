@@ -8,6 +8,7 @@ from src import constants as c
 from src.gui import custom_dialogs as messagebox
 from src.gui.progress_dialog import ProgressDialog
 from src.utils.image_manager import ImageManager
+from src.core.update_checker import UpdateChecker
 
 class TestWindow(QWidget):
     def __init__(self, parent=None):
@@ -109,6 +110,10 @@ class TestWindow(QWidget):
         btn_prog.clicked.connect(self.test_progress)
         scroll_layout.addWidget(btn_prog)
 
+        btn_update = QPushButton("Check Update (test)")
+        btn_update.clicked.connect(self.test_update_check)
+        scroll_layout.addWidget(btn_update)
+
     def setup_stress_tab(self):
         layout = QVBoxLayout(self.tab_stress)
         scroll = QScrollArea()
@@ -136,3 +141,17 @@ class TestWindow(QWidget):
             time.sleep(5)
             QTimer.singleShot(0, p.accept)
         threading.Thread(target=work).start()
+
+    def test_update_check(self):
+        """Test the remote update checker against the real URL."""
+        local = c.VERSION_LAUNCHER
+        checker = UpdateChecker(self)
+        def on_result(available, remote_ver, error):
+            if error:
+                msg = f"Local version: {local}\n\n❌ {error}"
+            elif available:
+                msg = f"Local version: {local}\nRemote version: {remote_ver}\n\n✅ Update available!"
+            else:
+                msg = f"Local version: {local}\nRemote version: {remote_ver}\n\n✓ Already up to date."
+            messagebox.showinfo(self, f"Update Check ({c.UPDATE_CHECK_URL})", msg)
+        checker.check(on_result=on_result)

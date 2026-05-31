@@ -12,8 +12,15 @@ except ImportError:
     _HAS_PYPRESENCE = False
 
 
-_DETAILS_IDLE = "Browsing launcher"
-_STATE_TEMPLATE = "{version}"
+_APP_NAME = "CianovaLauncher"
+_DETAILS_IDLE = _APP_NAME
+_STATE_IDLE = "Browsing launcher"
+_DETAILS_PLAYING = _APP_NAME
+_STATE_PLAYING_TEMPLATE = "Playing {version}"
+_LARGE_IMAGE = "logo"
+_LARGE_TEXT = _APP_NAME
+_SMALL_IMAGE_PLAYING = "play"
+_SMALL_TEXT_PLAYING = "In-Game"
 
 
 class DiscordRPC:
@@ -36,7 +43,8 @@ class DiscordRPC:
             return
         if self._running:
             return
-        self._client_id = c.DISCORD_DEFAULT_CLIENT_ID
+        custom_id = self.app.config.get(c.CONFIG_KEY_DISCORD_RPC_CLIENT_ID, "").strip()
+        self._client_id = custom_id or c.DISCORD_DEFAULT_CLIENT_ID
         if not self._client_id:
             logger.debug("Discord RPC: no DISCORD_DEFAULT_CLIENT_ID configured in constants.py")
             return
@@ -57,18 +65,30 @@ class DiscordRPC:
         self._thread = None
 
     def set_idle(self):
-        self._update_presence(details=_DETAILS_IDLE, state=None, start=None)
+        self._update_presence(
+            details=_DETAILS_IDLE,
+            state=_STATE_IDLE,
+            start=None,
+            large_image=None,
+            large_text=None,
+            small_image=None,
+            small_text=None,
+        )
 
     def set_playing(self, version, start_time):
         self._update_presence(
-            details=_STATE_TEMPLATE.format(version=version),
-            state=None,
+            details=_DETAILS_PLAYING,
+            state=_STATE_PLAYING_TEMPLATE.format(version=version),
             start=int(start_time),
+            large_image=_LARGE_IMAGE,
+            large_text=_LARGE_TEXT,
+            small_image=_SMALL_IMAGE_PLAYING,
+            small_text=_SMALL_TEXT_PLAYING,
         )
 
-    def _update_presence(self, details, state, start):
+    def _update_presence(self, details, state, start, large_image, large_text, small_image, small_text):
         with self._lock:
-            self._last_presence = (details, state, start)
+            self._last_presence = (details, state, start, large_image, large_text, small_image, small_text)
 
     def _find_discord_socket(self):
         """Look for Discord's IPC socket in known locations and symlink to standard path."""
@@ -80,17 +100,29 @@ class DiscordRPC:
             standard,
             os.path.join(runtime_dir, "app", "com.discordapp.Discord", "discord-ipc-0"),
             os.path.join(runtime_dir, "app", "com.vesktop.Vesktop", "discord-ipc-0"),
+            os.path.join(runtime_dir, "app", "com.github.TheWisker.WebCord", "discord-ipc-0"),
+            os.path.join(runtime_dir, "app", "com.armcord.ArmCord", "discord-ipc-0"),
         ]
 
         for path in candidates:
             try:
-                if stat.S_ISSOCK(os.stat(path).st_mode) and path != standard:
+                mode = os.stat(path).st_mode
+                if stat.S_ISSOCK(mode):
+                    if path == standard:
+                        break
                     if os.path.lexists(standard):
                         os.unlink(standard)
                     os.symlink(path, standard)
                     break
             except (OSError, FileNotFoundError):
                 continue
+        else:
+            if os.path.lexists(standard):
+                try:
+                    if not stat.S_ISSOCK(os.stat(standard).st_mode):
+                        os.unlink(standard)
+                except OSError:
+                    os.unlink(standard)
 
     def _connect(self):
         try:
@@ -108,7 +140,6 @@ class DiscordRPC:
     def _run(self):
         retry_interval = 30
         last_retry = 0
-        sent_idle = False
 
         while self._running:
             now = time.time()
@@ -124,14 +155,22 @@ class DiscordRPC:
                 presence = self._last_presence
 
             if presence:
-                details, state, start = presence
+                details, state, start, large_image, large_text, small_image, small_text = presence
                 try:
-                    self._rpc.update(
-                        details=details,
-                        state=state,
-                        start=start,
-                    )
-                    sent_idle = False
+                    kwargs = dict(details=details)
+                    if state is not None:
+                        kwargs["state"] = state
+                    if start is not None:
+                        kwargs["start"] = start
+                    if large_image is not None:
+                        kwargs["large_image"] = large_image
+                    if large_text is not None:
+                        kwargs["large_text"] = large_text
+                    if small_image is not None:
+                        kwargs["small_image"] = small_image
+                    if small_text is not None:
+                        kwargs["small_text"] = small_text
+                    self._rpc.update(**kwargs)
                 except Exception as e:
                     logger.debug(f"Discord RPC update failed: {e}")
                     self._connected = False
@@ -140,8 +179,6 @@ class DiscordRPC:
                     except Exception:
                         pass
                     self._rpc = None
-            elif not sent_idle:
-                sent_idle = True
 
             time.sleep(15)
 

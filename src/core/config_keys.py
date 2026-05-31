@@ -79,6 +79,7 @@ CONFIG_KEY_FIRST_RUN_FLATPAK = "first_run_flatpak"
 
 # ── Discord ──
 CONFIG_KEY_DISCORD_RPC_ENABLED = "discord_rpc_enabled"
+CONFIG_KEY_DISCORD_RPC_CLIENT_ID = "discord_rpc_client_id"
 
 # ── Initial setup ──
 CONFIG_KEY_INITIAL_SETUP_COMPLETE = "initial_setup_complete"
@@ -88,3 +89,7 @@ CONFIG_KEY_ACCEPTED_TERMS = "accepted_terms"
 
 # ── Window size ──
 CONFIG_KEY_WINDOW_SIZE = "window_size"
+
+# ── Update checker ──
+CONFIG_KEY_UPDATE_LAST_CHECK = "update_last_check"
+CONFIG_KEY_UPDATE_IGNORE = "update_ignore_version"

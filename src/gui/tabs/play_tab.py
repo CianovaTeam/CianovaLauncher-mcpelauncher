@@ -98,7 +98,7 @@ class PlayTab(QWidget):
 
         self.check_gamemode = QCheckBox(c.t("UI_CHECKBOX_GAMEMODE"))
         self.check_gamemode.setChecked(self.app.config.get(c.CONFIG_KEY_GAMEMODE_ENABLED, False))
-        self.check_gamemode.stateChanged.connect(lambda state: self.app.sync_gamemode_ui(state == Qt.Checked))
+        self.check_gamemode.stateChanged.connect(lambda state: self.app.sync_gamemode_ui(state == Qt.Checked.value))
         self.opts_layout.addWidget(self.check_gamemode)
 
         if not self.app.running_in_flatpak:
@@ -111,7 +111,7 @@ class PlayTab(QWidget):
 
         self.check_discord = QCheckBox(c.t("UI_CHECKBOX_DISCORD_RPC"))
         self.check_discord.setChecked(self.app.config.get(c.CONFIG_KEY_DISCORD_RPC_ENABLED, False))
-        self.check_discord.stateChanged.connect(lambda state: (self.app.sync_discord_rpc_ui(state == Qt.Checked), self.save_quick_opts()))
+        self.check_discord.stateChanged.connect(lambda state: (self.app.sync_discord_rpc_ui(state == Qt.Checked.value), self.save_quick_opts()))
         self.opts_layout.addWidget(self.check_discord)
 
         # 4. Botón Jugar
