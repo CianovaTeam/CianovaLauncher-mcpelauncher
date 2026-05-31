@@ -89,9 +89,15 @@ jobs:
 
       # ── Flatpak ──
       - name: Import GPG key
-        if: secrets.GPG_PRIVATE_KEY != ''
+        env:
+          GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
         run: |
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --no-tty --batch
+          if [ -n "$GPG_KEY" ]; then
+            echo "$GPG_KEY" | gpg --import --no-tty --batch
+            echo "GPG key imported successfully"
+          else
+            echo "No GPG_PRIVATE_KEY secret set — skipping GPG import"
+          fi
 
       - name: Install Flatpak runtimes
         run: |
