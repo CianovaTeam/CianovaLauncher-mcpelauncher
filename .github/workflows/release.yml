@@ -89,7 +89,7 @@ jobs:
 
       # ── Flatpak ──
       - name: Import GPG key
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
+        if: secrets.GPG_PRIVATE_KEY != ''
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --no-tty --batch
 
