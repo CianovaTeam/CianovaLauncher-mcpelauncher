@@ -81,7 +81,7 @@ jobs:
           TAG="${{ env.MCPELAUNCHER_BINS }}"
           URL="https://github.com/PlaGaPlusDev/mcpelauncher-bins/releases/download/$TAG/mcpelauncher_bins-$TAG.tar.gz"
           echo "Downloading from: $URL"
-          curl -L -o mcpelauncher_bins.tar.gz "$URL"
+          curl -fL -o mcpelauncher_bins.tar.gz "$URL"
           tar -xzf mcpelauncher_bins.tar.gz
           mv mcpelauncher_bins-*/bin ./bin
           mv mcpelauncher_bins-*/libs_mc ./libs_mc
@@ -106,17 +106,29 @@ jobs:
           flatpak install --user -y flathub io.qt.qtwebengine.BaseApp//6.10 || true
 
       - name: Build Flatpak
+        env:
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
         run: |
+          SIGN=""
+          if [ -n "$GPG_KEY_ID" ]; then
+            SIGN="--gpg-sign=$GPG_KEY_ID"
+          fi
           flatpak-builder --user --force-clean \
             --repo=repo_dist \
-            --gpg-sign=${{ secrets.GPG_KEY_ID || '' }} \
+            $SIGN \
             build-dir org.cianova.Launcher.yml
 
       - name: Update Flatpak repo
+        env:
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
         run: |
+          SIGN=""
+          if [ -n "$GPG_KEY_ID" ]; then
+            SIGN="--gpg-sign=$GPG_KEY_ID"
+          fi
           flatpak build-update-repo --prune --prune-depth=5 \
             --generate-static-deltas \
-            --gpg-sign=${{ secrets.GPG_KEY_ID || '' }} \
+            $SIGN \
             repo_dist
 
       - name: Generate Flatpak bundle
@@ -134,8 +146,7 @@ jobs:
             mv dist/CianovaLauncherMCPE "$DIR"
             cp -r bin "$DIR/bin"
             cp -r libs_mc "$DIR/lib"
-            cp EXTRAS/CianovaLauncher.sh "$DIR/" 2>/dev/null || \
-              cp cianova-launcher.sh "$DIR/CianovaLauncher.sh" 2>/dev/null || true
+            cp cianova-launcher.sh "$DIR/CianovaLauncher.sh" 2>/dev/null || true
             tar -czf "$DIR.tar.gz" "$DIR"
             rm -rf "$DIR"
           fi
@@ -151,7 +162,7 @@ jobs:
           files: |
             CianovaLauncher-${{ env.VERSION }}.flatpak
             CianovaLauncher-${{ env.VERSION }}.tar.gz
-            CianovaLauncher.flatpakrepo
+            EXTRAS/CianovaLauncher.flatpakrepo
 
       # ── Deploy Flatpak repo to gh-pages ──
       - name: Deploy to gh-pages

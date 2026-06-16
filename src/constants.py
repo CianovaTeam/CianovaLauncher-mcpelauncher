@@ -92,6 +92,7 @@ OLD_CONFIG_FILE_NAME = "config.json"
 VERSIONS_DIR = "versions"
 PROFILES_DIR = "profiles"
 DISABLED_PACKS_DIR = "disabled_packs"
+MODS_DIR = "mods"
 WORLDS_DIR = "games/com.mojang/minecraftWorlds"
 SCREENSHOTS_DIR = "games/com.mojang/Screenshots"
 SCREENSHOTS_DIR_ALT = "games/com.mojang/screenshots"
@@ -152,6 +153,7 @@ VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/minecraft-linux/mcpela
 # ── Update checker ──
 UPDATE_CHECK_URL = "https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/version.json"
 UPDATE_CHECK_INTERVAL = 86400  # 24h between automatic checks
+VERSION_WARNINGS_URL = "https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/version-warnings.json"
 
 
 # ═══════════════════════════════════════════

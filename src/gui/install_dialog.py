@@ -36,6 +36,22 @@ class VersionFetcher(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
+class VersionWarningsFetcher(QThread):
+    """Thread that fetches version compatibility warnings from a remote JSON."""
+    finished = Signal(list)
+    error = Signal(str)
+
+    def run(self):
+        try:
+            with urllib.request.urlopen(c.VERSION_WARNINGS_URL, timeout=8) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode())
+                    self.finished.emit(data.get("warnings", []))
+                else:
+                    self.finished.emit([])
+        except Exception as e:
+            self.finished.emit([])
+
 class GooglePlayTab(QWidget):
     """Tab widget for searching and installing versions from Google Play."""
 
@@ -258,6 +274,16 @@ class GooglePlayTab(QWidget):
         version_code, version_name = version_data
         arch = self.combo_arch.currentText()
 
+        warning = self.dialog.get_warning_for_version(version_name)
+        if warning:
+            messagebox.showwarning(
+                self,
+                "Aviso de compatibilidad",
+                f"Se ha reportado que la versión {version_name} "
+                f"presenta problemas conocidos:\n\n{warning}\n\n"
+                f"Puedes continuar con la instalación si lo deseas."
+            )
+
         # Determine target mode/path
         mode_key = self.dialog.target_mode_val
         is_target_flatpak = (mode_key == c.MODE_INSTALL_FLATPAK)
@@ -437,6 +463,16 @@ class LocalApkTab(QWidget):
             messagebox.showerror(self, c.t("UI_ERROR_TITLE"), c.t("UI_ERROR_WRITE_VERSION_NAME"))
             return
 
+        warning = self.dialog.get_warning_for_version(name)
+        if warning:
+            messagebox.showwarning(
+                self,
+                "Aviso de compatibilidad",
+                f"Se ha reportado que la versión {name} "
+                f"presenta problemas conocidos:\n\n{warning}\n\n"
+                f"Puedes continuar con la instalación si lo deseas."
+            )
+
         target_root = self.dialog.get_target_root()
         is_target_flatpak = (self.dialog.target_mode_val == c.MODE_INSTALL_FLATPAK)
         f_id = self.dialog.entry_flatpak_id.text().strip() if is_target_flatpak else None
@@ -457,6 +493,9 @@ class InstallDialog(QDialog):
         self.resize(600, 700)
 
         self.target_mode_val = c.MODE_INSTALL_FLATPAK if parent.running_in_flatpak else c.MODE_INSTALL_LOCAL
+        self.warnings_data = []
+        self._warnings_fetcher = None
+        self._fetch_warnings()
         self.setup_ui()
 
     def setup_ui(self):
@@ -522,6 +561,22 @@ class InstallDialog(QDialog):
         self.target_mode_val = mode_key
         if hasattr(self, 'entry_flatpak_id'):
             self.entry_flatpak_id.setEnabled(mode_key == c.MODE_INSTALL_FLATPAK)
+
+    def _fetch_warnings(self):
+        self._warnings_fetcher = VersionWarningsFetcher()
+        self._warnings_fetcher.finished.connect(self._on_warnings_fetched)
+        self._warnings_fetcher.start()
+
+    def _on_warnings_fetched(self, warnings):
+        self.warnings_data = warnings
+
+    def get_warning_for_version(self, version_name):
+        if not version_name or not self.warnings_data:
+            return None
+        for entry in self.warnings_data:
+            if entry.get("version") == version_name:
+                return entry.get("reason")
+        return None
 
     def get_target_root(self):
         """Resolve the installation root path based on the selected mode."""

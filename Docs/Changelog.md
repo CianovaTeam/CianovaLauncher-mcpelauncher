@@ -42,6 +42,22 @@
 #### Changelog Dialog
 - Nuevo diálogo que muestra el changelog en Markdown con cabecera de icono.
 
+#### Update Checker
+- Sistema de detección remota de actualizaciones. Consulta `version.json` en GitHub Pages al iniciar (máx. 1 vez/día) y muestra aviso si hay versión más reciente.
+- Botón "Check Update (test)" en `--test-mode`.
+- `version.json` soporta campo `prerelease`.
+- Desplegado en `gh-pages`, compatible con GitHub Actions.
+
+#### Gestor de Mods MCPELauncher
+- Nueva pestaña "Mods MCPELauncher" en el Gestor de recursos.
+- Escanea `mods/` en busca de `.so`; muestra tamaño, toggle activar/desactivar (`.so` ↔ `.so.disabled`) y eliminar.
+- Importación de mods: file picker acepta `.so` (copia directa) y `.zip` (extrae los `.so` automáticamente).
+
+#### Sistema de Advertencias de Compatibilidad
+- Consulta remota de `version-warnings.json` en GitHub Pages.
+- Muestra aviso en primer plano al instalar versiones con bugs conocidos, tanto en Google Play como en APK Local.
+- El archivo JSON se actualiza remotamente sin necesidad de actualizar el launcher.
+
 ### 🎨 UI/UX y Personalización
 
 #### Motor de Personalización
@@ -143,12 +159,6 @@
 | `src/gui/migration_wizard.py` | 828 | Asistente de migración |
 | `src/gui/changelog_dialog.py` | ~100 | Diálogo de changelog |
 | `src/gui/version_manager_dialog.py` | 364 | Gestor avanzado de versiones |
-
-### ✨ Post-Release: Update Checker (2026-05-30)
-- **NEW:** Sistema de detección remota de actualizaciones. El launcher consulta `version.json` en GitHub Pages al iniciar (máx. 1 vez/día) y muestra un aviso si hay una versión más reciente.
-- **NEW:** Botón "Check Update (test)" en `--test-mode` para verificar la conectividad y comparar versiones.
-- **NEW:** `version.json` soporta campo `prerelease` — si es `true`, no se notifica.
-- **OPS:** `version.json` desplegado en la rama `gh-pages` del repo público. Compatible con GitHub Actions para actualización automática al publicar un Release.
 
 # [2.2] - 2026-03-01 - Management Update
 - **NEW:** Soporte multiperfil disponible para aislar tus mundos, recursos y configuraciones de Minecraft en diferentes perfiles mediante enlaces simbólicos (Symlink).

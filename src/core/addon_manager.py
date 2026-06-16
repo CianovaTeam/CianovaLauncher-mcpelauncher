@@ -381,3 +381,94 @@ def install_mcaddon(file_path, com_mojang):
     except Exception as e:
         results.append(("ERROR", str(e)))
     return results
+
+def scan_mods(app):
+    active_path = app.active_path
+    if not active_path:
+        return []
+    mods_path = os.path.join(active_path, c.MODS_DIR)
+    if not os.path.exists(mods_path):
+        return []
+    mod_list = []
+    try:
+        for item in os.listdir(mods_path):
+            item_path = os.path.join(mods_path, item)
+            if not os.path.isfile(item_path):
+                continue
+            is_disabled = item.lower().endswith(".disabled")
+            base_name = item[:-9] if is_disabled else item
+            if not base_name.lower().endswith(".so"):
+                continue
+            try:
+                size = os.path.getsize(item_path)
+            except:
+                size = 0
+            mod_list.append({
+                "name": base_name,
+                "description": "",
+                "version": "",
+                "min_engine": "",
+                "icon_path": None,
+                "is_valid": True,
+                "real_type": "mod",
+                "type_label": "Mod MCPELauncher",
+                "folder": "mods",
+                "enabled": not is_disabled,
+                "path": item_path,
+                "size": size
+            })
+    except:
+        pass
+    return mod_list
+
+def toggle_mod(app, mod_info):
+    current_path = mod_info["path"]
+    mods_dir = os.path.dirname(current_path)
+    base_name = mod_info["name"]
+    if mod_info["enabled"]:
+        new_name = base_name + ".disabled"
+    else:
+        new_name = base_name
+    new_path = os.path.join(mods_dir, new_name)
+    os.rename(current_path, new_path)
+    return new_path
+
+def delete_mod(path):
+    if os.path.exists(path):
+        os.remove(path)
+        return True
+    return False
+
+def install_mod_file(active_path, file_path):
+    mods_path = os.path.join(active_path, c.MODS_DIR)
+    os.makedirs(mods_path, exist_ok=True)
+    ext = os.path.splitext(file_path)[1].lower()
+    results = []
+    if ext == ".zip":
+        temp_dir = tempfile.mkdtemp()
+        try:
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            for root, dirs, files in os.walk(temp_dir):
+                for f in files:
+                    if f.lower().endswith(".so"):
+                        src = os.path.join(root, f)
+                        dst = os.path.join(mods_path, f)
+                        if os.path.exists(dst):
+                            os.remove(dst)
+                        shutil.copy2(src, dst)
+                        results.append(("SUCCESS", dst))
+            shutil.rmtree(temp_dir)
+        except Exception as e:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+            results.append(("ERROR", str(e)))
+    elif ext == ".so":
+        dst = os.path.join(mods_path, os.path.basename(file_path))
+        if os.path.exists(dst):
+            os.remove(dst)
+        shutil.copy2(file_path, dst)
+        results.append(("SUCCESS", dst))
+    else:
+        results.append(("ERROR", f"Unsupported format: {ext}"))
+    return results

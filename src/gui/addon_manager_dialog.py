@@ -23,6 +23,8 @@ class AddonWorker(QThread):
     def run(self):
         try:
             data = addon_manager.scan_all_addons(self.app)
+            mods = addon_manager.scan_mods(self.app)
+            data.extend(mods)
             self.finished.emit(data)
         except Exception as e:
             self.error.emit(str(e))
@@ -117,7 +119,8 @@ class AddonManagerDialog(QDialog):
         tab_configs = [
             (c.t("UI_TAB_WORLDS"), "worlds"),
             (c.t("UI_TAB_RP"), "rp"),
-            (c.t("UI_TAB_BP"), "bp")
+            (c.t("UI_TAB_BP"), "bp"),
+            (c.t("UI_TAB_MCPE_MODS"), "mods")
         ]
         for tab_display_name, tab_id in tab_configs:
             tab = QWidget()
@@ -181,7 +184,8 @@ class AddonManagerDialog(QDialog):
         folder_map = {
             "worlds": "minecraftWorlds",
             "bp": "behavior_packs",
-            "rp": "resource_packs"
+            "rp": "resource_packs",
+            "mods": "mods"
         }
         folder_filter = folder_map.get(tab_id, "")
 
@@ -231,6 +235,18 @@ class AddonManagerDialog(QDialog):
             lbl_type.setStyleSheet(f"font-size: 11px; color: {c.COLOR_PRIMARY_GREEN if addon['enabled'] else 'gray'};")
             info_layout.addWidget(lbl_type)
 
+        if addon["folder"] == "mods":
+            size = addon.get("size", 0)
+            if size < 1024:
+                size_str = f"{size} B"
+            elif size < 1024 * 1024:
+                size_str = f"{size/1024:.1f} KB"
+            else:
+                size_str = f"{size/(1024*1024):.1f} MB"
+            lbl_size = QLabel(size_str)
+            lbl_size.setStyleSheet("font-size: 11px; color: gray;")
+            info_layout.addWidget(lbl_size)
+
         if addon["description"]:
             lbl_desc = QLabel(addon["description"])
             lbl_desc.setWordWrap(True)
@@ -277,7 +293,7 @@ class AddonManagerDialog(QDialog):
                 messagebox.showerror(self, c.t("UI_ERROR_TITLE"), msg)
 
     def toggle(self, addon):
-        """Enable or disable the given addon (resource/behavior pack) in a background thread."""
+        """Enable or disable the given addon/mod in a background thread."""
         from src.gui.progress_dialog import ProgressDialog
         self.progress_action = ProgressDialog(self, c.t("UI_INFO_TITLE"), c.t("UI_TOGGLING_STATUS"))
         self.progress_action.show()
@@ -292,7 +308,8 @@ class AddonManagerDialog(QDialog):
             self.progress_action.accept()
             messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(err))
 
-        self.action_worker = AddonActionWorker(addon_manager.toggle_addon, self.app, addon)
+        toggle_func = addon_manager.toggle_mod if addon["folder"] == "mods" else addon_manager.toggle_addon
+        self.action_worker = AddonActionWorker(toggle_func, self.app, addon)
         self.action_worker.finished.connect(on_finished)
         self.action_worker.error.connect(on_error)
         self.action_worker.start()
@@ -320,14 +337,26 @@ class AddonManagerDialog(QDialog):
             self.action_worker.start()
 
     def import_file(self):
-        """Open a file picker for .mcpack/.mcaddon/.mcworld files and install them."""
-        file_path = dialogs.ask_open_filename_native(
-            self,
-            title=c.t("UI_OPEN_FILE_TITLE"),
-            filetypes=[(c.t("UI_MCPACK_FILES_TYPE"), "*.mcpack *.mcaddon *.mcworld *.mcworldtemplate"), (c.t("UI_ALL_FILES_TYPE"), "*.*")]
-        )
-        if not file_path: return
-        self._install_task([file_path])
+        """Open a file picker for addons/mods and install them depending on active tab."""
+        current_idx = self.tab_widget.currentIndex()
+        tab_id = self.tabs.get(current_idx, (None, None, None))[2]
+
+        if tab_id == "mods":
+            file_path = dialogs.ask_open_filename_native(
+                self,
+                title=c.t("UI_OPEN_FILE_TITLE"),
+                filetypes=[("Mod MCPELauncher", "*.so *.zip"), (c.t("UI_ALL_FILES_TYPE"), "*.*")]
+            )
+            if not file_path: return
+            self._install_mod_task([file_path])
+        else:
+            file_path = dialogs.ask_open_filename_native(
+                self,
+                title=c.t("UI_OPEN_FILE_TITLE"),
+                filetypes=[(c.t("UI_MCPACK_FILES_TYPE"), "*.mcpack *.mcaddon *.mcworld *.mcworldtemplate"), (c.t("UI_ALL_FILES_TYPE"), "*.*")]
+            )
+            if not file_path: return
+            self._install_task([file_path])
 
     def _install_task(self, file_paths):
         from src.gui.progress_dialog import ProgressDialog
@@ -337,6 +366,29 @@ class AddonManagerDialog(QDialog):
         def run_install(paths):
             for f in paths:
                 addon_manager.install_addon_file(self.app.active_path, f)
+            return True
+
+        def on_finished(res):
+            self.progress_action.accept()
+            self.refresh_list()
+
+        def on_error(err):
+            self.progress_action.accept()
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(err))
+
+        self.action_worker = AddonActionWorker(run_install, file_paths)
+        self.action_worker.finished.connect(on_finished)
+        self.action_worker.error.connect(on_error)
+        self.action_worker.start()
+
+    def _install_mod_task(self, file_paths):
+        from src.gui.progress_dialog import ProgressDialog
+        self.progress_action = ProgressDialog(self, c.t("UI_INFO_TITLE"), "Instalando mods...")
+        self.progress_action.show()
+
+        def run_install(paths):
+            for f in paths:
+                addon_manager.install_mod_file(self.app.active_path, f)
             return True
 
         def on_finished(res):
