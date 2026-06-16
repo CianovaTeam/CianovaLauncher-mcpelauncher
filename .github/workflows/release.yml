@@ -162,7 +162,7 @@ jobs:
           files: |
             CianovaLauncher-${{ env.VERSION }}.flatpak
             CianovaLauncher-${{ env.VERSION }}.tar.gz
-            EXTRAS/CianovaLauncher.flatpakrepo
+            assets/flatpak/CianovaLauncher.flatpakrepo
 
       # ── Deploy Flatpak repo to gh-pages ──
       - name: Deploy to gh-pages

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Recompila gplaydl + gplayver desde upstream con parches Cianova.
-# Uso: bash EXTRAS/build_gplaydl.sh [ruta-clone-opcional]
+# Uso: bash scripts/build/build_gplaydl.sh [ruta-clone-opcional]
 #
 # Aplica dos parches a Google-Play-API:
 #  1. Elimina printf("...%s", proto.DebugString()) que crashean con respuestas
