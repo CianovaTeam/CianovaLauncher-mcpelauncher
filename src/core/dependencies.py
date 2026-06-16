@@ -23,7 +23,6 @@ def verify_dependencies(app):
         t_det = QTextEdit()
         t_det.setReadOnly(True)
         try:
-            import shutil
             fs = shutil.which("flatpak-spawn")
             if fs:
                 res = subprocess.check_output([fs, "--host", "flatpak", "list", "--runtime"], text=True)

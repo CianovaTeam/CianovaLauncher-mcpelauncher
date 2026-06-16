@@ -99,9 +99,9 @@ def process_apk(app, apk_path, ver_name, target_root=None, is_target_flatpak=Non
                         refresh_version_list(app)
                 else:
                     messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_EXTRACTION_ERROR_MSG", err_msg=process.stderr))
-            QTimer.singleShot(0, finish)
+            QTimer.singleShot(0, app, finish)
         except Exception as e:
-            QTimer.singleShot(0, lambda: [progress_dialog.accept(), messagebox.showerror(app, c.t("UI_ERROR_TITLE"), str(e))])
+            QTimer.singleShot(0, app, lambda e=e: [progress_dialog.accept(), messagebox.showerror(app, c.t("UI_ERROR_TITLE"), str(e))])
 
     threading.Thread(target=run_extraction).start()
 

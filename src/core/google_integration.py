@@ -582,7 +582,7 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             if extract_proc.returncode == 0:
                 if target_root == app.active_path:
                     from src.core.install_ops import refresh_version_list
-                    QTimer.singleShot(0, lambda: refresh_version_list(app))
+                    QTimer.singleShot(0, app, lambda: refresh_version_list(app))
                 signals.finished.emit(True, c.t("UI_EXTRACTION_SUCCESS_MSG", ver_name=final_vname))
             else:
                 signals.finished.emit(False, c.t("UI_EXTRACTION_ERROR_MSG", err_msg=extract_proc.stderr))
