@@ -67,8 +67,8 @@ LEGAL_TEXT = _load_legal_text()
 
 # --- Setup Wizard Strings ---
 FLATPAK_REQUIRED_RUNTIMES = [
-    "org.kde.Platform//6.9",
-    "io.qt.qtwebengine.BaseApp//6.9",
+    "org.kde.Platform//6.10",
+    "io.qt.qtwebengine.BaseApp",
     "org.freedesktop.Platform.GL.default",
     "org.freedesktop.Platform.VAAPI.Intel"
 ]

@@ -6,6 +6,7 @@ CONFIG_KEY_GPLAYDL = "gplaydl"
 CONFIG_KEY_GPLAYVER = "gplayver"
 CONFIG_KEY_ERROR = "error"
 CONFIG_KEY_WEBVIEW = "webview"
+CONFIG_KEY_MSA_DAEMON = "msa_daemon"
 CONFIG_KEY_BINARY_PATHS = "binary_paths"
 
 # ── Execution mode keys ──

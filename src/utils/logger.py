@@ -54,6 +54,7 @@ class Logger:
         ch.setFormatter(formatter_ch)
         self.logger.addHandler(ch)
         
+        self._log_file = log_file
         self._initialized = True
         self.log_system_info()
 
@@ -131,6 +132,15 @@ class Logger:
         self.info(f"GPU OpenGL: {gl_ver}")
         self.info(f"GPU OpenGL ES: {gles_ver}")
         self.info("==========================================")
+
+    @property
+    def log_file(self):
+        return getattr(self, '_log_file', None)
+
+    def open_game_output(self, mode="a"):
+        if self._log_file:
+            return open(self._log_file, mode, encoding="utf-8", errors="replace")
+        return None
 
     def info(self, msg): self.logger.info(msg)
     def error(self, msg): self.logger.error(msg)

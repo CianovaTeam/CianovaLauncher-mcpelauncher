@@ -121,7 +121,7 @@
     "UI_FLATPAK_ID_EXAMPLE": "Beispiel: org.mcpelauncher.Other",
     "UI_FLATPAK_ID_LABEL": "Flatpak-Anwendungs-ID:",
     "UI_FLATPAK_ID_REQUIRED_MSG": "Bitte geben Sie eine gültige ID ein.",
-    "UI_FLATPAK_RUNTIME_INFO_TEXT": "\nDer Launcher läuft in Flatpak. Abhängigkeiten werden durch\ndie Laufzeitumgebung (Runtime) verwaltet.\n\nStellen Sie sicher, dass Sie die erforderlichen Runtimes installiert haben.\n\nFür Benutzer:\n- org.kde.Platform//6.9\n- io.qt.qtwebengine.BaseApp//6.9\n\nFür Entwickler:\n- org.kde.Sdk//6.9\n",
+    "UI_FLATPAK_RUNTIME_INFO_TEXT": "\nDer Launcher läuft in Flatpak. Abhängigkeiten werden durch\ndie Laufzeitumgebung (Runtime) verwaltet.\n\nStellen Sie sicher, dass Sie die erforderlichen Runtimes installiert haben.\n\nFür Benutzer:\n- org.kde.Platform//6.10\n- io.qt.qtwebengine.BaseApp\n\nFür Entwickler:\n- org.kde.Sdk//6.10\n",
     "UI_FLATPAK_RUNTIME_INFO_TITLE": "Anforderungen an die Flatpak-Runtime",
     "UI_FLATPAK_SHORTCUT_INFO_MSG": "Die Hauptverknüpfung der Flatpak-Anwendung wird bei der Installation automatisch erstellt.\n\nSie können sie über Ihren App Store verwalten (z. B. Discover, GNOME Software).",
     "UI_FLATPAK_SHORTCUT_INFO_TITLE": "Information",

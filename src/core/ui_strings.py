@@ -202,7 +202,11 @@ UI_LABEL_GPLAYDL = "Google Play Downloader:"
 UI_LABEL_GPLAYVER = "Google Play Version Check:"
 UI_LABEL_WEBVIEW_OPTIONAL = "Webview (Opcional):"
 UI_LABEL_ERROR_HANDLER_OPTIONAL = "Error Handler (Opcional):"
+UI_LABEL_MSA_DAEMON = "MSA Daemon:"
 UI_SECTION_COMPATIBILITY = "Compatibilidad"
+UI_LOG_VIEWER_LABEL = "Logs:"
+UI_BUTTON_EXPORT_LOG = "Exportar"
+UI_EXPORT_LOG_TITLE = "Guardar Log"
 
 # NVIDIA Compatibility
 UI_NVIDIA_COMPAT_MODE_CHECKBOX = "Activar modo de compatibilidad para Nvidia (experimental, solo para Flatpak)"
@@ -553,11 +557,11 @@ por el entorno de ejecución (runtime).
 Asegúrate de tener instalados los runtimes necesarios.
 
 Para Usuarios:
-- org.kde.Platform//6.9
-- io.qt.qtwebengine.BaseApp//6.9
+- org.kde.Platform//6.10
+- io.qt.qtwebengine.BaseApp
 
 Para Desarrolladores:
-- org.kde.Sdk//6.9
+- org.kde.Sdk//6.10
 """
 UI_DEPENDENCY_CHECK_ERROR = "No se encontró '{list_file}'"
 UI_PKG_MANAGER_NOT_SUPPORTED = "Gestor de paquetes no soportado."

@@ -2,6 +2,8 @@ import os
 import re
 import subprocess
 import platform
+import shutil
+from PySide6.QtWidgets import QFrame
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
 
@@ -106,15 +108,88 @@ def check_requirements_dialog(app):
 
 
 def show_hw_results(app, txt):
-    """Display hardware analysis results in a read-only dialog."""
-    from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton
+    """Display hardware analysis results in a read-only dialog with log viewer."""
+    from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
+                                   QPushButton, QComboBox, QFileDialog, QLabel)
     d = QDialog(app)
     d.setWindowTitle(c.t("UI_HARDWARE_ANALYSIS_TITLE"))
+    d.resize(520, 500)
     l = QVBoxLayout(d)
+
+    # ── Hardware analysis ──
     t = QTextEdit()
     t.setPlainText(txt)
     t.setReadOnly(True)
     l.addWidget(t)
+
+    # ── Log viewer ──
+    log_frame = QFrame()
+    log_frame.setObjectName("GroupFrame")
+    log_layout = QVBoxLayout(log_frame)
+
+    log_header = QHBoxLayout()
+    log_label = QLabel(c.t("UI_LOG_VIEWER_LABEL"))
+    log_label.setStyleSheet("font-weight: bold;")
+    log_header.addWidget(log_label)
+    log_header.addStretch()
+
+    log_combo = QComboBox()
+    log_dir = os.path.join(os.path.expanduser("~"), ".local/share/mcpelauncher/logs")
+    current_log = os.path.basename(logger.log_file) if logger.log_file else None
+    log_files = []
+    if os.path.isdir(log_dir):
+        for f in os.listdir(log_dir):
+            if f.startswith("cianovalauncher-") and f.endswith(".log") and f != current_log:
+                log_files.append(f)
+        log_files.sort(reverse=True)
+    for f in log_files:
+        log_combo.addItem(f)
+    log_header.addWidget(log_combo)
+
+    export_btn = QPushButton(c.t("UI_BUTTON_EXPORT_LOG"))
+    log_header.addWidget(export_btn)
+    log_layout.addLayout(log_header)
+
+    log_view = QTextEdit()
+    log_view.setReadOnly(True)
+    log_view.setMaximumHeight(180)
+    log_layout.addWidget(log_view)
+
+    l.addWidget(log_frame)
+
+    def load_log(fname):
+        path = os.path.join(log_dir, fname)
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                log_view.setPlainText(f.read())
+        except Exception as e:
+            log_view.setPlainText(f"Error reading log: {e}")
+
+    def on_log_change(idx):
+        if idx >= 0 and idx < log_combo.count():
+            load_log(log_combo.currentText())
+
+    def export_log():
+        fname = log_combo.currentText()
+        if not fname:
+            return
+        src = os.path.join(log_dir, fname)
+        dst, _ = QFileDialog.getSaveFileName(d, c.t("UI_EXPORT_LOG_TITLE"), fname,
+                                              "Log Files (*.log);;All Files (*)")
+        if dst:
+            try:
+                shutil.copy2(src, dst)
+            except Exception as e:
+                from src.gui import custom_dialogs as mbox
+                mbox.showerror(d, c.t("UI_ERROR_TITLE"), f"Error exporting log: {e}")
+
+    log_combo.currentIndexChanged.connect(on_log_change)
+    export_btn.clicked.connect(export_log)
+
+    if log_files:
+        load_log(log_files[0])
+
+    # ── Close button ──
     b = QPushButton(c.t("UI_BUTTON_CLOSE"))
     b.clicked.connect(d.accept)
     l.addWidget(b)

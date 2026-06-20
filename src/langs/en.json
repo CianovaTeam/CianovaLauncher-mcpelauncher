@@ -121,7 +121,7 @@
     "UI_FLATPAK_ID_EXAMPLE": "Example: org.mcpelauncher.Other",
     "UI_FLATPAK_ID_LABEL": "Flatpak Application ID:",
     "UI_FLATPAK_ID_REQUIRED_MSG": "Please enter a valid ID.",
-    "UI_FLATPAK_RUNTIME_INFO_TEXT": "\nThe launcher runs in Flatpak. Dependencies are handled\nby the runtime environment.\n\nMake sure you have the necessary runtimes installed.\n\nFor Users:\n- org.kde.Platform//6.9\n- io.qt.qtwebengine.BaseApp//6.9\n\nFor Developers:\n- org.kde.Sdk//6.9\n",
+    "UI_FLATPAK_RUNTIME_INFO_TEXT": "\nThe launcher runs in Flatpak. Dependencies are handled\nby the runtime environment.\n\nMake sure you have the necessary runtimes installed.\n\nFor Users:\n- org.kde.Platform//6.10\n- io.qt.qtwebengine.BaseApp\n\nFor Developers:\n- org.kde.Sdk//6.10\n",
     "UI_FLATPAK_RUNTIME_INFO_TITLE": "Flatpak Runtime Requirements",
     "UI_FLATPAK_SHORTCUT_INFO_MSG": "The main shortcut for the Flatpak application is created automatically upon installation.\n\nYou can manage it from your app store (e.g., Discover, GNOME Software).",
     "UI_FLATPAK_SHORTCUT_INFO_TITLE": "Information",
@@ -272,6 +272,7 @@
     "UI_LABEL_SEARCH_PLACEHOLDER": "Search by name...",
     "UI_LABEL_SHADERS_STATUS": "Shaders: ...",
     "UI_LABEL_WEBVIEW_OPTIONAL": "Webview (Optional):",
+    "UI_LABEL_MSA_DAEMON": "MSA Daemon:",
     "UI_LAUNCH_ERROR": "Launch failed: {e}",
     "UI_LOCAL_BINARY_NOT_FOUND": "Local binary not found at: {local_bin}",
     "UI_MAIN_LAUNCHER_LABEL": "Main Launcher",
@@ -507,5 +508,8 @@
     "UI_GOOGLE_SIGNIN_NO_TOKEN": "The sign-in process finished without delivering a token. Please try again and complete the flow in the Google window.",
     "UI_GOOGLE_SIGNIN_LAUNCH_FAILED": "Could not start '{bin_path}'. Check the path in Settings.",
     "UI_GOOGLE_LOGIN_LAUNCH_ERROR": "Failed to launch sign-in: {error}",
-    "UI_UPDATE_AVAILABLE": "Version {version} available. Update CianovaLauncher to get the latest news."
+    "UI_UPDATE_AVAILABLE": "Version {version} available. Update CianovaLauncher to get the latest news.",
+    "UI_LOG_VIEWER_LABEL": "Logs:",
+    "UI_BUTTON_EXPORT_LOG": "Export",
+    "UI_EXPORT_LOG_TITLE": "Save Log"
 }

@@ -1,5 +1,5 @@
 ==========================
-VERSION: 1.6.4 (Oficial) + COMPILED FOR @ShaggyLinux
+VERSION: 1.7.4 (qt6) (Oficial) + PATCH libc-shim&mcpelauncher-client by @PlaGaDev - COMPILED FOR @PlaGaDev
 ==========================
 COMPILED WITH USING NINJA
 ==========================

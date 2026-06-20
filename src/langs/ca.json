@@ -121,7 +121,7 @@
     "UI_FLATPAK_ID_EXAMPLE": "Exemple: org.mcpelauncher.Other",
     "UI_FLATPAK_ID_LABEL": "ID d'aplicació Flatpak:",
     "UI_FLATPAK_ID_REQUIRED_MSG": "Introduïu un ID vàlid, si us plau.",
-    "UI_FLATPAK_RUNTIME_INFO_TEXT": "\nEl llançador s'executa en Flatpak. Les dependències es gestionen\npel entorn d'execució (runtime).\n\nAssegureu-vos de tenir instal·lats els runtimes necessaris.\n\nPer a usuaris:\n- org.kde.Platform//6.9\n- io.qt.qtwebengine.BaseApp//6.9\n\nPer a desenvolupadors:\n- org.kde.Sdk//6.9\n",
+    "UI_FLATPAK_RUNTIME_INFO_TEXT": "\nEl llançador s'executa en Flatpak. Les dependències es gestionen\npel entorn d'execució (runtime).\n\nAssegureu-vos de tenir instal·lats els runtimes necessaris.\n\nPer a usuaris:\n- org.kde.Platform//6.10\n- io.qt.qtwebengine.BaseApp\n\nPer a desenvolupadors:\n- org.kde.Sdk//6.10\n",
     "UI_FLATPAK_RUNTIME_INFO_TITLE": "Requisits de Runtime Flatpak",
     "UI_FLATPAK_SHORTCUT_INFO_MSG": "L'accés directe principal de l'aplicació Flatpak es crea automàticament en instal·lar-la.\n\nEl podeu gestionar des de la vostra botiga d'aplicacions (ex. Discover, GNOME Software).",
     "UI_FLATPAK_SHORTCUT_INFO_TITLE": "Informació",

@@ -153,7 +153,8 @@ class SettingsTab(QWidget):
             (c.t("UI_LABEL_GPLAYDL"), c.CONFIG_KEY_GPLAYDL),
             (c.t("UI_LABEL_GPLAYVER"), c.CONFIG_KEY_GPLAYVER),
             (c.t("UI_LABEL_WEBVIEW_OPTIONAL"), c.CONFIG_KEY_WEBVIEW),
-            (c.t("UI_LABEL_ERROR_HANDLER_OPTIONAL"), c.CONFIG_KEY_ERROR)
+            (c.t("UI_LABEL_ERROR_HANDLER_OPTIONAL"), c.CONFIG_KEY_ERROR),
+            (c.t("UI_LABEL_MSA_DAEMON"), c.CONFIG_KEY_MSA_DAEMON)
         ]:
             f = QFrame()
             fl = QHBoxLayout(f)

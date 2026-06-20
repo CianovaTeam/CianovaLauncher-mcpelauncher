@@ -32,7 +32,8 @@ class ConfigManager:
                 c.CONFIG_KEY_GPLAYDL: "",
                 c.CONFIG_KEY_GPLAYVER: "",
                 c.CONFIG_KEY_ERROR: "",
-                c.CONFIG_KEY_WEBVIEW: ""
+                c.CONFIG_KEY_WEBVIEW: "",
+                c.CONFIG_KEY_MSA_DAEMON: ""
             },
             c.CONFIG_KEY_MODE: c.t("UI_DEFAULT_MODE"),
             c.CONFIG_KEY_INSTALL_MODE: c.MODE_INSTALL_LOCAL,

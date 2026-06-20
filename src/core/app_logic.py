@@ -7,6 +7,7 @@ import shlex
 import threading
 import time
 import re
+from datetime import datetime
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QLabel
 
@@ -294,9 +295,24 @@ def launch_game(app):
                 launched = True
 
         if not launched:
+            game_fh = logger.open_game_output("a")
+            if game_fh:
+                ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                game_fh.write(f"\n{'='*20} MCPELAUNCHER LOG ({ts}) {'='*20}\n")
+                game_fh.write(f"Command: {' '.join(cmd)}\n")
+                for k, v in extra_env.items():
+                    game_fh.write(f"  {k}={v}\n")
+                game_fh.write("-" * 50 + "\n")
+                game_fh.flush()
             try:
-                subprocess.Popen(cmd, env=env, cwd=app.active_path)
+                subprocess.Popen(
+                    cmd, env=env, cwd=app.active_path,
+                    stdout=game_fh, stderr=subprocess.STDOUT
+                )
             except (OSError, PermissionError) as e:
+                if game_fh:
+                    game_fh.write(f"[launcher] Popen failed: {e}, falling back to execve\n")
+                    game_fh.close()
                 logger.warning(f"subprocess.Popen failed ({e}), trying os.execve...")
                 os.execve(cmd[0], cmd, env)
 
