@@ -6,21 +6,26 @@
   <meta name="google-site-verification" content="F9ba1ud4KA0SpmFHazxBWKsq-lY5T4Vla0ab7TTZfHg" />
 
   <!-- ── SEO: Primary ── -->
-  <title>Cianova Launcher — Minecraft Bedrock on Linux | Flatpak · Open Source · PySide6</title>
+  <title>Cianova Launcher — Minecraft Bedrock on Linux</title>
   <meta name="description" content="Cianova Launcher is a free, open-source graphical launcher for Minecraft Bedrock Edition on Linux. Install via Flatpak, manage multiple profiles, switch versions, download from Google Play, and customize with 12 color themes." />
   <link rel="canonical" href="https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/" />
   <meta name="robots" content="index, follow" />
   <meta name="keywords" content="Minecraft Bedrock Linux, mcpelauncher GUI, Minecraft Linux launcher, Bedrock Edition Linux, Flatpak Minecraft, open source Minecraft launcher, PySide6 launcher" />
+  <meta name="author" content="PlaGaPlusDev" />
+  <meta name="theme-color" content="#00e87a" />
 
   <!-- ── SEO: Open Graph ── -->
   <meta property="og:type" content="website" />
+  <meta property="og:locale" content="en_US" />
   <meta property="og:url" content="https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/" />
   <meta property="og:site_name" content="Cianova Launcher" />
   <meta property="og:title" content="Cianova Launcher — Minecraft Bedrock on Linux" />
   <meta property="og:description" content="Free, open-source graphical launcher for Minecraft Bedrock Edition on Linux. Profile management, version switching, Flatpak support, Google Play integration, and 12 color themes." />
   <meta property="og:image" content="https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/icon.png" />
+  <meta property="og:image:alt" content="Cianova Launcher icon" />
   <meta property="og:image:width" content="512" />
   <meta property="og:image:height" content="512" />
+  <link rel="apple-touch-icon" href="icon.png" />
 
   <!-- ── SEO: Twitter Card ── -->
   <meta name="twitter:card" content="summary" />
@@ -89,11 +94,13 @@
   }
   </script>
 
+  <link rel="preload" as="image" href="icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" /></noscript>
   <link rel="icon" type="image/png" href="icon.png" />
+  <meta name="application-name" content="Cianova Launcher" />
 
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -224,13 +231,29 @@
       display: flex; flex-direction: column; align-items: center; gap: 14px;
       position: relative; z-index: 1;
     }
+    /* Blurred glow layer — blur is on the pseudo-element, never on the img */
+    .hero-logo-wrap::before {
+      content: '';
+      position: absolute;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle,
+        rgba(0,232,122,0.55) 0%,
+        rgba(0,232,122,0.22) 38%,
+        rgba(0,232,122,0.06) 62%,
+        transparent 75%
+      );
+      top: -20px; left: 50%; transform: translateX(-50%);
+      filter: blur(22px);
+      z-index: 0;
+      pointer-events: none;
+    }
     .hero-icon-big {
-      width: 200px; height: 200px;
+      width: 260px; height: 260px;
       border-radius: 0;
       animation: float 4s ease-in-out infinite;
       display: block;
       position: relative; z-index: 1;
-      filter: drop-shadow(0 0 32px rgba(0,232,122,0.35)) drop-shadow(0 0 8px rgba(0,232,122,0.2));
     }
     .hero-brand-label {
       font-size: 1.15rem; font-weight: 700; color: var(--text-primary);
@@ -656,7 +679,7 @@
 
     /* ── Responsive ── */
     @media (max-width: 1024px) {
-      .hero-icon-big    { width: 160px; height: 160px; }
+      .hero-icon-big    { width: 200px; height: 200px; }
       .features-grid    { grid-template-columns: repeat(2,1fr); }
       .stats-inner      { grid-template-columns: repeat(2,1fr); }
     }
@@ -672,7 +695,7 @@
       .hero-text h1 { font-size: 2.4rem; }
       .hero-badges   { justify-content: center; }
       .hero-actions  { justify-content: center; }
-      .hero-icon-big { width: 130px; height: 130px; border-radius: 20px; }
+      .hero-icon-big { width: 160px; height: 160px; border-radius: 0; }
       .section-title  { font-size: 2rem; }
       .features-grid  { grid-template-columns: repeat(2,1fr); }
       .download-grid  { grid-template-columns: 1fr; }
@@ -695,15 +718,15 @@
   <div id="cursorGlow"></div>
 
   <header>
-    <a href="#" class="logo">
+    <a href="#hero" class="logo">
       <img src="icon.png" alt="Cianova Launcher" width="42" height="42" />
       Cianova Launcher
     </a>
-    <nav>
+    <nav aria-label="Main navigation">
       <a href="#features">Features</a>
       <a href="#download">Download</a>
       <a href="#support">Support</a>
-      <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank">GitHub</a>
+      <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" rel="noopener noreferrer">GitHub</a>
     </nav>
   </header>
 
@@ -735,7 +758,7 @@
             </p>
             <div class="hero-actions">
               <a href="#download" class="btn btn-primary">Download</a>
-              <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" class="btn btn-secondary">
+              <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
                 Source Code
               </a>
@@ -745,7 +768,7 @@
           <!-- Right: large logo + branding -->
           <div class="hero-visual">
             <div class="hero-logo-wrap">
-              <img src="icon.png" alt="Cianova Launcher" class="hero-icon-big" width="220" height="220" />
+              <img src="icon.png" alt="Cianova Launcher" class="hero-icon-big" width="260" height="260" fetchpriority="high" loading="eager" decoding="async" />
               <span class="hero-brand-label">Cianova Launcher</span>
               <span class="hero-brand-version">v3.0 &nbsp;·&nbsp; Open Source</span>
             </div>
@@ -870,7 +893,7 @@
         <div class="download-card featured">
           <div class="dl-label">Recommended</div>
           <h3>One-Line Install</h3>
-          <p class="meta">One command adds the repo, installs the Qt6 runtimes, and sets up the launcher. Requires <a href="https://flathub.org/en/setup" target="_blank">Flatpak</a> to be installed first.</p>
+          <p class="meta">One command adds the repo, installs the Qt6 runtimes, and sets up the launcher. Requires <a href="https://flathub.org/en/setup" target="_blank" rel="noopener noreferrer">Flatpak</a> to be installed first.</p>
 
           <!-- Curl install block -->
           <div class="curl-block">
@@ -897,7 +920,7 @@
             </ul>
           </div>
 
-          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/gh-pages/install.sh" target="_blank" class="curl-review-link">
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/gh-pages/install.sh" target="_blank" rel="noopener noreferrer" class="curl-review-link">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
             Review install.sh on GitHub
           </a>
@@ -921,7 +944,7 @@
               <div>Install required runtimes:<code>flatpak install org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10</code></div>
             </div>
           </div>
-          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/releases" target="_blank" class="btn btn-secondary">Download .flatpak</a>
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/releases" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Download .flatpak</a>
         </div>
 
         <div class="download-card">
@@ -938,7 +961,7 @@
               <div>Run the launcher:<code>./CianovaLauncher.sh</code></div>
             </div>
           </div>
-          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/releases" target="_blank" class="btn btn-secondary">Download .tar.gz</a>
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/releases" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Download .tar.gz</a>
         </div>
 
         <div class="download-card">
@@ -955,16 +978,16 @@
               <div>Run the development script:<code>./run.sh</code></div>
             </div>
           </div>
-          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" class="btn btn-secondary">View on GitHub</a>
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">View on GitHub</a>
         </div>
 
         <div class="dl-note">
           <strong>Note:</strong> Cianova Launcher requires the
-          <a href="https://github.com/minecraft-linux/mcpelauncher-manifest" target="_blank">mcpelauncher-manifest</a>
+          <a href="https://github.com/minecraft-linux/mcpelauncher-manifest" target="_blank" rel="noopener noreferrer">mcpelauncher-manifest</a>
           binaries. The Flatpak and portable bundles include them. If building
           from source, place the binaries in a <code>bin/</code> folder inside
           the launcher root. See the
-          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/MANUAL%20DE%20USO.md" target="_blank">User Manual</a>
+          <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/MANUAL%20DE%20USO.md" target="_blank" rel="noopener noreferrer">User Manual</a>
           for details. Your PC must support x86_64 and OpenGL ES 3.0.
         </div>
 
@@ -997,10 +1020,10 @@
         <div class="support-card">
           <h3><img src="assets/icons/docs.svg" class="icon" alt="" width="22" height="22" /> Documentation</h3>
           <div class="support-link-group">
-            <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/MANUAL%20DE%20USO.md" target="_blank" class="support-link"><img src="assets/icons/docs.svg" class="icon" alt="" /> User Manual</a>
-            <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/Changelog.md" target="_blank" class="support-link"><img src="assets/icons/versions.svg" class="icon" alt="" /> Changelog</a>
-            <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/LICENCE%20%26%20TERMINOS%20y%20CONDICIONES.md" target="_blank" class="support-link"><img src="assets/icons/profiles.svg" class="icon" alt="" /> License &amp; Terms</a>
-            <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/tree/mainqt6/Docs" target="_blank" class="support-link"><img src="assets/icons/resource.svg" class="icon" alt="" /> All Docs</a>
+            <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/MANUAL%20DE%20USO.md" target="_blank" rel="noopener noreferrer" class="support-link"><img src="assets/icons/docs.svg" class="icon" alt="" /> User Manual</a>
+            <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/Changelog.md" target="_blank" rel="noopener noreferrer" class="support-link"><img src="assets/icons/versions.svg" class="icon" alt="" /> Changelog</a>
+            <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/LICENCE%20%26%20TERMINOS%20y%20CONDICIONES.md" target="_blank" rel="noopener noreferrer" class="support-link"><img src="assets/icons/profiles.svg" class="icon" alt="" /> License &amp; Terms</a>
+            <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/tree/mainqt6/Docs" target="_blank" rel="noopener noreferrer" class="support-link"><img src="assets/icons/resource.svg" class="icon" alt="" /> All Docs</a>
           </div>
         </div>
 
@@ -1037,7 +1060,7 @@
                 <img src="assets/icons/community.svg" width="18" height="18" alt="" />
               </div>
               <div>
-                <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/discussions" target="_blank" style="font-weight:600;font-size:0.95rem;">Discussions</a>
+                <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/discussions" target="_blank" rel="noopener noreferrer" style="font-weight:600;font-size:0.95rem;">Discussions</a>
                 <p style="font-size:0.85rem;color:var(--text-secondary);margin:2px 0 0;">Ask questions, share setups, suggest features. All languages welcome.</p>
               </div>
             </div>
@@ -1046,7 +1069,7 @@
                 <img src="assets/icons/faq.svg" width="18" height="18" alt="" />
               </div>
               <div>
-                <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/issues" target="_blank" style="font-weight:600;font-size:0.95rem;">Issues</a>
+                <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/issues" target="_blank" rel="noopener noreferrer" style="font-weight:600;font-size:0.95rem;">Issues</a>
                 <p style="font-size:0.85rem;color:var(--text-secondary);margin:2px 0 0;">Found a bug? Open an issue. Check existing ones first.</p>
               </div>
             </div>
@@ -1055,7 +1078,7 @@
                 <img src="assets/icons/profiles.svg" width="18" height="18" alt="" />
               </div>
               <div>
-                <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" style="font-weight:600;font-size:0.95rem;">Source Code</a>
+                <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" rel="noopener noreferrer" style="font-weight:600;font-size:0.95rem;">Source Code</a>
                 <p style="font-size:0.85rem;color:var(--text-secondary);margin:2px 0 0;">Fork it, send a PR, or just browse. Contributions welcome.</p>
               </div>
             </div>
@@ -1074,12 +1097,12 @@
       <a href="#features">Features</a>
       <a href="#download">Download</a>
       <a href="#support">Support</a>
-      <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank">GitHub</a>
+      <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher" target="_blank" rel="noopener noreferrer">GitHub</a>
     </div>
     <p>
       Made with <img src="assets/icons/heart.svg" alt="love" width="14" height="14" style="vertical-align:middle;display:inline;" />
       and &#x1F916; for the Linux community &mdash;
-      <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/LICENCE%20%26%20TERMINOS%20y%20CONDICIONES.md" target="_blank">GPL v3.0</a>
+      <a href="https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/mainqt6/Docs/LICENCE%20%26%20TERMINOS%20y%20CONDICIONES.md" target="_blank" rel="noopener noreferrer">GPL v3.0</a>
     </p>
   </footer>
 
