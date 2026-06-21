@@ -7,7 +7,7 @@ base-version: "6.10"
 command: cianova-launcher.sh
 
 platform-extensions:
-  - org.freedesktop.Platform.GL.default//24.1
+  - org.freedesktop.Platform.GL.default//25.08
 
 build-options:
   strip: false
