@@ -1,38 +1,63 @@
-# CianovaLauncherMCPE.spec corregido
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all
-
-# IMPORTANTE: Asegúrate de que la ruta a main.py sea correcta
-# Si main.py está en la carpeta 'src'
 block_cipher = None
 
-# Recolectamos todo lo necesario
-from PyInstaller.utils.hooks import collect_all
+# ── Solo los módulos PySide6 que USAMOS ──
+# Nada de collect_submodules/collect_dynamic_libs/collect_data_files
+# porque traen todo Qt3D/QtWebEngine/QtQuick/QtQml/FFmpeg/QML tooling
+NEEDED_PYSIDE_MODULES = [
+    'PySide6',  # ← el package __init__.py
+    'PySide6.QtCore',
+    'PySide6.QtGui',
+    'PySide6.QtWidgets',
+    'PySide6.QtNetwork',
+    'PySide6.QtUiTools',
+    'PySide6.QtDBus',
+    'PySide6.QtSvg',
+    'PySide6.QtSvgWidgets',
+    'PySide6.QtXml',
+    'PySide6.QtPrintSupport',
+    'PySide6.QtOpenGL',
+    'PySide6.QtOpenGLWidgets',
+]
 
-block_cipher = None
+# ── La única data que necesitamos de PySide6 (además de lo que los hooks
+#    recolectan automáticamente) es el __init__.py del package.
+#    Los Qt .so, plugins, y traducciones los colectan los hooks individuales.
+PYSIDE_INIT = [
+    ('/home/willyos/.local/lib/python3.12/site-packages/PySide6/__init__.py', 'PySide6'),
+]
 
-tmp_ret_pyside = collect_all('PySide6')
-tmp_ret_pil = collect_all('Pillow')
-tmp_ret_pypresence = collect_all('pypresence')
+# ── Pillow ──
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files, collect_dynamic_libs
 
-# Definimos los datos manuales: ('origen', 'destino')
+pil_imports = collect_submodules('Pillow')
+pil_data = collect_data_files('Pillow')
+pil_bin = collect_dynamic_libs('Pillow')
+
+# ── pypresence ──
+pp_imports = collect_submodules('pypresence')
+pp_data = collect_data_files('pypresence')
+pp_bin = collect_dynamic_libs('pypresence')
+
+# ── Datos del proyecto ──
 my_datas = [
     ('icon.png', '.'),
     ('src/langs', 'src/langs'),
     ('src/themes', 'src/themes'),
-    ('Docs', 'Docs')
+    ('Docs', 'Docs'),
 ]
 
-# Sumamos los datos de las librerías a los nuestros
-datas = my_datas + tmp_ret_pyside[0] + tmp_ret_pil[0] + tmp_ret_pypresence[0]
-binaries = tmp_ret_pyside[1] + tmp_ret_pil[1] + tmp_ret_pypresence[1]
-hiddenimports = ['PySide6', 'PySide6.QtCore', 'PySide6.QtWidgets', 'PySide6.QtGui', 'PIL._tkinter_finder', 'pypresence'] + tmp_ret_pyside[2] + tmp_ret_pil[2] + tmp_ret_pypresence[2]
+datas = my_datas + PYSIDE_INIT + pil_data + pp_data
+binaries = pil_bin + pp_bin
+hiddenimports = (NEEDED_PYSIDE_MODULES
+                 + ['PIL._tkinter_finder', 'pypresence']
+                 + pil_imports + pp_imports)
 
 a = Analysis(
     ['src/main.py'],
     pathex=[],
     binaries=binaries,
-    datas=datas, 
+    datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
@@ -53,23 +78,23 @@ exe = EXE(
     name='CianovaLauncherMCPE',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    console=False, # Pon True si quieres ver errores en terminal al probar
+    strip=True,
+    upx=False,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icon.png'], # Este es el icono del .exe en el explorador
+    icon=['icon.png'],
 )
 coll = COLLECT(
     exe,
     a.binaries,
     a.zipfiles,
     a.datas,
-    strip=False,
-    upx=True,
+    strip=True,
+    upx=False,
     upx_exclude=[],
     name='CianovaLauncherMCPE',
 )

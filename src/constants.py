@@ -148,7 +148,7 @@ THEME_COLOR_MAP = {
     "cherry": "#991b1b",    # Deep Cherry Red
     "ocean": "#0e7490"      # Deep Teal/Ocean
 }
-VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/minecraft-linux/mcpelauncher-versiondb/master/versions.{arch}.json.min"
+VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/PlaGaPlusDev/mcpelauncher-versiondb/master/versions.{arch}.json.min"
 
 # ── Update checker ──
 UPDATE_CHECK_URL = "https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/version.json"
