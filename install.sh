@@ -36,6 +36,10 @@ if ! command -v flatpak &>/dev/null; then
     exit 1
 fi
 
+print_step "Añadiendo repositorio Flathub (necesario para runtimes KDE)"
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+print_ok "Flathub añadido correctamente."
+
 print_step "Añadiendo repositorio $REPO_NAME"
 flatpak remote-add --user --if-not-exists "$REPO_NAME" "$REPO_URL"
 print_ok "Repositorio añadido correctamente."
@@ -43,7 +47,7 @@ print_ok "Repositorio añadido correctamente."
 print_step "Instalando runtimes necesarios"
 for rt in "${RUNTIMES[@]}"; do
     print_info "Instalando $rt ..."
-    flatpak install --user --noninteractive --assumeyes "$rt"
+    flatpak install --user --noninteractive --assumeyes flathub "$rt"
     print_ok "$rt instalado."
 done
 
