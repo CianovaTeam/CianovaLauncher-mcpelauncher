@@ -9,6 +9,10 @@
 
 **CianovaLauncher** es una interfaz gráfica moderna diseñada para facilitar la gestión, instalación y personalización de **Minecraft: Bedrock Edition** en Linux. Esta herramienta trabaja en conjunto con la base del proyecto **MCPELauncher-manifest**, proporcionando una experiencia de usuario amigable y potente.
 
+🌐 Visita nuestra página web del proyecto con toda la info organizada, detalles y métodos de descarga: 
+
+### [plagaplusdev.github.io/CianovaLauncher-mcpelauncher](https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/)
+
 ---
 
 ## ✨ Características de la v3.0
@@ -31,6 +35,17 @@ Link para configurar Flatpak la primera vez según tu distro: [FLATPAK SETUP](ht
 **NOTA 3:** Si tu distro es muy estricto con permisos y no tiene `flatpak-spawn` va a hacer un subproceso local o reemplazar el proceso del launcher (Solo usara los binarios disponibles en el Flatpak. Si no es muy estricto tipo Ubuntu, Mint, Debian, Arch, ZorinOS funcionara completamente.)
 
 ### Instalación para Flatpak
+
+#### Método Express (Un solo comando)
+ 
+Si ya tienes Flatpak instalado, este script lo hace todo por ti: añade el repositorio, instala los runtimes de Qt6 y deja el launcher listo para arrancar.
+ 
+```bash
+curl -fsSL https://raw.githubusercontent.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/gh-pages/install.sh | bash
+```
+ 
+> Puedes [revisar el script en GitHub](https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/gh-pages/install.sh) antes de ejecutarlo si quieres ver qué hace paso a paso. Si Flatpak no está instalado, el script te indica cómo hacerlo según tu distro.
+
 
 #### Metodo 1 (Recomendado) - Actualizaciones
 

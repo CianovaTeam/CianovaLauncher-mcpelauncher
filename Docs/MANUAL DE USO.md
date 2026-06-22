@@ -10,6 +10,8 @@
 
 Originalmente desarrollado con *CustomTkinter*, esta versión 3.0 ha sido migrada a **PySide6 (Qt6)** para mejorar la estabilidad general, el manejo de procesos y ofrecer una interfaz más fluida y adaptable a diferentes pantallas. Este launcher no busca competir, sino sumar una opción más a la comunidad, respetando y valorando siempre el trabajo de otros desarrolladores del ecosistema.
 
+> 🌐 Si quieres una vista rápida y visual antes de instalar, el proyecto tiene una **página web oficial** con resumen de características, métodos de descarga y preguntas frecuentes: [plagaplusdev.github.io/CianovaLauncher-mcpelauncher](https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/)
+
 ---
 
 ## 🚀 2. Primeros Pasos: Instalación
@@ -17,7 +19,16 @@ Originalmente desarrollado con *CustomTkinter*, esta versión 3.0 ha sido migrad
 ### Opción A: Instalación por Flatpak (Recomendado)
 Flatpak ofrece un entorno aislado y seguro, ideal para asegurar que todas las librerías de Qt6 funcionen correctamente.
 
-#### Método 1: Repositorio Oficial (Recomendado para actualizaciones)
+#### Método 1: Instalación Express (Un solo comando)
+La forma más rápida si ya tienes Flatpak en tu sistema. Un script automatizado añade el repositorio de Cianova, instala los runtimes Qt6 necesarios y deja el launcher instalado y listo, sin pasos manuales.
+ 
+```bash
+curl -fsSL https://raw.githubusercontent.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/gh-pages/install.sh | bash
+```
+ 
+El script verifica que Flatpak esté disponible; si no lo está, te indica cómo instalarlo según tu distribución (Debian/Ubuntu, Fedora, Arch, openSUSE). Puedes [revisar su código en GitHub](https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/gh-pages/install.sh) antes de ejecutarlo.
+
+#### Método 2: Repositorio Oficial (Recomendado para actualizaciones)
 Al usar el repositorio, recibirás las actualizaciones automáticamente desde tu gestor de software.
 1. **Añade el repositorio:**
    ```bash
@@ -28,13 +39,15 @@ Al usar el repositorio, recibirás las actualizaciones automáticamente desde tu
    flatpak install --user CianovaLauncher org.cianova.Launcher
    ```
 
-#### Método 2: Archivo Bundle (.flatpak)
+#### Método 3: Archivo Bundle (.flatpak)
 Si has descargado el archivo `.flatpak` directamente desde **Releases**:
 1. **Instala el archivo:**
    ```bash
    flatpak install --user CianovaLauncher.flatpak
    ```
-2. **Importante (Runtimes):** Si instalas por este método, asegúrate de tener los runtimes necesarios ejecutando:
+
+
+### Importante (Runtimes): Si instalas por el metodo 2 y 3, asegúrate de tener los runtimes necesarios instalados:
    ```bash
    flatpak install org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10
    ```
