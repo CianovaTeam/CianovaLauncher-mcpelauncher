@@ -120,6 +120,12 @@ def setup_flatpak_environment(app):
     m = {
         c.CONFIG_KEY_CLIENT: "/app/bin/mcpelauncher-client",
         c.CONFIG_KEY_EXTRACT: "/app/bin/mcpelauncher-extract",
+        c.CONFIG_KEY_SIGNIN_UI: "/app/bin/playdl-signin-ui-qt",
+        c.CONFIG_KEY_GPLAYDL: "/app/bin/gplaydl",
+        c.CONFIG_KEY_GPLAYVER: "/app/bin/gplayver",
+        c.CONFIG_KEY_MSA_DAEMON: "/app/bin/msa-daemon",
+        c.CONFIG_KEY_WEBVIEW: "/app/bin/mcpelauncher-webview",
+        c.CONFIG_KEY_ERROR: "/app/bin/mcpelauncher-error",
     }
     for k, v in m.items():
         if not paths.get(k) or (

@@ -70,6 +70,7 @@ finish-args:
   # Variables de entorno necesarias
   - --env=PATH=/app/bin:/usr/bin
   - --env=LD_LIBRARY_PATH=/app/lib:/app/lib/cianova:$LD_LIBRARY_PATH
+  - --env=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 modules:
   - name: libevdev
@@ -79,14 +80,10 @@ modules:
         path: flatlibs/libevdev-1.13.1.tar.xz
 
   - name: libzip
-    buildsystem: cmake
-    build-options:
-# Forzamos la variable global de CMake para el SOVERSION
-      cflags: "-DLIBZIP_SOVERSION=4"
+    buildsystem: cmake-ninja
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
       - -DBUILD_SHARED_LIBS=ON
-      - -DLIBZIP_SOVERSION=4
       - -DCMAKE_INSTALL_LIBDIR=lib
       - -DENABLE_BZIP2=OFF
       - -DENABLE_LZMA=OFF
@@ -96,15 +93,11 @@ modules:
       - -DBUILD_TOOLS=OFF
     sources:
       - type: archive
-        path: flatlibs/libzip-1.7.3.tar.xz
+        path: flatlibs/libzip-1.11.3.tar.xz
     post-install:
-      # Si por alguna razón CMake genera libzip.so.5, creamos un enlace 
-      # simbólico para que el Launcher no falle al buscar libzip.so.4
-      - |
-        if [ ! -f /app/lib/libzip.so.4 ]; then
-          ln -s libzip.so.5 /app/lib/libzip.so.4
-        fi
-      - ls -la /app/lib/libzip.so.4
+      # Symlink para compatibilidad con binarios viejos que buscan libzip.so.4
+      - ln -s libzip.so.5 /app/lib/libzip.so.4
+      - ls -la /app/lib/libzip.so.5 /app/lib/libzip.so.4
   # Módulo principal del launcher con dependencias Python
   - name: cianova-launcher
     buildsystem: simple
@@ -120,13 +113,17 @@ modules:
       - cp -r bin/* /app/bin/ || true
       - chmod +x /app/bin/* || true
 
+      # Eliminar libharfbuzz empaquetado (v8) que entra en conflicto con
+      # el del runtime KDE 6.10 (v11) — libharfbuzz-subset necesita hb_free
+      - rm -f /app/lib/cianova/_internal/libharfbuzz.so.0
+
       # Pasar los lib necesarios
       - mkdir -p /app/share/mcpelauncher || true
       - cp -r libs_mc/lib /app/share/mcpelauncher/
       - cp libs_mc/gamecontrollerdb.txt /app/share/mcpelauncher/ || true
 
       # Copiar icono
-      - install -Dm644 icon.png /app/share/icons/hicolor/256x256/apps/org.cianova.Launcher.png
+      - install -Dm644 org.cianova.Launcher.png /app/share/icons/hicolor/256x256/apps/org.cianova.Launcher.png
 
       # Crear archivo .desktop
       - |

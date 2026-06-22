@@ -124,8 +124,8 @@ class SettingsTab(QWidget):
         self.combo_settings_mode = QComboBox()
         self.combo_settings_mode.addItems(modes_display)
         current_mode = self.app.config.get(c.CONFIG_KEY_MODE, c.t("UI_DEFAULT_MODE"))
-        self.combo_settings_mode.setCurrentText(c.t("UI_BIN_MODES").get(current_mode, c.t("UI_BIN_MODES")[c.MODE_BIN_SYSTEM]))
-        self.combo_settings_mode.currentTextChanged.connect(self.on_settings_mode_change)
+        initial_display = c.t("UI_BIN_MODES").get(current_mode, c.t("UI_BIN_MODES")[c.MODE_BIN_SYSTEM])
+        self.combo_settings_mode.setCurrentText(initial_display)
         self.combo_settings_mode.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         layout.addWidget(self.combo_settings_mode)
 
@@ -171,6 +171,10 @@ class SettingsTab(QWidget):
             self.inputs[key] = (e, b, f)
 
         self.scroll_layout.addWidget(frame)
+
+        # Connect AFTER inputs exist, then apply initial mode state
+        self.combo_settings_mode.currentTextChanged.connect(self.on_settings_mode_change)
+        self.on_settings_mode_change(self.combo_settings_mode.currentText())
 
     def setup_actions_section(self):
         """Build the save and restore-defaults buttons section."""

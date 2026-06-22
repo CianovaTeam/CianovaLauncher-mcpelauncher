@@ -142,10 +142,10 @@ class Logger:
             return open(self._log_file, mode, encoding="utf-8", errors="replace")
         return None
 
-    def info(self, msg): self.logger.info(msg)
-    def error(self, msg): self.logger.error(msg)
-    def warning(self, msg): self.logger.warning(msg)
-    def debug(self, msg): self.logger.debug(msg)
+    def info(self, msg, *args, **kwargs): self.logger.info(msg, *args, **kwargs)
+    def error(self, msg, *args, **kwargs): self.logger.error(msg, *args, **kwargs)
+    def warning(self, msg, *args, **kwargs): self.logger.warning(msg, *args, **kwargs)
+    def debug(self, msg, *args, **kwargs): self.logger.debug(msg, *args, **kwargs)
 
 # Global instance
 logger = Logger()

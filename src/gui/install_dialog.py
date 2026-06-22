@@ -3,9 +3,11 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QTabWidget, QWidget, QComboBox, QProgressBar)
 from PySide6.QtCore import Qt, QThread, Signal, QProcess, QTimer
 import os
+import ssl
 import zipfile
 import re
 import urllib.request
+import urllib.error
 import json
 import threading
 from src.gui import custom_dialogs as messagebox
@@ -27,12 +29,24 @@ class VersionFetcher(QThread):
         """Fetch version manifest data and emit finished or error signal."""
         try:
             url = c.VERSION_MANIFEST_URL.format(arch=self.arch)
-            with urllib.request.urlopen(url, timeout=10) as response:
-                if response.status == 200:
-                    data = json.loads(response.read().decode())
-                    self.finished.emit(data)
-                else:
-                    self.error.emit(f"HTTP {response.status}")
+            ctx = ssl.create_default_context()
+            try:
+                with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
+                    if response.status == 200:
+                        data = json.loads(response.read().decode())
+                        self.finished.emit(data)
+                    else:
+                        self.error.emit(f"HTTP {response.status}")
+            except urllib.error.URLError:
+                # Fallback: unverified SSL (some flatpak runtimes lack CA certs)
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
+                    if response.status == 200:
+                        data = json.loads(response.read().decode())
+                        self.finished.emit(data)
+                    else:
+                        self.error.emit(f"HTTP {response.status}")
         except Exception as e:
             self.error.emit(str(e))
 
@@ -43,14 +57,26 @@ class VersionWarningsFetcher(QThread):
 
     def run(self):
         try:
-            with urllib.request.urlopen(c.VERSION_WARNINGS_URL, timeout=8) as response:
-                if response.status == 200:
-                    data = json.loads(response.read().decode())
-                    self.finished.emit(data.get("warnings", []))
-                else:
-                    self.finished.emit([])
+            ctx = ssl.create_default_context()
+            try:
+                with urllib.request.urlopen(c.VERSION_WARNINGS_URL, timeout=8, context=ctx) as response:
+                    if response.status == 200:
+                        data = json.loads(response.read().decode())
+                        self.finished.emit(data.get("warnings", []))
+                    else:
+                        self.finished.emit([])
+            except urllib.error.URLError:
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                with urllib.request.urlopen(c.VERSION_WARNINGS_URL, timeout=8, context=ctx) as response:
+                    if response.status == 200:
+                        data = json.loads(response.read().decode())
+                        self.finished.emit(data.get("warnings", []))
+                    else:
+                        self.finished.emit([])
         except Exception as e:
             self.finished.emit([])
+
 
 class GooglePlayTab(QWidget):
     """Tab widget for searching and installing versions from Google Play."""
@@ -138,26 +164,36 @@ class GooglePlayTab(QWidget):
             f"color: {c.COLOR_PRIMARY_GREEN}; font-weight: bold; font-size: 11px;"
         )
 
+        # Create poll timer BEFORE launching to avoid race:
+        # if process exits before the timer exists, on_finished tries to
+        # stop a nonexistent timer and leaves the UI stuck in "loading".
+        self._login_poll_count = 0
+        self._login_poll_max = 30  # 30 * 2s = 60s
+        self._login_poll_timer = QTimer(self)
+        self._login_poll_timer.timeout.connect(self._poll_login_status)
+
         def on_signin_finished(exit_code):
             # Re-enable login and refresh session immediately when signin window closes
             self.btn_login.setEnabled(True)
-            if getattr(self, "_login_poll_timer", None):
+            if self._login_poll_timer.isActive():
                 self._login_poll_timer.stop()
             self.update_session_status()
 
         proc = self.app.logic.launch_google_login(self.app, on_finished=on_signin_finished)
         if proc is None:
             self.btn_login.setEnabled(True)
+            if self._login_poll_timer.isActive():
+                self._login_poll_timer.stop()
             self.update_session_status()
             return
 
-        # Backup poll: check every 2s up to 60s in case `finished` fails
-        # to fire (e.g. detached child) or token is written before window closes.
-        self._login_poll_count = 0
-        self._login_poll_max = 30  # 30 * 2s = 60s
-        self._login_poll_timer = QTimer(self)
-        self._login_poll_timer.timeout.connect(self._poll_login_status)
-        self._login_poll_timer.start(2000)
+        # Only start the poll timer if the process is still running
+        # (sometimes QProcess finishes before we get here)
+        if proc.state() == QProcess.NotRunning:
+            # Already finished; on_finished already ran and cleaned up
+            logger.debug("do_login: signin process already finished, skipping poll timer")
+        else:
+            self._login_poll_timer.start(2000)
 
     def _poll_login_status(self):
         self._login_poll_count += 1

@@ -9,7 +9,7 @@ import glob
 import urllib.request
 import urllib.parse
 import urllib.error
-from PySide6.QtCore import QTimer, QProcess, QObject, Signal
+from PySide6.QtCore import QTimer, QProcess, QProcessEnvironment, QObject, Signal
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
 from src.core.version_ops import resolve_version
@@ -199,6 +199,23 @@ def launch_google_login(app, on_finished=None):
     Devuelve el QProcess (None si falla el lanzamiento).
     """
     bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_SIGNIN_UI, "playdl-signin-ui-qt")
+    if not bin_path:
+        logger.error("launch_google_login: signin_ui binary path is empty")
+        if on_finished:
+            on_finished(-1)
+        return None
+
+    if not os.path.isfile(bin_path) and not shutil.which(bin_path):
+        logger.error("launch_google_login: binary not found: %s", bin_path)
+        try:
+            messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                                 c.t("UI_GOOGLE_SIGNIN_LAUNCH_FAILED", bin_path=bin_path))
+        except Exception:
+            pass
+        if on_finished:
+            on_finished(-1)
+        return None
+
     workdir = get_signin_workdir(app)
     logger.debug("launch_google_login: bin=%s workdir=%s flatpak=%s", bin_path, workdir, app.running_in_flatpak)
 
@@ -206,17 +223,20 @@ def launch_google_login(app, on_finished=None):
     proc.setWorkingDirectory(workdir)
     proc.setProcessChannelMode(QProcess.SeparateChannels)
 
-    if app.running_in_flatpak:
-        fs = shutil.which("flatpak-spawn")
-        if fs:
-            proc.setProgram(fs)
-            proc.setArguments(["--host", bin_path])
-        else:
-            proc.setProgram(bin_path)
-    else:
-        proc.setProgram(bin_path)
+    # Run inside the sandbox — playdl-signin-ui-qt has X11/Wayland access
+    # via finish-args and lives at /app/bin/ inside the Flatpak.
+    proc.setProgram(bin_path)
 
-    state = {"stdout": b""}
+    if app.running_in_flatpak:
+        # Clear LD_LIBRARY_PATH so the linker does NOT see the PyInstaller
+        # bundle at /app/lib/cianova (which bundles an older Qt6). The
+        # signin binary must resolve Qt6 exclusively from the KDE runtime
+        # at /usr/lib/x86_64-linux-gnu/ where 6.10.3 lives.
+        env = QProcessEnvironment.systemEnvironment()
+        env.remove("LD_LIBRARY_PATH")
+        proc.setProcessEnvironment(env)
+
+    state = {"stdout": b"", "stderr": b""}
 
     def _drain():
         try:
@@ -225,8 +245,15 @@ def launch_google_login(app, on_finished=None):
                 state["stdout"] += data
         except Exception as e:
             logger.error(f"Signin stdout read error: {e}")
+        try:
+            data = bytes(proc.readAllStandardError())
+            if data:
+                state["stderr"] += data
+        except Exception as e:
+            logger.error(f"Signin stderr read error: {e}")
 
     proc.readyReadStandardOutput.connect(_drain)
+    proc.readyReadStandardError.connect(_drain)
 
     def _on_done(code, _status):
         _drain()
@@ -234,9 +261,16 @@ def launch_google_login(app, on_finished=None):
             text = state["stdout"].decode("utf-8", errors="replace")
         except Exception:
             text = ""
+        try:
+            err_text = state["stderr"].decode("utf-8", errors="replace")
+        except Exception:
+            err_text = ""
         fields = _parse_signin_output(text)
-        logger.debug("signin-ui finished code=%s stdout_len=%d fields=%s",
-            code, len(text), {k: (len(v) if v else 0) for k, v in fields.items()})
+        logger.debug("signin-ui finished code=%s stdout_len=%d stderr_len=%d fields=%s",
+            code, len(text), len(err_text),
+            {k: (len(v) if v else 0) for k, v in fields.items()})
+        if err_text.strip():
+            logger.debug("signin-ui stderr:\n%s", err_text.strip())
 
         access_token = fields.get("user_token", "").strip()
         email = fields.get("user_email", "").strip()
@@ -264,6 +298,16 @@ def launch_google_login(app, on_finished=None):
                 messagebox.showwarning(app, c.t("UI_ERROR_TITLE"), c.t("UI_GOOGLE_SIGNIN_NO_TOKEN"))
             except Exception:
                 pass
+
+        if not wrote and code != 0 and not access_token:
+            # Binary exited with error — show the exit code and stderr
+            tail = err_text.strip()[-300:] if err_text.strip() else "(no stderr output)"
+            msg = c.t("UI_GOOGLE_SIGNIN_LAUNCH_FAILED", bin_path=bin_path)
+            msg += f"\n\nExit code: {code}\n\n{tail}"
+            try:
+                messagebox.showerror(app, c.t("UI_ERROR_TITLE"), msg)
+            except Exception:
+                logger.error(f"Signin exit code={code} stderr={err_text}")
 
         if on_finished is not None:
             on_finished(code)

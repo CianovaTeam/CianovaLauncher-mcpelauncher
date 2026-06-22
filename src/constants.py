@@ -153,7 +153,7 @@ VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/PlaGaPlusDev/mcpelaunc
 # ── Update checker ──
 UPDATE_CHECK_URL = "https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/version.json"
 UPDATE_CHECK_INTERVAL = 86400  # 24h between automatic checks
-VERSION_WARNINGS_URL = "https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/version-warnings.json"
+VERSION_WARNINGS_URL = "https://raw.githubusercontent.com/PlaGaPlusDev/mcpelauncher-versiondb/master/version-warnings.json"
 
 
 # ═══════════════════════════════════════════
