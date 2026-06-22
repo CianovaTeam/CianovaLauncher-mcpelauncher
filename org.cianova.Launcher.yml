@@ -67,8 +67,9 @@ finish-args:
   - --filesystem=xdg-run/discord-ipc-0
   - --filesystem=xdg-run/app/com.discordapp.Discord
 
-  # Bus de sesión D-Bus — necesario para Qt6 WebEngine (portals, sandbox IPC)
+  # Buses D-Bus — necesarios para Qt6 WebEngine (portals, sandbox IPC, sys bus)
   - --socket=session-bus
+  - --socket=system-bus
 
   # Variables de entorno necesarias
   - --env=PATH=/app/bin:/usr/bin
@@ -77,7 +78,10 @@ finish-args:
   # Qt6 WebEngine QML modules provided by the base extension (io.qt.qtwebengine.BaseApp)
   # live at /app/lib/qml/ inside the sandbox. QML engine needs this path to find
   # the QtWebEngine QML plugin required by mcpelauncher-webview.
-  - --env=QML2_IMPORT_PATH=/app/lib/qml
+  # QML2_IMPORT_PATH (Qt5 compat) and QML_IMPORT_PATH are both set. Also include
+  # the runtime's default QML path (/usr/lib/qml/) as a fallback.
+  - --env=QML_IMPORT_PATH=/app/lib/qml:/usr/lib/qml
+  - --env=QML2_IMPORT_PATH=/app/lib/qml:/usr/lib/qml
   # Chromium/WebEngine sandbox conflicts with Flatpak's own sandboxing (zygote
   # fails to spawn child processes). Disable the inner sandbox — Flatpak already
   # provides process isolation.
@@ -123,6 +127,15 @@ modules:
       - mkdir -p /app/bin
       - cp -r bin/* /app/bin/ || true
       - chmod +x /app/bin/* || true
+
+      # qt.conf para que las apps Qt6 (mcpelauncher-webview, playdl-signin-ui-qt)
+      # encuentren los módulos QML tanto del runtime KDE (/usr/lib/qml/) como
+      # del base extension QtWebEngine (/app/lib/qml/).
+      - |
+        cat > /app/bin/qt.conf << EOF
+        [Paths]
+        Qml2Imports = /app/lib/qml:/usr/lib/qml
+        EOF
 
       # Eliminar libharfbuzz empaquetado (v8) que entra en conflicto con
       # el del runtime KDE 6.10 (v11) — libharfbuzz-subset necesita hb_free
