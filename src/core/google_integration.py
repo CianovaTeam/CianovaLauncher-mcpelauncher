@@ -67,10 +67,6 @@ def check_google_session(app):
     try:
         bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYVER, "gplayver")
         cmd = [bin_path, "-nv", "-a", "com.mojang.minecraftpe", "--accept-tos"]
-        if app.running_in_flatpak:
-            fs = shutil.which("flatpak-spawn")
-            if fs:
-                cmd = [fs, "--host"] + cmd
         res = subprocess.run(cmd, capture_output=True, timeout=3)
         return res.returncode == 0
     except Exception:
@@ -423,7 +419,10 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
     signals.finished.connect(finished_callback)
 
     def run_flow():
-        temp_apk = os.path.join(tempfile.gettempdir(), f"minecraft_{vcode}.apk")
+        signin_cwd = get_signin_workdir(app)
+        # Write APK to signin_cwd (inside home, accessible from any sandbox via
+        # --filesystem=home) instead of /tmp/ which is sandbox-private.
+        temp_apk = os.path.join(signin_cwd, f"minecraft_{vcode}.apk")
         logger.debug("run_flow: temp_apk=%s", temp_apk)
         device_conf = os.path.join(target_root, "device.conf")
         try:
@@ -435,7 +434,6 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             signals.status.emit(c.t("UI_STATUS_DOWNLOADING"))
 
             bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYDL, "gplaydl")
-            signin_cwd = get_signin_workdir(app)
 
             token = ""
             user_email = ""
@@ -467,11 +465,9 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                 cmd += ["-v", str(vcode_int)]
             cmd += ["-o", temp_apk]
 
-            if app.running_in_flatpak:
-                fs = shutil.which("flatpak-spawn")
-                if fs:
-                    cmd = [fs, "--host"] + cmd
-
+            # gplaydl runs inside the sandbox — it has network access via
+            # --share=network and writes to signin_cwd in the home directory
+            # (accessible from any flatpak sandbox via --filesystem=home).
             logger.debug("gplaydl cwd=%s", signin_cwd)
             logger.debug("gplaydl cmd=%s", " ".join(cmd))
             logger.debug("device.conf=%s exists=%s", dev_conf, os.path.exists(dev_conf) if dev_conf else False)

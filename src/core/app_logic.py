@@ -216,6 +216,13 @@ def launch_game(app):
         return
 
     env = os.environ.copy()
+    if app.running_in_flatpak:
+        # Clear LD_LIBRARY_PATH so child processes (mcpelauncher-client,
+        # mcpelauncher-webview) resolve ALL libraries — including Qt6 —
+        # exclusively from the KDE runtime via ld.so.cache. The PyInstaller
+        # bundle at /app/lib/cianova/_internal bundles an older Qt6 that
+        # conflicts with the runtime's 6.10.3 private ABI symbols.
+        env.pop("LD_LIBRARY_PATH", None)
     extra_env = {}
     if app.config.get(c.CONFIG_KEY_CUSTOM_ENV_ENABLED, False):
         custom_vars = app.config.get(c.CONFIG_KEY_CUSTOM_ENV_VARS, "")

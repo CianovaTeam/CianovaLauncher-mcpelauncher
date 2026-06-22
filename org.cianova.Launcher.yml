@@ -67,10 +67,21 @@ finish-args:
   - --filesystem=xdg-run/discord-ipc-0
   - --filesystem=xdg-run/app/com.discordapp.Discord
 
+  # Bus de sesión D-Bus — necesario para Qt6 WebEngine (portals, sandbox IPC)
+  - --socket=session-bus
+
   # Variables de entorno necesarias
   - --env=PATH=/app/bin:/usr/bin
   - --env=LD_LIBRARY_PATH=/app/lib:/app/lib/cianova:$LD_LIBRARY_PATH
   - --env=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+  # Qt6 WebEngine QML modules provided by the base extension (io.qt.qtwebengine.BaseApp)
+  # live at /app/lib/qml/ inside the sandbox. QML engine needs this path to find
+  # the QtWebEngine QML plugin required by mcpelauncher-webview.
+  - --env=QML2_IMPORT_PATH=/app/lib/qml
+  # Chromium/WebEngine sandbox conflicts with Flatpak's own sandboxing (zygote
+  # fails to spawn child processes). Disable the inner sandbox — Flatpak already
+  # provides process isolation.
+  - --env=QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
 
 modules:
   - name: libevdev
