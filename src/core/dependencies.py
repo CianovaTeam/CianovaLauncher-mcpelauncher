@@ -25,10 +25,14 @@ def verify_dependencies(app):
         try:
             fs = shutil.which("flatpak-spawn")
             if fs:
-                res = subprocess.check_output([fs, "--host", "flatpak", "list", "--runtime"], text=True)
+                res = subprocess.check_output([fs, "--host", "flatpak", "list", "--runtime"],
+                                              text=True, timeout=15)
             else:
-                res = subprocess.check_output(["flatpak", "list", "--runtime"], text=True)
+                res = subprocess.check_output(["flatpak", "list", "--runtime"],
+                                              text=True, timeout=15)
             t_det.setPlainText(res)
+        except subprocess.TimeoutExpired:
+            t_det.setPlainText("La consulta de runtimes excedió el tiempo de espera (15s).")
         except Exception:
             t_det.setPlainText("Error al obtener lista de runtimes del host.")
         l.addWidget(t_det)

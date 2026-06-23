@@ -233,6 +233,9 @@ def launch_google_login(app, on_finished=None):
         # at /usr/lib/x86_64-linux-gnu/ where 6.10.3 lives.
         env = QProcessEnvironment.systemEnvironment()
         env.remove("LD_LIBRARY_PATH")
+        # Clear QT_STYLE_OVERRIDE — kvantum is not available inside the sandbox
+        # and can cause crashes in the Qt style resolution on some systems.
+        env.remove("QT_STYLE_OVERRIDE")
         # Ensure QT_PLUGIN_PATH includes the KDE runtime's plugin directory
         # (/usr/lib/plugins). The flatpak runtime sets QT_PLUGIN_PATH to
         # /app/lib/plugins:/usr/share/runtime/lib/plugins by default, which

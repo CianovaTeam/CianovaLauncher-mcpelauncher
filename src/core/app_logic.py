@@ -223,6 +223,11 @@ def launch_game(app):
         # bundle at /app/lib/cianova/_internal bundles an older Qt6 that
         # conflicts with the runtime's 6.10.3 private ABI symbols.
         env.pop("LD_LIBRARY_PATH", None)
+        # Clear QT_STYLE_OVERRIDE — the KDE runtime sets it to "kvantum"
+        # by default, but kvantum is not available inside the sandbox.
+        # Qt falls back safely, but on some systems this causes a crash
+        # in the style resolution logic.
+        env.pop("QT_STYLE_OVERRIDE", None)
         # Ensure QML import paths are set for mcpelauncher-webview (inherits
         # env via QProcess from mcpelauncher-client). The QtWebEngine QML
         # module lives at /app/lib/qml/QtWebEngine/ from the base extension.

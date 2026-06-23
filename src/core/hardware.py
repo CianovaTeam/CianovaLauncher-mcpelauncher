@@ -3,6 +3,7 @@ import re
 import subprocess
 import platform
 import shutil
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QFrame
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
@@ -30,12 +31,12 @@ def _detect_gl_version(app):
     gl_ver = "Unknown"
     try:
         cmd = ["sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
-        gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
+        gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=10).strip()
     except Exception:
         if app.running_in_flatpak:
             try:
                 cmd = ["flatpak-spawn", "--host", "sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
-                gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
+                gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=15).strip()
             except Exception:
                 pass
     return gl_ver
@@ -135,15 +136,22 @@ def show_hw_results(app, txt):
     log_header.addStretch()
 
     log_combo = QComboBox()
-    log_dir = os.path.join(os.path.expanduser("~"), ".local/share/mcpelauncher/logs")
+    if app.running_in_flatpak:
+        log_dir = os.path.join(app.our_data_path, "logs")
+    else:
+        log_dir = os.path.join(app.compiled_path, "logs")
     current_log = os.path.basename(logger.log_file) if logger.log_file else None
     log_files = []
     if os.path.isdir(log_dir):
         for f in os.listdir(log_dir):
-            if f.startswith("cianovalauncher-") and f.endswith(".log") and f != current_log:
+            if f.startswith("cianovalauncher-") and f.endswith(".log"):
                 log_files.append(f)
         log_files.sort(reverse=True)
+    if current_log:
+        log_combo.addItem("🔴 En vivo — log actual", current_log)
     for f in log_files:
+        if f == current_log:
+            continue
         log_combo.addItem(f)
     log_header.addWidget(log_combo)
 
@@ -158,20 +166,58 @@ def show_hw_results(app, txt):
 
     l.addWidget(log_frame)
 
+    _timer = None
+    _showing_current = False
+
     def load_log(fname):
+        nonlocal _showing_current
+        _showing_current = False
+        if _timer:
+            _timer.stop()
         path = os.path.join(log_dir, fname)
         try:
             with open(path, "r", encoding="utf-8", errors="replace") as f:
                 log_view.setPlainText(f.read())
+            log_view.verticalScrollBar().setValue(log_view.verticalScrollBar().maximum())
         except Exception as e:
             log_view.setPlainText(f"Error reading log: {e}")
 
+    def load_current_log():
+        nonlocal _showing_current
+        _showing_current = True
+        if not current_log:
+            return
+        path = os.path.join(log_dir, current_log)
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                log_view.setPlainText(f.read())
+            log_view.verticalScrollBar().setValue(log_view.verticalScrollBar().maximum())
+        except Exception:
+            pass
+
+    def refresh_current():
+        if not _showing_current or not current_log:
+            return
+        path = os.path.join(log_dir, current_log)
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                log_view.setPlainText(f.read())
+            log_view.verticalScrollBar().setValue(log_view.verticalScrollBar().maximum())
+        except Exception:
+            pass
+
     def on_log_change(idx):
-        if idx >= 0 and idx < log_combo.count():
+        if idx < 0 or idx >= log_combo.count():
+            return
+        if current_log and idx == 0:
+            load_current_log()
+            if _timer:
+                _timer.start(2000)
+        else:
             load_log(log_combo.currentText())
 
     def export_log():
-        fname = log_combo.currentText()
+        fname = log_combo.currentData() or log_combo.currentText()
         if not fname:
             return
         src = os.path.join(log_dir, fname)
@@ -187,7 +233,13 @@ def show_hw_results(app, txt):
     log_combo.currentIndexChanged.connect(on_log_change)
     export_btn.clicked.connect(export_log)
 
-    if log_files:
+    _timer = QTimer(d)
+    _timer.timeout.connect(refresh_current)
+
+    if current_log:
+        load_current_log()
+        _timer.start(2000)
+    elif log_files:
         load_log(log_files[0])
 
     # ── Close button ──
