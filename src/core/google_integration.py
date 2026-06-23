@@ -230,6 +230,15 @@ def launch_google_login(app, on_finished=None):
         # at /usr/lib/x86_64-linux-gnu/ where 6.10.3 lives.
         env = QProcessEnvironment.systemEnvironment()
         env.remove("LD_LIBRARY_PATH")
+        # Ensure QT_PLUGIN_PATH includes the KDE runtime's plugin directory
+        # (/usr/lib/plugins). The flatpak runtime sets QT_PLUGIN_PATH to
+        # /app/lib/plugins:/usr/share/runtime/lib/plugins by default, which
+        # does NOT include /usr/lib/plugins — where the xcb/wayland platform
+        # plugins live. Without it, playdl-signin-ui-qt fails with
+        # "Could not find the Qt platform plugin".
+        pp = env.value("QT_PLUGIN_PATH", "")
+        if "/usr/lib/plugins" not in pp:
+            env.insert("QT_PLUGIN_PATH", (pp + ":" if pp else "") + "/usr/lib/plugins")
         proc.setProcessEnvironment(env)
 
     state = {"stdout": b"", "stderr": b""}
