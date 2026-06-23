@@ -67,7 +67,10 @@ def check_google_session(app):
     try:
         bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYVER, "gplayver")
         cmd = [bin_path, "-nv", "-a", "com.mojang.minecraftpe", "--accept-tos"]
-        res = subprocess.run(cmd, capture_output=True, timeout=3)
+        gv_env = os.environ.copy()
+        if app.running_in_flatpak:
+            gv_env.pop("LD_LIBRARY_PATH", None)
+        res = subprocess.run(cmd, capture_output=True, timeout=3, env=gv_env)
         return res.returncode == 0
     except Exception:
         pass
@@ -483,9 +486,13 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             logger.debug("playdl.conf exists=%s token_len=%d email=%s",
                 os.path.exists(os.path.join(signin_cwd, "playdl.conf")), len(token), user_email)
 
+            gplay_env = None
+            if app.running_in_flatpak:
+                gplay_env = os.environ.copy()
+                gplay_env.pop("LD_LIBRARY_PATH", None)
             process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                       bufsize=0, cwd=signin_cwd)
+                                       bufsize=0, cwd=signin_cwd, env=gplay_env)
             logger.debug("gplaydl pid=%s", process.pid)
 
             stdout_tail = []
