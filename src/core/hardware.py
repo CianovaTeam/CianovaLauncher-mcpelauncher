@@ -3,22 +3,21 @@ import re
 import subprocess
 import platform
 import shutil
-from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QFrame
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
-from src.utils.logger import logger
 
 
 def _detect_cpu_flags():
-    """Retorna (arch, cpu_flags) desde /proc/cpuinfo."""
+    """Retorna (arch, cpu_flags) desde /proc/cpuinfo.
+    Soporta x86 (flags) y ARM (Features)."""
     arch = platform.machine()
     cpu_flags = []
     try:
         if os.path.exists("/proc/cpuinfo"):
             with open("/proc/cpuinfo") as f:
                 content = f.read()
-                m_flags = re.search(r"flags\s*:\s*(.*)", content)
+                m_flags = re.search(r"(?:flags|Features)\s*:\s*(.*)", content)
                 if m_flags:
                     cpu_flags = m_flags.group(1).split()
     except Exception:
@@ -27,31 +26,84 @@ def _detect_cpu_flags():
 
 
 def _detect_gl_version(app):
-    """Retorna string de OpenGL ES profile version via glxinfo."""
+    """Retorna la línea completa de OpenGL ES profile version via glxinfo, o 'Unknown'."""
     gl_ver = "Unknown"
     try:
         cmd = ["sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
-        gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=10).strip()
+        gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=3).strip()
     except Exception:
         if app.running_in_flatpak:
             try:
                 cmd = ["flatpak-spawn", "--host", "sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
-                gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=15).strip()
+                gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=5).strip()
             except Exception:
                 pass
     return gl_ver
 
 
+def _parse_es_major_minor(gl_ver):
+    """Extrae (major, minor) de la línea de OpenGL ES version, ej: OpenGL ES 3.2 → (3, 2)."""
+    m = re.search(r"OpenGL ES (\d+)\.(\d+)", gl_ver)
+    if m:
+        return (int(m.group(1)), int(m.group(2)))
+    return None
+
+
 def _compute_compatibility(arch, cpu_flags, gl_ver):
-    """Retorna string de rango de compatibilidad."""
-    has_sse = all(f in cpu_flags for f in ["ssse3", "sse4_1", "sse4_2", "popcnt"])
-    if arch == "x86_64" and has_sse:
-        if "3.1" in gl_ver or "3.2" in gl_ver:
-            return "1.13.0 - 1.21.130+"
-        if "3.0" in gl_ver:
+    """Retorna string de rango de compatibilidad.
+
+    Basado en la tabla oficial de mcpelauncher-manifest:
+      https://github.com/minecraft-linux/mcpelauncher-manifest
+    """
+    es_ver = _parse_es_major_minor(gl_ver)
+    if es_ver is None:
+        es_ver = (3, 0)  # GL desconocido → asumir ES 3.0 (rango medio)
+
+    # x86_64: requiere SSSE3 + SSE4.1 + SSE4.2 + POPCNT
+    if arch == "x86_64":
+        has_sse = all(f in cpu_flags for f in ["ssse3", "sse4_1", "sse4_2", "popcnt"])
+        if not has_sse:
+            return c.t("UI_INCOMPATIBLE_TEXT")
+        if es_ver >= (3, 2):
+            return "1.13.0 - 1.26.0+"
+        if es_ver >= (3, 1):
+            return "1.13.0 - 1.21.132"
+        if es_ver >= (3, 0):
             return "1.13.0 - 1.21.124"
-        if "2.0" in gl_ver:
+        if es_ver >= (2, 0):
             return "1.13.0 - 1.20.20"
+        return c.t("UI_INCOMPATIBLE_TEXT")
+
+    # x86 (32-bit): solo SSSE3
+    if arch in ("i686", "i386"):
+        if "ssse3" not in cpu_flags:
+            return c.t("UI_INCOMPATIBLE_TEXT")
+        if es_ver >= (3, 2):
+            return "1.13.0 - 1.26.0+"
+        if es_ver >= (3, 1):
+            return "1.13.0 - 1.21.132"
+        if es_ver >= (3, 0):
+            return "1.13.0 - 1.21.124"
+        if es_ver >= (2, 0):
+            return "1.13.0 - 1.20.20"
+        return c.t("UI_INCOMPATIBLE_TEXT")
+
+    # ARM: requiere NEON
+    if arch in ("aarch64", "armv7l"):
+        if "neon" not in cpu_flags:
+            return c.t("UI_INCOMPATIBLE_TEXT")
+        if arch == "armv7l":
+            return "1.13.0 - 1.18.10"   # arm32 limit
+        if es_ver >= (3, 2):
+            return "1.13.0 - 1.26.0+"
+        if es_ver >= (3, 1):
+            return "1.13.0 - 1.21.132"
+        if es_ver >= (3, 0):
+            return "1.13.0 - 1.21.124"
+        if es_ver >= (2, 0):
+            return "1.13.0 - 1.20.20"
+        return c.t("UI_INCOMPATIBLE_TEXT")
+
     return c.t("UI_INCOMPATIBLE_TEXT")
 
 
@@ -90,12 +142,20 @@ def check_requirements_dialog(app):
         arch2, cpu_flags = _detect_cpu_flags()
         gl_ver = _detect_gl_version(app)
         compat_ver = _compute_compatibility(arch2, cpu_flags, gl_ver)
-        has_sse = all(f in cpu_flags for f in ["ssse3", "sse4_1", "sse4_2", "popcnt"])
+
+        if arch2 == "x86_64":
+            has_ext = all(f in cpu_flags for f in ["ssse3", "sse4_1", "sse4_2", "popcnt"])
+        elif arch2 in ("i686", "i386"):
+            has_ext = "ssse3" in cpu_flags
+        elif arch2 in ("aarch64", "armv7l"):
+            has_ext = "neon" in cpu_flags
+        else:
+            has_ext = False
 
         return (f"--- {c.t("UI_HW_CPU_INFO")} ---\n" +
                 f"{c.t("UI_HW_MODEL")}: {cpu}\n" +
                 c.t("UI_HW_ARCH", arch=arch) +
-                c.t("UI_HW_CPU_EXT", status='✅' if has_sse else '⚠️') +
+                c.t("UI_HW_CPU_EXT", status='✅' if has_ext else '⚠️') +
                 f"\n--- {c.t("UI_HW_RAM_INFO")} ---\n" +
                 f"{c.t("UI_HW_RAM_TOTAL")}: {ram}\n" +
                 f"\n--- {c.t("UI_HW_GPU_INFO")} ---\n" +
@@ -136,22 +196,15 @@ def show_hw_results(app, txt):
     log_header.addStretch()
 
     log_combo = QComboBox()
-    if app.running_in_flatpak:
-        log_dir = os.path.join(app.our_data_path, "logs")
-    else:
-        log_dir = os.path.join(app.compiled_path, "logs")
+    log_dir = os.path.join(os.path.expanduser("~"), ".local/share/mcpelauncher/logs")
     current_log = os.path.basename(logger.log_file) if logger.log_file else None
     log_files = []
     if os.path.isdir(log_dir):
         for f in os.listdir(log_dir):
-            if f.startswith("cianovalauncher-") and f.endswith(".log"):
+            if f.startswith("cianovalauncher-") and f.endswith(".log") and f != current_log:
                 log_files.append(f)
         log_files.sort(reverse=True)
-    if current_log:
-        log_combo.addItem("🔴 En vivo — log actual", current_log)
     for f in log_files:
-        if f == current_log:
-            continue
         log_combo.addItem(f)
     log_header.addWidget(log_combo)
 
@@ -166,58 +219,20 @@ def show_hw_results(app, txt):
 
     l.addWidget(log_frame)
 
-    _timer = None
-    _showing_current = False
-
     def load_log(fname):
-        nonlocal _showing_current
-        _showing_current = False
-        if _timer:
-            _timer.stop()
         path = os.path.join(log_dir, fname)
         try:
             with open(path, "r", encoding="utf-8", errors="replace") as f:
                 log_view.setPlainText(f.read())
-            log_view.verticalScrollBar().setValue(log_view.verticalScrollBar().maximum())
         except Exception as e:
             log_view.setPlainText(f"Error reading log: {e}")
 
-    def load_current_log():
-        nonlocal _showing_current
-        _showing_current = True
-        if not current_log:
-            return
-        path = os.path.join(log_dir, current_log)
-        try:
-            with open(path, "r", encoding="utf-8", errors="replace") as f:
-                log_view.setPlainText(f.read())
-            log_view.verticalScrollBar().setValue(log_view.verticalScrollBar().maximum())
-        except Exception:
-            pass
-
-    def refresh_current():
-        if not _showing_current or not current_log:
-            return
-        path = os.path.join(log_dir, current_log)
-        try:
-            with open(path, "r", encoding="utf-8", errors="replace") as f:
-                log_view.setPlainText(f.read())
-            log_view.verticalScrollBar().setValue(log_view.verticalScrollBar().maximum())
-        except Exception:
-            pass
-
     def on_log_change(idx):
-        if idx < 0 or idx >= log_combo.count():
-            return
-        if current_log and idx == 0:
-            load_current_log()
-            if _timer:
-                _timer.start(2000)
-        else:
+        if idx >= 0 and idx < log_combo.count():
             load_log(log_combo.currentText())
 
     def export_log():
-        fname = log_combo.currentData() or log_combo.currentText()
+        fname = log_combo.currentText()
         if not fname:
             return
         src = os.path.join(log_dir, fname)
@@ -233,13 +248,7 @@ def show_hw_results(app, txt):
     log_combo.currentIndexChanged.connect(on_log_change)
     export_btn.clicked.connect(export_log)
 
-    _timer = QTimer(d)
-    _timer.timeout.connect(refresh_current)
-
-    if current_log:
-        load_current_log()
-        _timer.start(2000)
-    elif log_files:
+    if log_files:
         load_log(log_files[0])
 
     # ── Close button ──

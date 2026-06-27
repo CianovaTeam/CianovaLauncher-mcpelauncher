@@ -191,7 +191,7 @@ class AddonManagerDialog(QDialog):
 
         filtered = [
             a for a in self.addons_data
-            if (a["folder"] == folder_filter or (folder_filter == "resource_packs" and a["folder"] not in ["minecraftWorlds", "behavior_packs"]))
+            if (a["folder"] == folder_filter or (folder_filter == "resource_packs" and a["folder"] in ("resource_packs", "skin_packs", "custom_skins")))
             and (not search_query or search_query in a["name"].lower() or search_query in a["description"].lower())
         ]
         filtered.sort(key=lambda x: x["name"].lower())
@@ -353,7 +353,7 @@ class AddonManagerDialog(QDialog):
             file_path = dialogs.ask_open_filename_native(
                 self,
                 title=c.t("UI_OPEN_FILE_TITLE"),
-                filetypes=[(c.t("UI_MCPACK_FILES_TYPE"), "*.mcpack *.mcaddon *.mcworld *.mcworldtemplate"), (c.t("UI_ALL_FILES_TYPE"), "*.*")]
+                filetypes=[(c.t("UI_MCPACK_FILES_TYPE"), "*.mcpack *.mcaddon *.mcworld *.mcworldtemplate *.mctemplate"), (c.t("UI_ALL_FILES_TYPE"), "*.*")]
             )
             if not file_path: return
             self._install_task([file_path])

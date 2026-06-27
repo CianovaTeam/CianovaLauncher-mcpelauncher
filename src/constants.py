@@ -34,11 +34,11 @@ import os
 
 # --- Información de la Aplicación ---
 APP_NAME = "CianovaLauncher"
-VERSION_LAUNCHER = "3.0"
+VERSION_LAUNCHER = "3.1"
 BINARY_VERSION_INFO = "v1.7.4-official"  # Default for Flatpak or if not found
 BINARY_VERSION_FALLBACK = "PreCompiled Binaries from mcpelauncher Github"
-DEVELOPERS = "@PlaGaDev"
-UPDATE_NAME = "The Qt6 Evolution"
+DEVELOPERS = "@PlaGaPlusDev and @Leimsoto"
+UPDATE_NAME = "Refinements & Fixes"
 CHANGELOG = f"{UPDATE_NAME}: {APP_NAME} {VERSION_LAUNCHER}"
 CREDITOS = f"Dev: {DEVELOPERS}\nProyecto: {APP_NAME}"
 import re
@@ -67,8 +67,8 @@ LEGAL_TEXT = _load_legal_text()
 
 # --- Setup Wizard Strings ---
 FLATPAK_REQUIRED_RUNTIMES = [
-    "org.kde.Platform//6.10",
-    "io.qt.qtwebengine.BaseApp",
+    "org.kde.Platform//6.9",
+    "io.qt.qtwebengine.BaseApp//6.9",
     "org.freedesktop.Platform.GL.default",
     "org.freedesktop.Platform.VAAPI.Intel"
 ]

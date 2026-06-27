@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QComboBox, QScrollArea, QCheckBox, QPushButton, QFrame)
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from src import constants as c
 
 class PlayTab(QWidget):
@@ -66,7 +66,7 @@ class PlayTab(QWidget):
         version_title_container.addStretch()
         self.lbl_version_title = QLabel(c.t("UI_LABEL_INSTALLED_VERSIONS"))
         self.lbl_version_title.setObjectName("FloatingLabel")
-        self.lbl_version_title.setStyleSheet("font-weight: bold; color: #DCE4EE;")
+        self.lbl_version_title.setStyleSheet("font-weight: bold;")
         version_title_container.addWidget(self.lbl_version_title)
         version_title_container.addStretch()
         self.main_layout.addLayout(version_title_container)
@@ -91,10 +91,22 @@ class PlayTab(QWidget):
         self.opts_layout.setAlignment(Qt.AlignCenter)
         self.main_layout.addLayout(self.opts_layout)
 
-        self.check_close_on_launch = QCheckBox(c.t("UI_CHECKBOX_CLOSE_ON_LAUNCH"))
-        self.check_close_on_launch.setChecked(self.app.config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH, False))
-        self.check_close_on_launch.stateChanged.connect(lambda: self.save_quick_opts())
-        self.opts_layout.addWidget(self.check_close_on_launch)
+        self.lbl_game_status = QLabel(c.t("UI_GAME_STATUS_IDLE"))
+        self.lbl_game_status.setStyleSheet("font-size: 11px; color: gray;")
+        self.opts_layout.addWidget(self.lbl_game_status)
+
+        self.combo_launch_action = QComboBox()
+        self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_CLOSE"), c.LAUNCH_ACTION_CLOSE)
+        self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_HIDE"), c.LAUNCH_ACTION_HIDE)
+        self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_NONE"), c.LAUNCH_ACTION_NONE)
+        current_action = self.app.config.get(c.CONFIG_KEY_LAUNCH_ACTION, c.LAUNCH_ACTION_CLOSE)
+        idx = self.combo_launch_action.findData(current_action)
+        if idx >= 0:
+            self.combo_launch_action.setCurrentIndex(idx)
+        self.combo_launch_action.currentIndexChanged.connect(
+            lambda: self.app.sync_launch_action_ui(self.combo_launch_action.currentData())
+        )
+        self.opts_layout.addWidget(self.combo_launch_action)
 
         self.check_gamemode = QCheckBox(c.t("UI_CHECKBOX_GAMEMODE"))
         self.check_gamemode.setChecked(self.app.config.get(c.CONFIG_KEY_GAMEMODE_ENABLED, False))
@@ -114,7 +126,7 @@ class PlayTab(QWidget):
         self.check_discord.stateChanged.connect(lambda state: (self.app.sync_discord_rpc_ui(state == Qt.Checked.value), self.save_quick_opts()))
         self.opts_layout.addWidget(self.check_discord)
 
-        # 4. Botón Jugar
+        # 4. Botón Jugar (full-width)
         self.btn_launch = QPushButton(c.t("UI_BUTTON_PLAY_NOW"))
         self.btn_launch.setObjectName("PlayButton")
         self.btn_launch.setFixedHeight(50)
@@ -141,18 +153,19 @@ class PlayTab(QWidget):
         current = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT"))
         self.lbl_profile_indicator.setText(f"👤 {c.t("UI_LABEL_PROFILE")} {current}")
 
+    def set_game_status(self, running):
+        if running:
+            self.lbl_game_status.setText(c.t("UI_GAME_STATUS_RUNNING"))
+            self.lbl_game_status.setStyleSheet("font-size: 11px; color: #4CAF50; font-weight: bold;")
+        else:
+            self.lbl_game_status.setText(c.t("UI_GAME_STATUS_IDLE"))
+            self.lbl_game_status.setStyleSheet("font-size: 11px; color: gray;")
+
     def save_quick_opts(self):
-        """Persist the launch option checkboxes (close-on-launch, Discord RPC, debug log) to config."""
-        # Sync values to app config
-        self.app.config[c.CONFIG_KEY_CLOSE_ON_LAUNCH] = self.check_close_on_launch.isChecked()
-        self.app.config[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = self.check_discord.isChecked()
+        """Persist the launch option checkboxes (Discord RPC, debug log) to config."""
+        self.app.config_manager.set(c.CONFIG_KEY_DISCORD_RPC_ENABLED, self.check_discord.isChecked())
         if self.check_debug_log:
-            self.app.config[c.CONFIG_KEY_DEBUG_LOG] = self.check_debug_log.isChecked()
-
-        # Sync with main app logic for consistency across tabs
-        self.app.sync_close_on_launch_ui(self.check_close_on_launch.isChecked())
-
-        self.app.config_manager.save_config()
+            self.app.config_manager.set(c.CONFIG_KEY_DEBUG_LOG, self.check_debug_log.isChecked())
 
     # Helpers to clean children (replacement for winfo_children)
     @property

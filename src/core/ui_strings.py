@@ -10,7 +10,7 @@ from .values import (
 )
 
 UI_SETUP_WIZARD_TITLE = "Asistente de Configuración Inicial"
-UI_SETUP_WELCOME_TITLE = "Bienvenidos a CianovaLauncher v3.0"
+UI_SETUP_WELCOME_TITLE = "Bienvenidos a CianovaLauncher v{VERSION_LAUNCHER}"
 UI_SETUP_WELCOME_SUB = "Gracias por elegir esta herramienta para gestionar tu experiencia en Minecraft Bedrock."
 UI_SETUP_LANG_TITLE = "Selecciona tu Idioma"
 UI_SETUP_APPEARANCE_TITLE = "Personaliza tu Estilo"
@@ -19,7 +19,7 @@ UI_SETUP_LEGAL_CHECK = "He leído y acepto la licencia y los términos de uso"
 UI_SETUP_MIGRATION_TITLE = "¿Deseas migrar tus datos?"
 UI_SETUP_MIGRATION_SUB = "Si utilizabas MCPETool u otro launcher diferente, puedes traer tus mundos y versiones de forma sencilla."
 UI_SETUP_FINISH_TITLE = "Primeros Pasos y Agradecimientos"
-UI_SETUP_FINISH_SUB = """¡Muchas gracias por elegir CianovaLauncher v3.0!
+UI_SETUP_FINISH_SUB = """¡Muchas gracias por elegir CianovaLauncher v{VERSION_LAUNCHER}!
 
 Este proyecto ha sido desarrollado con dedicación para ofrecerte la mejor experiencia en Linux. Aquí tienes un pequeño resumen de lo que puedes hacer:
 
@@ -57,7 +57,13 @@ UI_TAB_ABOUT = " ACERCA DE "
 UI_LABEL_SEARCHING = "● Buscando..."
 UI_LABEL_INSTALLATION = "Instalación:"
 UI_LABEL_INSTALLED_VERSIONS = "Versiones Instaladas"
-UI_CHECKBOX_CLOSE_ON_LAUNCH = "Cerrar al jugar"
+UI_CHECKBOX_CLOSE_ON_LAUNCH = "Cerrar al jugar"  # legacy
+UI_LAUNCH_ACTION_LABEL = "Al lanzar el juego:"
+UI_LAUNCH_ACTION_CLOSE = "Cerrar launcher"
+UI_LAUNCH_ACTION_HIDE = "Ocultar a la bandeja"
+UI_LAUNCH_ACTION_NONE = "No hacer nada"
+UI_GAME_STATUS_RUNNING = "▶ En juego"
+UI_GAME_STATUS_IDLE = "⏹ Inactivo"
 UI_CHECKBOX_GAMEMODE = "Activar GameMode"
 UI_CHECKBOX_DEBUG_LOG = "Ver Log (Terminal)"
 UI_BUTTON_PLAY_NOW = "JUGAR AHORA"
@@ -95,6 +101,12 @@ UI_BUTTON_EXPORT_WORLDS = "Exportar Mundos"
 UI_BUTTON_OPEN_SCREENSHOTS = "Abrir Capturas"
 
 # Pestaña Ajustes
+# --- Categorías de Ajustes ---
+UI_CATEGORY_GENERAL = "General"
+UI_CATEGORY_LAUNCH = "Lanzamiento"
+UI_CATEGORY_APPEARANCE = "Apariencia"
+UI_CATEGORY_INTEGRATIONS = "Integraciones"
+
 UI_SECTION_BINARIES = "Rutas de Binarios"
 
 # Mapeo de Modos de Binarios (Display)
@@ -222,6 +234,7 @@ UI_CUSTOM_ARGS_TOOLTIP = "Permite pasar variables de entorno (KEY=VAL) o argumen
 UI_CUSTOM_ARGS_LABEL = "Argumentos/Variables:"
 
 # --- Discord Rich Presence ---
+UI_DISCORD_RPC_SECTION_TITLE = "Discord Rich Presence"
 UI_DISCORD_RPC_CHECKBOX = "Activar Discord Rich Presence"
 UI_DISCORD_RPC_TOOLTIP = "Muestra en Discord qué versión de Minecraft Bedrock estás jugando con un contador de tiempo. Requiere la librería 'pypresence' instalada y Discord abierto."
 UI_CHECKBOX_DISCORD_RPC = "Mostrar en Discord"
@@ -291,6 +304,8 @@ UI_VERIFYING_PACKAGES_LABEL = "{title} {count} paquetes..."
 UI_INCOMPATIBLE_TEXT = "Incompatible"
 UI_VERSION_TEXT = "Versión: "
 UI_SHADER_STATUS_LABEL = "Estado Shaders: {status}"
+UI_TRAY_SHOW = "Mostrar CianovaLauncher"
+UI_TRAY_QUIT = "Salir"
 UI_GAME_CONFIG_TITLE = "Configurador de Juego"
 UI_TAB_VISUAL = "Interfaz Visual"
 UI_TAB_EDITOR = "Editor Manual"

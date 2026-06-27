@@ -223,25 +223,11 @@ def launch_game(app):
         # bundle at /app/lib/cianova/_internal bundles an older Qt6 that
         # conflicts with the runtime's 6.10.3 private ABI symbols.
         env.pop("LD_LIBRARY_PATH", None)
-        # Clear QT_STYLE_OVERRIDE — the KDE runtime sets it to "kvantum"
-        # by default, but kvantum is not available inside the sandbox.
-        # Qt falls back safely, but on some systems this causes a crash
-        # in the style resolution logic.
-        env.pop("QT_STYLE_OVERRIDE", None)
         # Ensure QML import paths are set for mcpelauncher-webview (inherits
         # env via QProcess from mcpelauncher-client). The QtWebEngine QML
         # module lives at /app/lib/qml/QtWebEngine/ from the base extension.
         env.setdefault("QML_IMPORT_PATH", "/app/lib/qml:/usr/lib/qml")
         env.setdefault("QML2_IMPORT_PATH", "/app/lib/qml:/usr/lib/qml")
-        # Ensure QT_PLUGIN_PATH includes the KDE runtime's plugin directory
-        # (/usr/lib/plugins). The flatpak runtime sets QT_PLUGIN_PATH to
-        # /app/lib/plugins:/usr/share/runtime/lib/plugins by default, which
-        # does NOT include /usr/lib/plugins — where the xcb platform plugin
-        # (libqxcb.so) lives. Without it, mcpelauncher-webview fails with
-        # "Could not find the Qt platform plugin xcb".
-        cur = env.get("QT_PLUGIN_PATH", "")
-        if "/usr/lib/plugins" not in cur:
-            env["QT_PLUGIN_PATH"] = f"{cur}:/usr/lib/plugins" if cur else "/usr/lib/plugins"
     extra_env = {}
     if app.config.get(c.CONFIG_KEY_CUSTOM_ENV_ENABLED, False):
         custom_vars = app.config.get(c.CONFIG_KEY_CUSTOM_ENV_VARS, "")
@@ -337,7 +323,7 @@ def launch_game(app):
                 game_fh.write("-" * 50 + "\n")
                 game_fh.flush()
             try:
-                subprocess.Popen(
+                app._game_process = subprocess.Popen(
                     cmd, env=env, cwd=app.active_path,
                     stdout=game_fh, stderr=subprocess.STDOUT
                 )
@@ -345,12 +331,21 @@ def launch_game(app):
                 if game_fh:
                     game_fh.write(f"[launcher] Popen failed: {e}, falling back to execve\n")
                     game_fh.close()
+                app._game_process = None
                 logger.warning(f"subprocess.Popen failed ({e}), trying os.execve...")
                 os.execve(cmd[0], cmd, env)
 
-        if app.config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH):
+        action = app.config.get(c.CONFIG_KEY_LAUNCH_ACTION, c.LAUNCH_ACTION_CLOSE)
+        if action == c.LAUNCH_ACTION_CLOSE:
             logger.info("Closing launcher as requested on launch.")
             app.close()
+        elif action == c.LAUNCH_ACTION_HIDE:
+            logger.info("Hiding launcher to system tray on launch.")
+            app.hide_to_tray()
+        elif action == c.LAUNCH_ACTION_NONE:
+            logger.info("Launching without closing launcher.")
+            if hasattr(app, 'on_game_launched'):
+                app.on_game_launched()
     except Exception as e:
         logger.error(f"Launch error: {e}")
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"), f"Launch error: {e}")

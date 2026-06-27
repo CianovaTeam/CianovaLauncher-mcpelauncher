@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                             QComboBox, QScrollArea, QFrame, QLineEdit, QPushButton, QCheckBox, QSlider, QGridLayout, QTextEdit)
+                             QComboBox, QScrollArea, QFrame, QLineEdit, QPushButton,
+                             QCheckBox, QSlider, QGridLayout, QTextEdit, QStackedWidget)
 from PySide6.QtCore import Qt
 import os
 from src import constants as c
@@ -8,53 +9,121 @@ from src.utils.dialogs import ask_open_filename_native
 from src.utils.resource_path import resource_path
 
 class SettingsTab(QWidget):
-    """Settings tab with profile, binaries, compatibility, appearance, background, and sticker sections."""
+    """Settings tab with categorized sections using a top category bar and stacked pages."""
+
+    CATEGORIES = [
+        ("general", "UI_CATEGORY_GENERAL"),
+        ("launch", "UI_CATEGORY_LAUNCH"),
+        ("appearance", "UI_CATEGORY_APPEARANCE"),
+        ("integrations", "UI_CATEGORY_INTEGRATIONS"),
+    ]
+
+    # Map category keys to setup method names
+    CATEGORY_METHODS = {
+        "general": ["setup_profiles_section", "setup_actions_section"],
+        "launch": ["setup_binaries_section", "setup_compatibility_section"],
+        "appearance": [
+            "setup_appearance_section", "setup_section_opacity_section",
+            "setup_background_section", "setup_sticker_section",
+        ],
+        "integrations": ["setup_discord_section"],
+    }
+
     def __init__(self, parent, app):
         super().__init__(parent)
         self.app = app
+        self._pages = {}  # key -> (page_widget, scroll_layout)
+        self._cat_buttons = {}
+        self._active_cat = None
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(5, 5, 5, 5)
+        self.main_layout.setSpacing(5)
 
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setStyleSheet("border: none;")
+        # Category bar on top
+        self.setup_category_bar()
 
-        self.scroll_content = QWidget()
-        self.scroll_layout = QVBoxLayout(self.scroll_content)
-        self.scroll_layout.setAlignment(Qt.AlignTop)
+        # Stacked widget — one page per category
+        self.stack = QStackedWidget()
+        self.main_layout.addWidget(self.stack)
 
-        self.scroll_area.setWidget(self.scroll_content)
-        self.main_layout.addWidget(self.scroll_area)
+        # Create a scroll page for each category
+        for key, _ in self.CATEGORIES:
+            self._init_page(key)
 
-        # --- Perfiles ---
-        self.setup_profiles_section()
+        # Run each setup method inside its category page
+        for cat_key, methods in self.CATEGORY_METHODS.items():
+            self._set_active_page(cat_key)
+            for method_name in methods:
+                getattr(self, method_name)()
 
-        # --- Binarios ---
-        self.setup_binaries_section()
-
-        # --- Botones Acción ---
-        self.setup_actions_section()
-
-        # --- Compatibilidad ---
-        self.setup_compatibility_section()
-
-        # --- Apariencia ---
-        self.setup_appearance_section()
-
-        # --- Opacidad Secciones ---
-        self.setup_section_opacity_section()
-
-        # --- Fondo Personalizado ---
-        self.setup_background_section()
-
-        # --- Sticker ---
-        self.setup_sticker_section()
-
-        # Init visual state
+        # Init visual state (needs combo_settings_mode from "launch" category)
+        self._set_active_page("launch")
         self.on_settings_mode_change(self.combo_settings_mode.currentText())
         self.toggle_custom_env()
+
+        # Start on General
+        self._switch_category("general")
+
+    # ── Category infrastructure ──────────────────────────────────
+
+    def _init_page(self, key):
+        """Create a scroll-area page for the given category key."""
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        scroll = QScrollArea()
+        scroll.setObjectName(f"SettingsCategoryPage_{key}")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("border: none;")
+
+        content = QWidget()
+        scroll_layout = QVBoxLayout(content)
+        scroll_layout.setAlignment(Qt.AlignTop)
+        scroll.setWidget(content)
+
+        layout.addWidget(scroll)
+        self.stack.addWidget(page)
+        self._pages[key] = (page, scroll_layout)
+
+    def _set_active_page(self, key):
+        """Point self.scroll_layout to the given category's layout (so existing setup_* methods write to the right page)."""
+        _, self.scroll_layout = self._pages[key]
+
+    def _switch_category(self, key):
+        """Switch the visible stacked page and update button states."""
+        page, _ = self._pages[key]
+        self.stack.setCurrentWidget(page)
+        self._active_cat = key
+        for k, btn in self._cat_buttons.items():
+            active = k == key
+            btn.setProperty("active", active)
+            btn.setChecked(active)
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
+    def setup_category_bar(self):
+        """Build the horizontal row of category buttons above the stacked widget."""
+        bar = QFrame()
+        bar.setObjectName("SettingsCategoryBar")
+        bar.setFixedHeight(42)
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(5, 2, 5, 2)
+        layout.setSpacing(4)
+
+        for key, label_key in self.CATEGORIES:
+            btn = QPushButton(c.t(label_key))
+            btn.setObjectName("CategoryButton")
+            btn.setCheckable(True)
+            btn.setFlat(True)
+            btn.clicked.connect(lambda checked=False, k=key: self._switch_category(k))
+            layout.addWidget(btn)
+            self._cat_buttons[key] = btn
+
+        layout.addStretch()
+        self.main_layout.addWidget(bar)
 
     def setup_profiles_section(self):
         """Build the profile selector and manager button section."""
@@ -224,6 +293,7 @@ class SettingsTab(QWidget):
             fl = QHBoxLayout(f)
             cb = QCheckBox(label)
             cb.setChecked(self.app.config.get(key, False))
+            cb.stateChanged.connect(lambda state, k=key: self.app.config_manager.set(k, state == Qt.Checked.value))
             fl.addWidget(cb)
             btn_info = QPushButton("?")
             btn_info.setObjectName("ToolButton")
@@ -233,14 +303,24 @@ class SettingsTab(QWidget):
             layout.addWidget(f)
             self.checks[key] = cb
 
-        # Close on Launch
-        f_close = QFrame()
-        fl_close = QHBoxLayout(f_close)
-        self.check_close_on_launch = QCheckBox(c.t("UI_CHECKBOX_CLOSE_ON_LAUNCH"))
-        self.check_close_on_launch.setChecked(self.app.config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH, False))
-        self.check_close_on_launch.stateChanged.connect(lambda state: self.app.sync_close_on_launch_ui(state == Qt.Checked.value))
-        fl_close.addWidget(self.check_close_on_launch)
-        layout.addWidget(f_close)
+        # Launch Action
+        f_launch = QFrame()
+        fl_launch = QHBoxLayout(f_launch)
+        fl_launch.addWidget(QLabel(c.t("UI_LAUNCH_ACTION_LABEL")))
+        self.combo_launch_action = QComboBox()
+        self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_CLOSE"), c.LAUNCH_ACTION_CLOSE)
+        self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_HIDE"), c.LAUNCH_ACTION_HIDE)
+        self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_NONE"), c.LAUNCH_ACTION_NONE)
+        current_action = self.app.config.get(c.CONFIG_KEY_LAUNCH_ACTION, c.LAUNCH_ACTION_CLOSE)
+        idx = self.combo_launch_action.findData(current_action)
+        if idx >= 0:
+            self.combo_launch_action.setCurrentIndex(idx)
+        self.combo_launch_action.currentIndexChanged.connect(
+            lambda: (self.app.sync_launch_action_ui(self.combo_launch_action.currentData()),
+                     self.app.config_manager.set(c.CONFIG_KEY_LAUNCH_ACTION, self.combo_launch_action.currentData()))
+        )
+        fl_launch.addWidget(self.combo_launch_action, 1)
+        layout.addWidget(f_launch)
 
         # Custom Args Checkbox directly above entry
         f_custom_env = QFrame()
@@ -263,13 +343,28 @@ class SettingsTab(QWidget):
         cv_layout.addWidget(QLabel(c.t("UI_CUSTOM_ARGS_LABEL")))
         self.entry_custom_vars = QLineEdit()
         self.entry_custom_vars.setText(self.app.config.get(c.CONFIG_KEY_CUSTOM_ENV_VARS, ""))
+        self.entry_custom_vars.editingFinished.connect(lambda: self.app.config_manager.set(c.CONFIG_KEY_CUSTOM_ENV_VARS, self.entry_custom_vars.text()))
         cv_layout.addWidget(self.entry_custom_vars, 1)
         layout.addWidget(self.f_custom_vars)
 
-        self.checks[c.CONFIG_KEY_CUSTOM_ENV_ENABLED].stateChanged.connect(self.toggle_custom_env)
+        self.checks[c.CONFIG_KEY_CUSTOM_ENV_ENABLED].stateChanged.connect(lambda state: (self.toggle_custom_env(), self.app.config_manager.set(c.CONFIG_KEY_CUSTOM_ENV_ENABLED, state == Qt.Checked.value)))
         self.checks[c.CONFIG_KEY_GAMEMODE_ENABLED].stateChanged.connect(lambda state: self.app.sync_gamemode_ui(state == Qt.Checked.value))
 
-        # Discord Rich Presence
+        self.scroll_layout.addWidget(frame)
+
+    def setup_discord_section(self):
+        """Build the Discord Rich Presence section with checkbox and custom Client ID."""
+        frame = QFrame()
+        frame.setObjectName("GroupFrame")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(10)
+
+        title = QLabel(c.t("UI_DISCORD_RPC_SECTION_TITLE"))
+        title.setObjectName("HeaderLabel")
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+
         f_discord = QFrame()
         fl_discord = QHBoxLayout(f_discord)
         self.check_discord_rpc = QCheckBox(c.t("UI_DISCORD_RPC_CHECKBOX"))
@@ -284,7 +379,6 @@ class SettingsTab(QWidget):
         self.checks[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = self.check_discord_rpc
         self.check_discord_rpc.stateChanged.connect(lambda state: self.app.sync_discord_rpc_ui(state == Qt.Checked.value))
 
-        # Discord Client ID personalizado
         f_client_id = QFrame()
         ci_layout = QHBoxLayout(f_client_id)
         ci_layout.setContentsMargins(0, 5, 0, 5)
@@ -307,7 +401,7 @@ class SettingsTab(QWidget):
             info_path = os.path.join(self.app.compiled_path, "info.txt")
             if os.path.exists(info_path):
                 try:
-                    with open(info_path, "r") as f:
+                    with open(info_path, "r", encoding="utf-8") as f:
                         lines = f.readlines()
                         if len(lines) >= 2:
                             self.lbl_binary_version.setText(lines[1].strip())
@@ -783,6 +877,7 @@ class SettingsTab(QWidget):
         style_disp = self.combo_list_style.currentText()
         style_key = next((k for k, v in c.t("UI_LIST_STYLES").items() if v == style_disp), c.STYLE_LIST)
         self.app.config_manager.set(c.CONFIG_KEY_VERSION_LIST_STYLE, style_key)
+        self.app.logic.refresh_version_list(self.app)
 
     def on_appearance_released(self):
         """Save appearance values on slider release and refresh version list."""

@@ -1,5 +1,57 @@
 # 📝 Changelog - CianovaLauncher
 
+# [3.1] - 2026-06-25 — Refinements & Fixes
+
+### 🔧 Gestor de Recursos
+- **Multi-manifest en ZIP:** Los `.zip` con RP+BP ahora se detectan e instalan por separado.
+- **Validación de ZIP:** `testzip()` ejecutado antes de extraer para evitar instalaciones corruptas.
+- **Soporte `.mctemplate`:** Añadido al escaneo y filtro de archivos.
+- **Mods recursivos:** Escaneo de subdirectorios en `mods/` para encontrar `.so`.
+- **Nombres duplicados en `.mcaddon`:** Se añade sufijo (`_1`, `_2`) automáticamente.
+- **Race conditions:** Mitigadas con chequeos `os.path.exists` antes de operaciones.
+- **Info empaquetada:** `_peek_packed_info` extrae nombre/versión de zips sin extraer.
+- **Exportación de mundos:** Sanitización más permisiva para nombres de archivo.
+- **Filtro de pestañas corregido:** La pestaña RP ya no captura `mods` por error.
+
+### 🚀 Comportamiento de Inicio
+- **Nuevo sistema LaunchAction:** Valores `close`/`hide`/`none` reemplazan el viejo booleano `close_on_launch`.
+- **Modo Hide:** Minimiza a bandeja del sistema (`QSystemTrayIcon`); la ventana reaparece al salir del juego.
+- **Modo None:** Indicador de estado "▶ En juego"/"⏹ Inactivo" en la UI.
+- **Monitor de juego:** `QTimer` cada 2s para detectar cuándo termina el proceso.
+- **Migración automática:** `close_on_launch: true` → `launch_action: "close"` en config existente.
+
+### 💾 Persistencia de Configuración
+- **Flush en cierre:** `closeEvent` llama a `config_manager.flush()` para guardar cambios pendientes.
+- **Auto-guardado:** Checkboxes de Nvidia/Zink/Gamemode/LaunchAction y campo de variables de entorno ahora persisten inmediatamente.
+- **Sincronización:** Gamemode y LaunchAction sincronizados entre pestañas Play y Settings.
+
+### 🎮 Discord Rich Presence
+- **Sincronización inmediata:** `set_idle`/`set_playing` envían ahora de forma síncrona además de la cola.
+- **Sockets Flatpak:** Añadidas rutas IPC para Discord Canary y PTB Flatpak.
+- **Limpieza:** `stop()` llama a `clear()` antes de `close()`; `closeEvent` detiene RPC.
+
+### 📋 Diálogo de Instalación
+- **Orden de pestañas:** APK Local es ahora la pestaña predeterminada (Google Play en segundo lugar).
+
+### ⚙️ Ajustes reorganizados
+- **Barra de categorías:** Los ajustes ahora se organizan en 4 pestañas superiores — General, Lanzamiento, Apariencia e Integraciones — cada una con sus opciones agrupadas.
+- **Navegación por QStackedWidget:** Cada categoría es una página independiente con scroll, evitando el scroll infinito de antes.
+- **Botones con estado activo:** La categoría seleccionada se resalta con el color de acento.
+
+### 🖥️ Detector de Hardware
+- **Soporte ARM:** `_detect_cpu_flags` ahora lee `Features` (ARM) además de `flags` (x86).
+- **Timeout en glxinfo:** `timeout=3`/`5s` para evitar congelamientos si `glxinfo` no responde.
+- **Parseo robusto de GL:** Regex `_parse_es_major_minor` extrae versión exacta de OpenGL ES (sin substring matching frágil).
+- **Soporte x86 (32-bit):** Añadida arquitectura `i686`/`i386` con requisito SSSE3.
+- **Soporte ARM NEON:** Detección y clasificación para `aarch64`/`armv7l`.
+- **GL desconocido:** Ya no marca como Incompatible — asume ES 3.0 (rango `1.13.0 - 1.21.124`).
+- **Rangos actualizados:** ES 2.0→1.20.20, ES 3.0→1.21.124, ES 3.1→1.21.132, ES 3.2+→1.26.0+.
+- **Display adaptativo:** El indicador CPU muestra SSE / SSSE3 / NEON según la arquitectura.
+
+### 🐛 Correcciones
+- **ChangelogDialog:** Añadido import faltante de `QHBoxLayout` que causaba `NameError` al mostrar el changelog.
+- **Filtro de addons:** Pestaña RP ya no muestra mods (solo `resource_packs`, `skin_packs`, `custom_skins`).
+
 # [3.0] - 2026-05-12 — The Qt6 Evolution
 
 ### 🔄 Framework: CustomTkinter → PySide6 (Qt6)

@@ -5,6 +5,7 @@ import re
 import subprocess
 import logging
 from datetime import datetime
+from src import constants as c
 
 class Logger:
     _instance = None
@@ -59,7 +60,7 @@ class Logger:
         self.log_system_info()
 
     def log_system_info(self):
-        self.info("=== CIANOVALAUNCHER v3.0 SESSION START ===")
+        self.info(f"=== CIANOVALAUNCHER v{c.VERSION_LAUNCHER} SESSION START ===")
         self.info(f"OS: {platform.system()} {platform.release()} ({platform.version()})")
         
         # Distro info if on Linux

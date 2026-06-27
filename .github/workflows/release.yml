@@ -20,6 +20,9 @@
 
 name: Release
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -30,7 +33,7 @@ on:
       mcpelauncher_bins_version:
         description: "mcpelauncher-bins version to use"
         required: true
-        default: "v1.7.4"
+        default: "v1.7.6_qt6+patches"
 
   # ── Uncomment when ready for automatic release on tag push ──
   # push:
@@ -42,7 +45,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       VERSION: ${{ github.event.inputs.version || github.ref_name }}
-      MCPELAUNCHER_BINS: ${{ github.event.inputs.mcpelauncher_bins_version || 'v1.7.4' }}
+      MCPELAUNCHER_BINS: ${{ github.event.inputs.mcpelauncher_bins_version || 'v1.7.6_qt6+patches' }}
 
     steps:
       - name: Checkout repository

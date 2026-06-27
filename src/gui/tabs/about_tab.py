@@ -13,7 +13,7 @@ class AboutTab(QWidget):
 
         # Title
         self.title_label = QLabel(c.t("UI_TITLE_LEGAL"))
-        self.title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        self.title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.main_layout.addWidget(self.title_label)
 
         # Legal Scroll Area
@@ -27,7 +27,7 @@ class AboutTab(QWidget):
 
         self.lbl_legal = QLabel(c.t("LEGAL_TEXT"))
         self.lbl_legal.setWordWrap(True)
-        self.lbl_legal.setStyleSheet("font-size: 11px; color: white;")
+        self.lbl_legal.setStyleSheet("font-size: 11px;")
         self.lbl_legal.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.scroll_layout.addWidget(self.lbl_legal)
 
@@ -37,7 +37,7 @@ class AboutTab(QWidget):
         # Credits
         self.credits_label = QLabel(c.t("CREDITOS"))
         self.credits_label.setAlignment(Qt.AlignCenter)
-        self.credits_label.setStyleSheet("font-size: 12px; color: white;")
+        self.credits_label.setStyleSheet("font-size: 12px;")
         self.main_layout.addWidget(self.credits_label)
 
         self.version_label = QLabel(f"{c.t("UI_VERSION_TEXT")}{c.VERSION_LAUNCHER}")

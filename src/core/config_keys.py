@@ -68,8 +68,12 @@ CONFIG_KEY_CUSTOM_ENV_VARS = "custom_env_vars"
 CONFIG_KEY_GAMEMODE_ENABLED = "gamemode_enabled"
 CONFIG_KEY_NVIDIA_COMPAT_MODE = "nvidia_compat_mode"
 
-# ── Close on launch ──
-CONFIG_KEY_CLOSE_ON_LAUNCH = "close_on_launch"
+# ── Launch action ──
+CONFIG_KEY_CLOSE_ON_LAUNCH = "close_on_launch"  # legacy (bool)
+CONFIG_KEY_LAUNCH_ACTION = "launch_action"       # "close", "hide", "none"
+LAUNCH_ACTION_CLOSE = "close"
+LAUNCH_ACTION_HIDE = "hide"
+LAUNCH_ACTION_NONE = "none"
 
 # ── Debug ──
 CONFIG_KEY_DEBUG_LOG = "debug_log"

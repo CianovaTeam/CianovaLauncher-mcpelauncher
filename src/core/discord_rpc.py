@@ -57,6 +57,10 @@ class DiscordRPC:
         with self._lock:
             if self._rpc:
                 try:
+                    self._rpc.clear()
+                except Exception:
+                    pass
+                try:
                     self._rpc.close()
                 except Exception:
                     pass
@@ -64,31 +68,49 @@ class DiscordRPC:
                 self._connected = False
         self._thread = None
 
+    def _build_presence_kwargs(self, details, state, start, large_image, large_text, small_image, small_text):
+        kwargs = dict(details=details)
+        if state is not None: kwargs["state"] = state
+        if start is not None: kwargs["start"] = start
+        if large_image is not None: kwargs["large_image"] = large_image
+        if large_text is not None: kwargs["large_text"] = large_text
+        if small_image is not None: kwargs["small_image"] = small_image
+        if small_text is not None: kwargs["small_text"] = small_text
+        return kwargs
+
     def set_idle(self):
-        self._update_presence(
-            details=_DETAILS_IDLE,
-            state=_STATE_IDLE,
-            start=None,
-            large_image=None,
-            large_text=None,
-            small_image=None,
-            small_text=None,
+        kwargs = self._build_presence_kwargs(
+            details=_DETAILS_IDLE, state=_STATE_IDLE, start=None,
+            large_image=None, large_text=None, small_image=None, small_text=None,
         )
+        self._queue_presence(**kwargs)
+        self._send_presence(**kwargs)
 
     def set_playing(self, version, start_time):
-        self._update_presence(
-            details=_DETAILS_PLAYING,
-            state=_STATE_PLAYING_TEMPLATE.format(version=version),
-            start=int(start_time),
-            large_image=_LARGE_IMAGE,
-            large_text=_LARGE_TEXT,
-            small_image=_SMALL_IMAGE_PLAYING,
-            small_text=_SMALL_TEXT_PLAYING,
+        kwargs = self._build_presence_kwargs(
+            details=_DETAILS_PLAYING, state=_STATE_PLAYING_TEMPLATE.format(version=version),
+            start=int(start_time), large_image=_LARGE_IMAGE, large_text=_LARGE_TEXT,
+            small_image=_SMALL_IMAGE_PLAYING, small_text=_SMALL_TEXT_PLAYING,
         )
+        self._queue_presence(**kwargs)
+        self._send_presence(**kwargs)
 
-    def _update_presence(self, details, state, start, large_image, large_text, small_image, small_text):
+    def _queue_presence(self, **kwargs):
         with self._lock:
-            self._last_presence = (details, state, start, large_image, large_text, small_image, small_text)
+            self._last_presence = (
+                kwargs.get("details"), kwargs.get("state"), kwargs.get("start"),
+                kwargs.get("large_image"), kwargs.get("large_text"),
+                kwargs.get("small_image"), kwargs.get("small_text"),
+            )
+
+    def _send_presence(self, **kwargs):
+        with self._lock:
+            if not self._rpc:
+                return
+            try:
+                self._rpc.update(**kwargs)
+            except Exception:
+                pass
 
     def _find_discord_socket(self):
         """Look for Discord's IPC socket in known locations and symlink to standard path."""
@@ -99,6 +121,8 @@ class DiscordRPC:
         candidates = [
             standard,
             os.path.join(runtime_dir, "app", "com.discordapp.Discord", "discord-ipc-0"),
+            os.path.join(runtime_dir, "app", "com.discordapp.DiscordCanary", "discord-ipc-0"),
+            os.path.join(runtime_dir, "app", "com.discordapp.DiscordPTB", "discord-ipc-0"),
             os.path.join(runtime_dir, "app", "com.vesktop.Vesktop", "discord-ipc-0"),
             os.path.join(runtime_dir, "app", "com.github.TheWisker.WebCord", "discord-ipc-0"),
             os.path.join(runtime_dir, "app", "com.armcord.ArmCord", "discord-ipc-0"),

@@ -41,6 +41,7 @@ class ConfigManager:
             c.CONFIG_KEY_FLATPAK_ID: c.DEFAULT_FLATPAK_ID,
             "data_path": os.path.join(c.HOME_DIR, c.LOCAL_SHARE_DIR),
             c.CONFIG_KEY_CLOSE_ON_LAUNCH: True,
+            c.CONFIG_KEY_LAUNCH_ACTION: c.LAUNCH_ACTION_CLOSE,
             c.CONFIG_KEY_LAST_VERSION: "",
             c.CONFIG_KEY_WINDOW_SIZE: "700x550",
             c.CONFIG_KEY_ACCEPTED_TERMS: False,
@@ -124,6 +125,12 @@ class ConfigManager:
             config[c.CONFIG_KEY_FLATPAK_ID] = c.DEFAULT_FLATPAK_ID
             changed = True
 
+        # 4. Migrar close_on_launch (bool) → launch_action (str)
+        if c.CONFIG_KEY_LAUNCH_ACTION not in config:
+            old_val = config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH, True)
+            config[c.CONFIG_KEY_LAUNCH_ACTION] = c.LAUNCH_ACTION_CLOSE if old_val else c.LAUNCH_ACTION_NONE
+            changed = True
+
         return changed
 
     def load_config(self):
@@ -197,6 +204,12 @@ class ConfigManager:
         self._debounce_timer = threading.Timer(self._debounce_ms / 1000.0, self._flush)
         self._debounce_timer.daemon = True
         self._debounce_timer.start()
+
+    def flush(self):
+        if self._debounce_timer:
+            self._debounce_timer.cancel()
+            self._debounce_timer = None
+        self._flush()
 
     def _flush(self):
         if self._dirty:

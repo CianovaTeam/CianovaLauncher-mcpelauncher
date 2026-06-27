@@ -38,7 +38,6 @@ class VersionFetcher(QThread):
                     else:
                         self.error.emit(f"HTTP {response.status}")
             except urllib.error.URLError:
-                # Fallback: unverified SSL (some flatpak runtimes lack CA certs)
                 ctx.check_hostname = False
                 ctx.verify_mode = ssl.CERT_NONE
                 with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
@@ -76,7 +75,6 @@ class VersionWarningsFetcher(QThread):
                         self.finished.emit([])
         except Exception as e:
             self.finished.emit([])
-
 
 class GooglePlayTab(QWidget):
     """Tab widget for searching and installing versions from Google Play."""
@@ -545,8 +543,8 @@ class InstallDialog(QDialog):
         self.google_tab = GooglePlayTab(self)
         self.local_tab = LocalApkTab(self)
 
-        self.tabs.addTab(self.google_tab, c.t("UI_INSTALL_TAB_GOOGLE"))
         self.tabs.addTab(self.local_tab, c.t("UI_INSTALL_TAB_LOCAL"))
+        self.tabs.addTab(self.google_tab, c.t("UI_INSTALL_TAB_GOOGLE"))
         self.main_layout.addWidget(self.tabs)
 
         # 3. Modo de Instalación (Global para ambas pestañas)

@@ -1,13 +1,15 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                             QLabel, QTabWidget, QPushButton, QFrame, QScrollArea, QComboBox, QApplication)
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPainterPath
+                             QLabel, QTabWidget, QPushButton, QFrame, QScrollArea,
+                             QComboBox, QApplication, QSystemTrayIcon, QMenu)
+from PySide6.QtCore import Qt, QTimer, QBuffer, QByteArray
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPainterPath, QAction
 import os
 import sys
 import time
-import tempfile
+import base64
 import subprocess
 import shlex
+
 
 from src import constants as c
 from src.utils.resource_path import resource_path
@@ -102,7 +104,7 @@ class CianovaLauncherApp(QMainWindow):
         self.main_layout.setContentsMargins(5, 5, 5, 5)
 
         self.tab_widget = QTabWidget()
-        self.tab_widget.setDocumentMode(True) # Better for centering tabs usually
+        self.tab_widget.setDocumentMode(True)
         self.main_layout.addWidget(self.tab_widget)
 
         self.play_tab = PlayTab(self.tab_widget, self)
@@ -147,6 +149,16 @@ class CianovaLauncherApp(QMainWindow):
         if self.config.get(c.CONFIG_KEY_DISCORD_RPC_ENABLED, False):
             self._discord_rpc.start()
             self._discord_rpc.set_idle()
+
+        # Game process monitoring
+        self._game_process = None
+        self._game_monitor = QTimer()
+        self._game_monitor.setInterval(2000)
+        self._game_monitor.timeout.connect(self._check_game_process)
+
+        # System Tray
+        self._tray_icon = None
+        self._setup_tray_icon()
 
         # Apply initial theme settings
         self.apply_theme_settings()
@@ -378,18 +390,25 @@ class CianovaLauncherApp(QMainWindow):
         path.closeSubpath()
         painter.fillPath(path, QColor(input_text))
         painter.end()
-        arrow_path = os.path.join(tempfile.gettempdir(), "cianova_combo_arrow.png")
-        arrow_pixmap.save(arrow_path)
+        ba = QByteArray()
+        buf = QBuffer(ba)
+        buf.open(QBuffer.OpenModeFlag.WriteOnly)
+        arrow_pixmap.save(buf, "PNG")
+        buf.close()
+        arrow_data_uri = f"url(data:image/png;base64,{base64.b64encode(bytes(ba)).decode()})"
 
         # Fixed semi-transparent background for floating labels
-        floating_label_bg = "rgba(85, 85, 85, 180)"
-        floating_label_border = f"1px solid {hex_to_rgba('#ffffff', 0.2)}"
+        floating_label_bg = hex_to_rgba("#555555" if mode == "Dark" else "#dddddd", 0.7)
+        floating_label_border = f"1px solid {hex_to_rgba('#ffffff' if mode == 'Dark' else '#000000', 0.2)}"
 
         qss = f"""
             QMainWindow, QWidget#centralWidget {{
                 {bg_qss}
                 color: {text};
                 font-family: 'Roboto', 'Segoe UI', sans-serif;
+            }}
+            QLabel {{
+                color: {text};
             }}
             QDialog {{
                 background-color: {bg};
@@ -466,7 +485,7 @@ class CianovaLauncherApp(QMainWindow):
                 border-bottom-right-radius: 6px;
             }}
             QComboBox::down-arrow {{
-                image: url("{arrow_path}");
+                image: {arrow_data_uri};
                 width: {arrow_size}px;
                 height: {arrow_size}px;
                 margin-right: 4px;
@@ -521,9 +540,10 @@ class CianovaLauncherApp(QMainWindow):
             QFrame#ToolCard, QFrame#GroupFrame, QFrame#VersionCard {{
                 border-radius: {c.CORNER_RADIUS}px;
                 border: 1px solid {hex_to_rgba(input_border, 0.5)};
+                background-color: {frame_bg_opaque};
             }}
 
-            #PlayTab QFrame#VersionCard, #PlayTab QFrame#GroupFrame, #AboutTab QFrame#GroupFrame {{
+            #PlayTab QFrame#GroupFrame, #PlayTab QFrame#VersionCard, #AboutTab QFrame#GroupFrame {{
                 background-color: {frame_bg_opaque};
             }}
 
@@ -548,7 +568,7 @@ class CianovaLauncherApp(QMainWindow):
             }}
             QLabel#FloatingLabel {{
                 background-color: {floating_label_bg};
-                color: white;
+                color: {text};
                 padding: 5px 15px;
                 border-radius: 10px;
                 border: {floating_label_border};
@@ -610,6 +630,26 @@ class CianovaLauncherApp(QMainWindow):
             }}
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
                 width: 0px;
+            }}
+            #SettingsTab QPushButton#CategoryButton {{
+                background: transparent;
+                color: #999;
+                border: none;
+                border-radius: 8px;
+                padding: 8px 20px;
+                font-size: 13px;
+                font-weight: bold;
+                min-width: 100px;
+            }}
+            #SettingsTab QPushButton#CategoryButton:hover {{
+                background: {"#444444" if mode == "Dark" else "#bbbbbb"};
+                color: white;
+            }}
+            #SettingsTab QPushButton#CategoryButton[active="true"] {{
+                background: transparent;
+                color: {accent};
+                border-bottom: 2px solid {accent};
+                border-radius: 0px;
             }}
             /* Generic scroll areas remain transparent */
             QScrollArea, QScrollArea > QWidget {{
@@ -673,6 +713,7 @@ class CianovaLauncherApp(QMainWindow):
     def sync_gamemode_ui(self, value):
         """Synchronize the gamemode toggle between Play and Settings tabs."""
         self.config[c.CONFIG_KEY_GAMEMODE_ENABLED] = value
+        self.config_manager.set(c.CONFIG_KEY_GAMEMODE_ENABLED, value)
         if hasattr(self.play_tab, "check_gamemode"):
             self.play_tab.check_gamemode.blockSignals(True)
             self.play_tab.check_gamemode.setChecked(value)
@@ -707,21 +748,76 @@ class CianovaLauncherApp(QMainWindow):
             self.settings_tab.check_discord_rpc.setChecked(value)
             self.settings_tab.check_discord_rpc.blockSignals(blocked)
 
-    def sync_close_on_launch_ui(self, value):
-        """Synchronize the close-on-launch toggle between Play and Settings tabs."""
-        self.config[c.CONFIG_KEY_CLOSE_ON_LAUNCH] = value
-        if hasattr(self.play_tab, "check_close_on_launch"):
-            self.play_tab.check_close_on_launch.blockSignals(True)
-            self.play_tab.check_close_on_launch.setChecked(value)
-            self.play_tab.check_close_on_launch.blockSignals(False)
-        if hasattr(self.settings_tab, "check_close_on_launch"):
-            self.settings_tab.check_close_on_launch.blockSignals(True)
-            self.settings_tab.check_close_on_launch.setChecked(value)
-            self.settings_tab.check_close_on_launch.blockSignals(False)
+    def sync_launch_action_ui(self, action_key):
+        """Synchronize the launch-action combo between Play and Settings tabs."""
+        self.config[c.CONFIG_KEY_LAUNCH_ACTION] = action_key
+        self.config_manager.set(c.CONFIG_KEY_LAUNCH_ACTION, action_key)
+        for tab in (self.play_tab, self.settings_tab):
+            if hasattr(tab, "combo_launch_action"):
+                blocked = tab.combo_launch_action.blockSignals(True)
+                idx = tab.combo_launch_action.findData(action_key)
+                if idx >= 0:
+                    tab.combo_launch_action.setCurrentIndex(idx)
+                tab.combo_launch_action.blockSignals(blocked)
+
+    def _setup_tray_icon(self):
+        self._tray_icon = QSystemTrayIcon(self)
+        self._tray_icon.setIcon(self.windowIcon())
+        self._tray_icon.setToolTip(c.t("UI_TITLE_VERSION"))
+        tray_menu = QMenu()
+        show_act = QAction(c.t("UI_TRAY_SHOW"), self)
+        show_act.triggered.connect(self.show)
+        quit_act = QAction(c.t("UI_TRAY_QUIT"), self)
+        quit_act.triggered.connect(self.close)
+        tray_menu.addAction(show_act)
+        tray_menu.addAction(quit_act)
+        self._tray_icon.setContextMenu(tray_menu)
+        self._tray_icon.activated.connect(self._on_tray_activated)
+
+    def _on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self.show()
+            self.activateWindow()
+            self.raise_()
+
+    def hide_to_tray(self):
+        self._tray_icon.show()
+        self.hide()
+        self._game_monitor.start()
+
+    def on_game_launched(self):
+        self._game_monitor.start()
+        if hasattr(self.play_tab, "set_game_status"):
+            self.play_tab.set_game_status(True)
+
+    def _check_game_process(self):
+        if self._game_process is None:
+            self._game_monitor.stop()
+            return
+        rc = self._game_process.poll()
+        if rc is not None:
+            self._game_process = None
+            self._game_monitor.stop()
+            if hasattr(self, '_tray_icon') and self._tray_icon and self.isHidden():
+                self._tray_icon.hide()
+                self.show()
+                self.activateWindow()
+                self.raise_()
+            if hasattr(self.play_tab, "set_game_status"):
+                self.play_tab.set_game_status(False)
 
     def manage_desktop_shortcut(self):
         """Open the version manager to manage desktop shortcuts."""
         self.open_version_manager()
+
+    def closeEvent(self, event):
+        self._game_monitor.stop()
+        self.config_manager.flush()
+        if self._tray_icon:
+            self._tray_icon.hide()
+        if hasattr(self, '_discord_rpc') and self._discord_rpc:
+            self._discord_rpc.stop()
+        super().closeEvent(event)
 
     def check_version_update(self):
         """Compare stored version with current launcher version and show changelog on update.

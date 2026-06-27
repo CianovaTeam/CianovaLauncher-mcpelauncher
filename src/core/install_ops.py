@@ -295,10 +295,6 @@ def select_version(app, version):
 
     for v, card in app.version_cards.items():
         if v == version:
-            card.setStyleSheet(
-                f"#VersionCard {{ background-color: {accent}; border-radius: 8px; }}"
-            )
+            card.setStyleSheet(f"background-color: {accent};")
         else:
-            card.setStyleSheet(
-                "#VersionCard { background-color: #333333; border-radius: 8px; }"
-            )
+            card.setStyleSheet("background-color: #3a3a3a;")

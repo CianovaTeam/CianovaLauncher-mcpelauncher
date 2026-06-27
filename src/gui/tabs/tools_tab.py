@@ -217,7 +217,7 @@ class ToolsTab(QWidget):
             text = QLabel(tool["text"])
             text.setWordWrap(True)
             text.setAlignment(Qt.AlignCenter)
-            text.setStyleSheet("font-weight: bold; font-size: 12px; color: white;")
+            text.setStyleSheet("font-weight: bold; font-size: 12px;")
             layout.addWidget(text)
 
             # Make the card clickable (simplified for now, ideally use a custom class)

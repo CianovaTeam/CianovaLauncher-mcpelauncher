@@ -73,7 +73,9 @@ def scan_all_addons(app):
                 for item in os.listdir(path):
                     item_path = os.path.join(path, item)
                     # Support both directories and individual files (e.g. .mcpack, .mcworld)
-                    if os.path.isdir(item_path) or (os.path.isfile(item_path) and item.lower().endswith(('.mcpack', '.mcworld', '.mcaddon', '.mcworldtemplate', '.zip'))):
+                    if not os.path.exists(item_path):
+                        continue
+                    if os.path.isdir(item_path) or (os.path.isfile(item_path) and item.lower().endswith(('.mcpack', '.mcworld', '.mcaddon', '.mcworldtemplate', '.mctemplate', '.zip'))):
                         info = get_addon_info(item_path, folder)
                         if not info.get("is_valid", True): continue
                         addon_list.append({
@@ -94,7 +96,9 @@ def scan_all_addons(app):
                 try:
                     for item in os.listdir(path):
                         item_path = os.path.join(path, item)
-                        if os.path.isdir(item_path) or (os.path.isfile(item_path) and item.lower().endswith(('.mcpack', '.mcworld', '.mcaddon', '.mcworldtemplate'))):
+                        if not os.path.exists(item_path):
+                            continue
+                        if os.path.isdir(item_path) or (os.path.isfile(item_path) and item.lower().endswith(('.mcpack', '.mcworld', '.mcaddon', '.mcworldtemplate', '.mctemplate'))):
                             info = get_addon_info(item_path, folder)
                             if not info.get("is_valid", True): continue
                             addon_list.append({
@@ -107,6 +111,44 @@ def scan_all_addons(app):
                 except: pass
 
     return addon_list
+
+def _peek_packed_info(path):
+    """Lee el manifest.json dentro de un .mcpack/.mcaddon/.zip sin extraer todo"""
+    try:
+        with zipfile.ZipFile(path, 'r') as z:
+            candidates = [n for n in z.namelist() if n.replace("\\", "/").endswith("manifest.json")]
+            if not candidates:
+                return None
+            manifest_path = min(candidates, key=len)
+            with z.open(manifest_path) as f:
+                content = f.read().decode("utf-8", errors="replace")
+                if content.startswith('\ufeff'):
+                    content = content[1:]
+                data = json.loads(content)
+                header = data.get("header", {})
+                name = header.get("name", "")
+                desc = header.get("description", "")
+                ver = header.get("version", [])
+                min_ver = header.get("min_engine_version", [])
+                modules = data.get("modules", [])
+                real_type = None
+                for mod in modules:
+                    if mod.get("type") == "skin_pack":
+                        real_type = "skin_packs"
+                        break
+                result = {
+                    "name": strip_mc_codes(str(name)) if name else None,
+                    "description": strip_mc_codes(str(desc)) if desc else None,
+                }
+                if isinstance(ver, list):
+                    result["version"] = ".".join(map(str, ver))
+                if isinstance(min_ver, list):
+                    result["min_engine"] = ".".join(map(str, min_ver))
+                if real_type:
+                    result["real_type"] = real_type
+                return result
+    except Exception:
+        return None
 
 def get_addon_info(path, folder_type=None):
     """Extrae información del manifest.json o levelname.txt"""
@@ -121,9 +163,15 @@ def get_addon_info(path, folder_type=None):
     }
 
     # Handle packed files (.mcpack, .mcworld)
-    if os.path.isfile(path) and path.lower().endswith(('.mcpack', '.mcworld', '.mcaddon', '.mcworldtemplate', '.zip')):
-        # For packed files, we don't extract info here to keep scan fast,
-        # just show filename and basic type
+    if os.path.isfile(path) and path.lower().endswith(('.mcpack', '.mcworld', '.mcaddon', '.mcworldtemplate', '.mctemplate', '.zip')):
+        packed = _peek_packed_info(path)
+        if packed:
+            info["name"] = packed.get("name", info["name"])
+            info["description"] = packed.get("description", info["description"])
+            info["version"] = packed.get("version", info["version"])
+            info["min_engine"] = packed.get("min_engine", info["min_engine"])
+            if packed.get("real_type"):
+                info["real_type"] = packed["real_type"]
         return info
 
     if folder_type == "minecraftWorlds":
@@ -269,7 +317,9 @@ def export_world(world_path, dest_dir):
         if os.path.exists(levelname_path):
             try:
                 with open(levelname_path, "r", errors="replace") as f:
-                    name = "".join(x for x in f.read().strip() if x.isalnum() or x in " -_")
+                    raw = f.read().strip()
+                    safe = re.sub(r'[<>:"/\\|?*]', '', raw).strip()[:200]
+                    name = safe if safe else name
             except: pass
 
         save_path = os.path.join(dest_dir, f"{name}.mcworld")
@@ -286,14 +336,59 @@ def install_addon_file(active_path, file_path, manual_type=None):
     com_mojang = get_com_mojang_path(active_path)
     ext = os.path.splitext(file_path)[1].lower()
     results = []
-    if ext == ".mcworld" or ext == ".mcworldtemplate":
-        results.append(extract_to(file_path, os.path.join(com_mojang, "minecraftWorlds")))
+    if ext in (".mcworld", ".mcworldtemplate", ".mctemplate"):
+        if not validate_zip(file_path):
+            results.append(("ERROR", f"Corrupted file: {os.path.basename(file_path)}"))
+        else:
+            results.append(extract_to(file_path, os.path.join(com_mojang, "minecraftWorlds")))
     elif ext == ".mcpack":
         results.append(install_single_pack(file_path, com_mojang, manual_type))
     elif ext == ".mcaddon":
         results.extend(install_mcaddon(file_path, com_mojang))
     else:
-        results.append(install_single_pack(file_path, com_mojang, manual_type))
+        temp_dir = tempfile.mkdtemp()
+        try:
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            pack_dirs = []
+            if os.path.exists(os.path.join(temp_dir, "manifest.json")):
+                pack_dirs.append(temp_dir)
+            for item in os.listdir(temp_dir):
+                item_path = os.path.join(temp_dir, item)
+                if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, "manifest.json")):
+                    pack_dirs.append(item_path)
+            if len(pack_dirs) == 0:
+                shutil.rmtree(temp_dir)
+                results.append(install_single_pack(file_path, com_mojang, manual_type))
+            elif len(pack_dirs) == 1:
+                shutil.rmtree(temp_dir)
+                results.append(install_single_pack(file_path, com_mojang, manual_type))
+            else:
+                for pack_dir in pack_dirs:
+                    manifest_path = os.path.join(pack_dir, "manifest.json")
+                    item_name = os.path.basename(pack_dir)
+                    p_type = detect_pack_type(manifest_path)
+                    if p_type:
+                        dest_folder = {
+                            c.t("UI_TYPE_RESOURCE"): "resource_packs",
+                            c.t("UI_TYPE_BEHAVIOR"): "behavior_packs",
+                            c.t("UI_TYPE_SKIN"): "skin_packs"
+                        }.get(p_type, "resource_packs")
+                        target = os.path.join(com_mojang, dest_folder, item_name)
+                        if os.path.exists(target):
+                            if os.path.isdir(target): shutil.rmtree(target)
+                            else: os.remove(target)
+                        shutil.move(pack_dir, target)
+                        results.append(("SUCCESS", target))
+                    else:
+                        results.append(("SKIPPED", item_name))
+                shutil.rmtree(temp_dir)
+        except zipfile.BadZipFile:
+            if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
+            results.append(install_single_pack(file_path, com_mojang, manual_type))
+        except Exception as e:
+            if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
+            results.append(("ERROR", str(e)))
     return results
 
 def extract_to(zip_path, target_dir):
@@ -310,7 +405,17 @@ def extract_to(zip_path, target_dir):
             zip_ref.extractall(dest)
             return dest
 
+def validate_zip(file_path):
+    try:
+        with zipfile.ZipFile(file_path, 'r') as z:
+            bad = z.testzip()
+            return bad is None
+    except Exception:
+        return False
+
 def install_single_pack(file_path, com_mojang, manual_type=None):
+    if not validate_zip(file_path):
+        return ("ERROR", "Corrupted ZIP file")
     temp_dir = tempfile.mkdtemp()
     try:
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
@@ -341,7 +446,7 @@ def install_single_pack(file_path, com_mojang, manual_type=None):
 
 def detect_pack_type(manifest_path):
     try:
-        with open(manifest_path, "r") as f:
+        with open(manifest_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             modules = data.get("modules", [])
             for mod in modules:
@@ -354,6 +459,8 @@ def detect_pack_type(manifest_path):
     return None
 
 def install_mcaddon(file_path, com_mojang):
+    if not validate_zip(file_path):
+        return [("ERROR", f"Corrupted .mcaddon file: {os.path.basename(file_path)}")]
     temp_dir = tempfile.mkdtemp()
     results = []
     try:
@@ -374,13 +481,52 @@ def install_mcaddon(file_path, com_mojang):
                             c.t("UI_TYPE_SKIN"): "skin_packs"
                         }.get(p_type, "resource_packs")
                         target = os.path.join(com_mojang, dest_folder, item)
-                        if os.path.exists(target): shutil.rmtree(target)
+                        if os.path.exists(target):
+                            base, ext = os.path.splitext(item)
+                            suffix = 1
+                            while os.path.exists(os.path.join(com_mojang, dest_folder, f"{base}_{suffix}{ext}")):
+                                suffix += 1
+                            target = os.path.join(com_mojang, dest_folder, f"{base}_{suffix}{ext}")
                         shutil.move(item_path, target)
                         results.append(("SUCCESS", target))
         shutil.rmtree(temp_dir)
     except Exception as e:
         results.append(("ERROR", str(e)))
     return results
+
+def _collect_mods_recursive(search_path):
+    mods = []
+    try:
+        for item in os.listdir(search_path):
+            item_path = os.path.join(search_path, item)
+            if os.path.isdir(item_path):
+                mods.extend(_collect_mods_recursive(item_path))
+            elif os.path.isfile(item_path):
+                is_disabled = item.lower().endswith(".disabled")
+                base_name = item[:-9] if is_disabled else item
+                if not base_name.lower().endswith(".so"):
+                    continue
+                try:
+                    size = os.path.getsize(item_path)
+                except:
+                    size = 0
+                mods.append({
+                    "name": base_name,
+                    "description": "",
+                    "version": "",
+                    "min_engine": "",
+                    "icon_path": None,
+                    "is_valid": True,
+                    "real_type": "mod",
+                    "type_label": "Mod MCPELauncher",
+                    "folder": "mods",
+                    "enabled": not is_disabled,
+                    "path": item_path,
+                    "size": size
+                })
+    except:
+        pass
+    return mods
 
 def scan_mods(app):
     active_path = app.active_path
@@ -389,37 +535,7 @@ def scan_mods(app):
     mods_path = os.path.join(active_path, c.MODS_DIR)
     if not os.path.exists(mods_path):
         return []
-    mod_list = []
-    try:
-        for item in os.listdir(mods_path):
-            item_path = os.path.join(mods_path, item)
-            if not os.path.isfile(item_path):
-                continue
-            is_disabled = item.lower().endswith(".disabled")
-            base_name = item[:-9] if is_disabled else item
-            if not base_name.lower().endswith(".so"):
-                continue
-            try:
-                size = os.path.getsize(item_path)
-            except:
-                size = 0
-            mod_list.append({
-                "name": base_name,
-                "description": "",
-                "version": "",
-                "min_engine": "",
-                "icon_path": None,
-                "is_valid": True,
-                "real_type": "mod",
-                "type_label": "Mod MCPELauncher",
-                "folder": "mods",
-                "enabled": not is_disabled,
-                "path": item_path,
-                "size": size
-            })
-    except:
-        pass
-    return mod_list
+    return _collect_mods_recursive(mods_path)
 
 def toggle_mod(app, mod_info):
     current_path = mod_info["path"]
@@ -445,6 +561,8 @@ def install_mod_file(active_path, file_path):
     ext = os.path.splitext(file_path)[1].lower()
     results = []
     if ext == ".zip":
+        if not validate_zip(file_path):
+            return [("ERROR", f"Corrupted .zip file: {os.path.basename(file_path)}")]
         temp_dir = tempfile.mkdtemp()
         try:
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
