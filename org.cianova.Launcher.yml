@@ -149,6 +149,9 @@ modules:
       - cp -r libs_mc/lib /app/share/mcpelauncher/
       - cp libs_mc/gamecontrollerdb.txt /app/share/mcpelauncher/ || true
 
+      # Mod DRM (empaquetado junto a los binarios)
+      - if [ -d mods ]; then cp -r mods /app/share/mcpelauncher/; fi
+
       # Copiar icono
       - install -Dm644 org.cianova.Launcher.png /app/share/icons/hicolor/256x256/apps/org.cianova.Launcher.png
 

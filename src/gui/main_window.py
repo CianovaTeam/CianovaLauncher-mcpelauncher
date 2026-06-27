@@ -873,3 +873,12 @@ class CianovaLauncherApp(QMainWindow):
         from src.gui.changelog_dialog import ChangelogDialog
         dialog = ChangelogDialog(self, version)
         dialog.exec()
+
+    def check_drm_alert(self):
+        """Warn the user if the latest installed version needs the DRM mod and it's missing."""
+        if not self.active_path:
+            return
+        latest = self.logic.get_latest_version_needs_drm(self)
+        if latest and not self.logic.check_drm_mod_installed(self):
+            messagebox.showwarning(self, c.t("UI_DRM_ALERT_TITLE"),
+                                  c.t("UI_DRM_ALERT_MSG", version=latest))

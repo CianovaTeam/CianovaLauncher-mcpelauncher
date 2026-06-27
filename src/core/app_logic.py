@@ -151,7 +151,389 @@ def check_migration_needed(app):
         app.config_manager.save_config()
 
 
+# ── DRM Mod management ──
+
+def check_drm_mod_installed(app):
+    """Check if the DRM mod .so exists in the mods directory (nested structure)."""
+    return _find_drm_mod_dir(app) is not None
+
+
+def _find_drm_mod_dir(app):
+    """Find the deepest directory containing libmcpelauncher-updates.so.
+
+    Returns the full path to the directory (e.g. .../mods/mcpelauncher-updates/1.26.32.2/x86_64/)
+    or None if the mod is not installed.
+    """
+    if not app.active_path:
+        return None
+    mods_base = os.path.join(app.active_path, c.MODS_DIR, "mcpelauncher-updates")
+    if not os.path.isdir(mods_base):
+        return None
+    for root, dirs, files in os.walk(mods_base):
+        if "libmcpelauncher-updates.so" in files:
+            return root
+    return None
+
+
+def get_latest_version_needs_drm(app):
+    """Return the name of the latest installed version that needs the DRM mod,
+    or None if no such version is installed.
+
+    DRM is needed for Minecraft 1.21.30+ (Pairip Core DRM was introduced then).
+    We compare version names as tuples to determine the threshold.
+    """
+    if not app.active_path:
+        return None
+    from .version_ops import get_installed_versions, resolve_version
+    versions = get_installed_versions(app)
+    if not versions:
+        return None
+
+    threshold = (1, 21, 30)
+
+    def _version_tuple(v):
+        vpath = os.path.join(app.active_path, c.VERSIONS_DIR, v)
+        ver_str = resolve_version(vpath)
+        if not ver_str:
+            return None
+        parts = ver_str.split(".")
+        try:
+            return tuple(int(p) for p in parts[:3])
+        except ValueError:
+            return None
+
+    for v in sorted(versions, reverse=True):
+        vt = _version_tuple(v)
+        if vt and vt >= threshold:
+            return v
+    return None
+
+
+def _fetch_json(url, app):
+    """Fetch a JSON document from a URL using urllib."""
+    import json, urllib.request, urllib.error
+
+    req = urllib.request.Request(url, headers={"User-Agent": "CianovaLauncher/3.1"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"HTTP {e.code}: {e.reason}")
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Error de red: {e.reason}")
+    return json.loads(data)
+
+
+def _fetch_moddb(app):
+    """Fetch the mod database from mcpelauncher-moddb."""
+    url = "https://github.com/minecraft-linux/mcpelauncher-moddb/raw/main/moddb.json"
+    return _fetch_json(url, app)
+
+
+def _download_zip(url, dest_path, app):
+    """Download a ZIP file and extract it to dest_path."""
+    import zipfile
+    import io
+    import urllib.request, urllib.error
+    from src.gui.progress_dialog import ProgressDialog
+
+    dialog = ProgressDialog(app, c.t("UI_DOWNLOADING_TITLE"),
+                            f"{c.t('UI_DOWNLOADING_MSG')}\n{url}")
+    dialog.show()
+
+    req = urllib.request.Request(url, headers={"User-Agent": "CianovaLauncher/3.1"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = resp.read()
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"HTTP {e.code}: {e.reason}")
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Error de red: {e.reason}")
+    finally:
+        dialog.close()
+
+    if not data:
+        raise RuntimeError(c.t("UI_DOWNLOAD_EMPTY"))
+
+    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        zf.extractall(dest_path)
+
+
+def _resolve_version_code(app, version_name):
+    """Read the version code from a game version's manifest."""
+    vpath = os.path.join(app.active_path, c.VERSIONS_DIR, version_name)
+    from .version_ops import resolve_version
+    ver_str = resolve_version(vpath)
+    if not ver_str:
+        return None
+    return ver_str
+
+
+def install_drm_mod(app):
+    """One-click: descarga el mod DRM desde los repos oficiales y lo instala."""
+    import platform as _platform
+
+    if not app.active_path:
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_DRM_NO_MODS_FOLDER"))
+        return
+
+    # Detectar arquitectura
+    machine = _platform.machine()
+    if machine in ("x86_64", "amd64"):
+        arch = "x86_64"
+    elif machine in ("aarch64", "arm64"):
+        arch = "arm64-v8a"
+    elif machine in ("i386", "i686", "x86"):
+        arch = "x86"
+    elif machine.startswith("arm"):
+        arch = "armeabi-v7a"
+    else:
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                             f"Arquitectura no soportada: {machine}")
+        return
+
+    # Buscar la versión instalada más reciente para hacer match con moddb
+    from .version_ops import get_installed_versions
+    installed_versions = get_installed_versions(app)
+    latest_installed = installed_versions[0] if installed_versions else None
+    if latest_installed:
+        logger.info(f"Buscando mod DRM para la versión {latest_installed} (arch={arch})")
+
+    try:
+        # 1. Fetch moddb
+        logger.info("Obteniendo lista de mods desde mcpelauncher-moddb...")
+        moddb = _fetch_moddb(app)
+
+        # 2. Find mcpelauncher-updates entry
+        updates = None
+        for entry in moddb:
+            if entry.get("name") == "mcpelauncher-updates":
+                updates = entry
+                break
+
+        if not updates:
+            raise RuntimeError("mcpelauncher-updates no encontrado en el mod database")
+
+        # 3. Find the matching version entry
+        download_url = None
+        mod_version = None
+        for ver_entry in updates.get("versions", []):
+            for extra in ver_entry.get("extraVersions", []):
+                if arch in extra.get("codes", {}):
+                    if latest_installed and extra.get("version_name", "").startswith(latest_installed):
+                        download_url = ver_entry.get("assets", {}).get(arch)
+                        mod_version = ver_entry.get("version")
+                        break
+            if download_url:
+                break
+
+        # 4. Fallback: tomar la última versión del mod (sin matchear contra una versión instalada)
+        if not download_url and updates.get("versions"):
+            fallback_ver = updates["versions"][0]
+            download_url = fallback_ver.get("assets", {}).get(arch)
+            mod_version = fallback_ver.get("version")
+            if download_url:
+                logger.info(f"No se encontró match, usando última versión del mod: {mod_version}")
+
+        if not download_url:
+            raise RuntimeError(
+                f"No se encontró URL de descarga para la arquitectura {arch} "
+                f"en mcpelauncher-moddb"
+            )
+
+        logger.info(f"Descargando mod desde: {download_url}")
+
+        # 4. Download and extract
+        mod_ver = mod_version or "latest"
+        dest_dir = os.path.join(app.active_path, c.MODS_DIR, "mcpelauncher-updates", mod_ver, arch)
+        os.makedirs(dest_dir, exist_ok=True)
+
+        # Si el mod ya está instalado, preguntar si reinstalar
+        if os.path.isfile(os.path.join(dest_dir, "libmcpelauncher-updates.so")):
+            if not messagebox.askyesno(app, c.t("UI_CONFIRM_TITLE"),
+                                       f"El mod mcpelauncher-updates {mod_ver} ya está instalado.\n¿Reinstalar?"):
+                return
+
+        _download_zip(download_url, dest_dir, app)
+
+        # Verificar que se extrajo correctamente
+        so_path = os.path.join(dest_dir, "libmcpelauncher-updates.so")
+        if not os.path.isfile(so_path):
+            raise RuntimeError(f"El ZIP descargado no contenía libmcpelauncher-updates.so")
+
+        os.chmod(so_path, 0o755)
+        # Dar permisos a los parches también
+        patches_dir = os.path.join(dest_dir, "patches")
+        if os.path.isdir(patches_dir):
+            for root, dirs, files in os.walk(patches_dir):
+                for f in files:
+                    if f.endswith(".so"):
+                        os.chmod(os.path.join(root, f), 0o755)
+
+        _ensure_drm_token(app)
+
+        messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"),
+                           f"Mod DRM instalado correctamente:\n{so_path}")
+        logger.info(f"Mod DRM instalado en {so_path}")
+
+    except Exception as e:
+        logger.error(f"Error instalando mod DRM: {e}")
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                            c.t("UI_DRM_INSTALL_ERROR_MSG", error=str(e)))
+
+
+def open_mods_folder(app):
+    """Open the mods directory in the file manager."""
+    if not app.active_path:
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_DRM_NO_MODS_FOLDER"))
+        return
+    mods_dir = os.path.join(app.active_path, c.MODS_DIR)
+    if not os.path.isdir(mods_dir):
+        os.makedirs(mods_dir, exist_ok=True)
+    subprocess.Popen(["xdg-open", mods_dir])
+
+
 # ── Game launcher ──
+
+def _ensure_drm_token(app):
+    """Create the DRM bypass token file if it doesn't exist.
+
+    The mod mcpelauncher-updates checks for
+    /data/data/com.mojang.minecraftpe/mcpelauncher-updates-oss.pass (redirected
+    to ~/.local/share/mcpelauncher/) on startup.  If the content matches the
+    hardcoded placeholder token, the mod skips the entire Google Play validation
+    flow (credential helper request + HTTP callback hijacking), which avoids a
+    Signal 11 crash in std::mutex::lock() inside the mod's libHttpClient hook.
+    """
+    token_path = os.path.join(app.active_path, "mcpelauncher-updates-oss.pass")
+    if os.path.isfile(token_path):
+        return
+    token_content = "PLACE_HOLDERDFDFEFEFS"
+    try:
+        os.makedirs(os.path.dirname(token_path), exist_ok=True)
+        with open(token_path, "w") as f:
+            f.write(token_content)
+        logger.info(f"Created DRM bypass token: {token_path}")
+    except OSError as e:
+        logger.warning(f"Failed to create DRM token: {e}")
+
+
+def _ensure_credential_helper(app):
+    """Create a fake mcpelauncher-ui-qt script for the DRM mod's credential flow.
+
+    When mcpelauncher-updates requests Google credentials, the client forks and
+    execs ``mcpelauncher-ui-qt --request-google-credentials --mod <path>``.
+    This script intercepts that call, reads the already‑stored ``playdl.conf``
+    and prints ``CRED=email:token`` on stderr, which is the format
+    ``requestGoogleCredentials`` in the core expects.
+    """
+    mode = app.config.get(c.CONFIG_KEY_MODE, c.t("UI_DEFAULT_MODE"))
+    cl = ""
+    if mode == c.MODE_BIN_CUSTOM:
+        cl = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_CLIENT, "")
+    elif mode == c.MODE_BIN_SYSTEM:
+        cl = shutil.which("mcpelauncher-client") or ""
+    elif mode == c.MODE_BIN_FLATPAK:
+        if not app.running_in_flatpak:
+            return
+        cl = (app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_CLIENT, "")
+              or "/app/bin/mcpelauncher-client")
+    if not cl or not os.path.isfile(cl):
+        return
+    target = os.path.join(os.path.dirname(cl), "mcpelauncher-ui-qt")
+    if os.path.isfile(target):
+        return
+    script = """#!/usr/bin/env bash
+# Generated by CianovaLauncher
+# vim: set ft=sh:
+set -euo pipefail
+MOD_PATH=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in --mod) MOD_PATH="$2"; shift 2 ;; *) shift ;; esac
+done
+if [ -n "$MOD_PATH" ]; then
+    d="${MOD_PATH}"; for _ in 1 2 3 4 5; do d="$(dirname "$d")"; done
+    DATA_DIR="$d"
+else
+    DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/mcpelauncher"
+fi
+CONF="$DATA_DIR/playdl.conf"
+if [ ! -f "$CONF" ]; then exit 1; fi
+EMAIL=""; TOKEN=""
+while IFS=" = " read -r KEY VAL; do
+    [ "$KEY" = "user_email" ] && EMAIL="$VAL"
+    [ "$KEY" = "user_token" ] && TOKEN="$VAL"
+done < "$CONF"
+if [ -z "$EMAIL" ] || [ -z "$TOKEN" ]; then exit 1; fi
+echo "CRED=$EMAIL:$TOKEN" >&2
+exit 0
+"""
+    try:
+        with open(target, "w") as f:
+            f.write(script)
+        os.chmod(target, 0o755)
+        logger.info(f"Created credential helper: {target}")
+    except OSError as e:
+        logger.warning(f"Failed to create credential helper: {e}")
+
+
+def _ensure_mc_libraries(app):
+    """Ensure libsqliteX.so is available at the path findDataFile expects.
+
+    mcpelauncher-client busca lib/<arch>/libsqliteX.so via PathHelper::findDataFile().
+    No está en el APK; se distribuye aparte (libs_mc/). Copiamos al data home si falta.
+    """
+    import platform as _platform
+    machine = _platform.machine()
+    arch_map = {
+        "x86_64": "x86_64", "amd64": "x86_64",
+        "aarch64": "arm64-v8a", "arm64": "arm64-v8a",
+        "i386": "x86", "i686": "x86", "x86": "x86",
+    }
+    arch = arch_map.get(machine, "x86_64")
+    dest_dir = os.path.join(app.active_path, "lib", arch)
+    dest_path = os.path.join(dest_dir, "libsqliteX.so")
+    needed = ["libsqliteX.so", "libmcpelauncher_mod.so"]
+
+    if all(os.path.isfile(os.path.join(dest_dir, lib)) for lib in needed):
+        return  # ya están todos
+
+    # Buscar el .so en distintas fuentes
+    candidates = []
+    # 1) Junto al binario mcpelauncher-client: <client_dir>/../libs_mc/lib/<arch>/
+    mode = app.config.get(c.CONFIG_KEY_MODE, c.t("UI_DEFAULT_MODE"))
+    if mode == c.MODE_BIN_CUSTOM:
+        cl = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_CLIENT, "")
+        if cl:
+            candidates.append(os.path.join(os.path.dirname(cl), "..", "libs_mc", "lib", arch))
+    elif mode == c.MODE_BIN_SYSTEM:
+        cl = shutil.which("mcpelauncher-client")
+        if cl:
+            candidates.append(os.path.join(os.path.dirname(cl), "..", "libs_mc", "lib", arch))
+    # 2) Bundled en CianovaLauncher mismo (libs_mc/ en la raíz del proyecto)
+    launcher_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+    candidates.append(os.path.join(launcher_dir, "libs_mc", "lib", arch))
+    # 3) En el directorio flatpak
+    candidates.append(os.path.join("/app", "libs_mc", "lib", arch))
+
+    for lib_name in needed:
+        dest = os.path.join(dest_dir, lib_name)
+        if os.path.isfile(dest):
+            continue
+        for src_dir in candidates:
+            src = os.path.normpath(os.path.join(src_dir, lib_name))
+            if os.path.isfile(src):
+                try:
+                    os.makedirs(dest_dir, exist_ok=True)
+                    shutil.copy2(src, dest)
+                    os.chmod(dest, 0o644)
+                    logger.info(f"Copied {lib_name} from {src} to {dest}")
+                    break
+                except OSError as e:
+                    logger.warning(f"Failed to copy {lib_name}: {e}")
+        else:
+            logger.warning(f"{lib_name} not found in any expected location")
+
 
 def launch_game(app):
     """Launch the selected Minecraft version with the configured environment."""
@@ -214,6 +596,19 @@ def launch_game(app):
 
     if not cmd:
         return
+
+    # Add DRM mod directory if installed (mod is loaded via -m flag by mcpelauncher-client)
+    mod_dir = _find_drm_mod_dir(app)
+    if mod_dir:
+        logger.info(f"DRM mod found at {mod_dir}, adding -m flag")
+        cmd.extend(["-m", mod_dir])
+
+    # Ensure libsqliteX.so is available (needed by Minecraft >= 1.21.130)
+    _ensure_mc_libraries(app)
+    # Ensure DRM bypass token exists (avoids Signal 11 crash in mod)
+    _ensure_drm_token(app)
+    # Ensure the credential helper script exists for the DRM mod
+    _ensure_credential_helper(app)
 
     env = os.environ.copy()
     if app.running_in_flatpak:

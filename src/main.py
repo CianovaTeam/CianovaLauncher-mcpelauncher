@@ -110,9 +110,11 @@ if __name__ == "__main__":
             sys.exit(0) 
         else:
             logger.info("Setup Wizard completed successfully.")
+            QTimer.singleShot(2000, window.check_drm_alert)
     else:
         # Version Check Logic only if terms already accepted
         QTimer.singleShot(1000, window.check_version_update)
+        QTimer.singleShot(3000, window.check_drm_alert)
 
     window.show()
     sys.exit(app.exec())

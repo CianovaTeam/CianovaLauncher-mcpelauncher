@@ -75,6 +75,15 @@ class ToolsTab(QWidget):
                 ]
             },
             {
+                "title": c.t("UI_SECTION_MODS"),
+                "icon": "🔧",
+                "tools": [
+                    {"text": c.t("UI_DRM_MOD_TITLE"), "icon": "🛡️", "cmd": None, "show_drm_status": True},
+                    {"text": c.t("UI_BUTTON_INSTALL_DRM_MOD"), "icon": "📥", "cmd": self._on_install_drm_clicked, "color": None},
+                    {"text": c.t("UI_BUTTON_OPEN_MODS_FOLDER"), "icon": "📂", "cmd": lambda: self.app.logic.open_mods_folder(self.app), "color": None},
+                ]
+            },
+            {
                 "title": c.t("UI_SECTION_SYSTEM"),
                 "icon": "💻",
                 "tools": [
@@ -88,6 +97,11 @@ class ToolsTab(QWidget):
             }
         ]
         return groups
+
+    def _on_install_drm_clicked(self):
+        """Install DRM mod and refresh the tools UI afterwards."""
+        self.app.logic.install_drm_mod(self.app)
+        self.refresh_tools_ui()
 
     def refresh_tools_ui(self):
         """Rebuild the tools area, honoring the current layout style (list, columns, or grid)."""
@@ -128,6 +142,34 @@ class ToolsTab(QWidget):
             t2.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-weight: bold; font-size: 14px;")
             t2.setAlignment(Qt.AlignCenter)
             l.addWidget(t2)
+
+            parent_layout.addWidget(container)
+            return
+
+        if tool.get("show_drm_status"):
+            container = QWidget()
+            l = QVBoxLayout(container)
+            l.setContentsMargins(0, 5, 0, 5)
+            l.setSpacing(2)
+
+            t1 = QLabel(tool["text"])
+            t1.setStyleSheet("font-weight: bold; font-size: 11px; color: gray;")
+            t1.setAlignment(Qt.AlignCenter)
+            l.addWidget(t1)
+
+            installed = self.app.logic.check_drm_mod_installed(self.app)
+            status_text = c.t("UI_DRM_MOD_STATUS_INSTALLED") if installed else c.t("UI_DRM_MOD_STATUS_MISSING")
+            status_color = c.COLOR_PRIMARY_GREEN if installed else c.COLOR_RED_BUTTON
+            t2 = QLabel(status_text)
+            t2.setStyleSheet(f"color: {status_color}; font-weight: bold; font-size: 14px;")
+            t2.setAlignment(Qt.AlignCenter)
+            l.addWidget(t2)
+
+            desc = QLabel(c.t("UI_DRM_MOD_DESC"))
+            desc.setWordWrap(True)
+            desc.setStyleSheet("font-size: 11px; color: gray;")
+            desc.setAlignment(Qt.AlignCenter)
+            l.addWidget(desc)
 
             parent_layout.addWidget(container)
             return

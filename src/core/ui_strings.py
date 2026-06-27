@@ -627,6 +627,24 @@ UI_WIZARD_SUMMARY_LABEL_ITEMS = "Elementos"
 UI_WIZARD_SUMMARY_LABEL_METHOD = "Método"
 UI_BUTTON_MIGRATE = "🚀 Migrar"
 
+# ── Mods / DRM ──
+UI_SECTION_MODS = "Mods"
+UI_DRM_MOD_TITLE = "Mod DRM (mcpelauncher-updates)"
+UI_DRM_MOD_STATUS_INSTALLED = "✓ Instalado"
+UI_DRM_MOD_STATUS_MISSING = "✗ No instalado"
+UI_DRM_MOD_DESC = "Necesario para versiones recientes de Minecraft Bedrock (≥ 1.21.30). Parchea Pairip Core DRM, libPlayFabMultiplayer y libmaesdk."
+UI_BUTTON_INSTALL_DRM_MOD = "Descargar e Instalar Mod DRM"
+UI_BUTTON_OPEN_MODS_FOLDER = "Abrir Carpeta de Mods"
+UI_DOWNLOADING_TITLE = "Descargando..."
+UI_DOWNLOADING_MSG = "Descargando Mod DRM desde:"
+UI_DOWNLOAD_ERROR = "Error de descarga"
+UI_DOWNLOAD_EMPTY = "El archivo descargado está vacío"
+UI_DRM_INSTALL_SUCCESS = "Mod DRM instalado correctamente en:\n{path}"
+UI_DRM_INSTALL_ERROR_MSG = "No se pudo instalar el Mod DRM:\n{error}\n\nSi el problema persiste, descárgalo manualmente desde:\nhttps://github.com/minecraft-linux/mcpelauncher-updates/releases"
+UI_DRM_ALERT_TITLE = "Mod DRM Requerido"
+UI_DRM_ALERT_MSG = "La versión {version} de Minecraft Bedrock requiere el mod DRM (mcpelauncher-updates) para funcionar correctamente.\n\nPuedes descargarlo desde Herramientas > Mods."
+UI_DRM_NO_MODS_FOLDER = "La carpeta de mods no existe para la instalación actual."
+
 # ── Update checker ──
 UI_UPDATE_AVAILABLE = "Versión {version} disponible. Actualiza CianovaLauncher para obtener las novedades."
 
