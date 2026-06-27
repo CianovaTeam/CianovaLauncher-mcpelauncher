@@ -31,9 +31,8 @@ on:
         required: true
         default: "v3.0.0"
       mcpelauncher_bins_version:
-        description: "mcpelauncher-bins version to use"
-        required: true
-        default: "v1.7.6_qt6+patches"
+        description: "mcpelauncher-bins version to use (leave empty for latest)"
+        required: false
 
   # ── Uncomment when ready for automatic release on tag push ──
   # push:
@@ -45,8 +44,6 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       VERSION: ${{ github.event.inputs.version || github.ref_name }}
-      MCPELAUNCHER_BINS: ${{ github.event.inputs.mcpelauncher_bins_version || 'v1.7.6_qt6+patches' }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,10 +75,23 @@ jobs:
           source venv/bin/activate
           ./build.sh
 
+      # ── Resolve mcpelauncher-bins version ──
+      - name: Resolve mcpelauncher-bins version
+        id: bins
+        run: |
+          TAG="${{ github.event.inputs.mcpelauncher_bins_version }}"
+          if [ -z "$TAG" ]; then
+            echo "Fetching latest release from PlaGaPlusDev/mcpelauncher-bins..."
+            TAG=$(curl -sL https://api.github.com/repos/PlaGaPlusDev/mcpelauncher-bins/releases/latest \
+              | jq -r '.tag_name')
+            echo "Latest: $TAG"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
       # ── Download mcpelauncher binaries ──
       - name: Download mcpelauncher binaries
         run: |
-          TAG="${{ env.MCPELAUNCHER_BINS }}"
+          TAG="${{ steps.bins.outputs.tag }}"
           URL="https://github.com/PlaGaPlusDev/mcpelauncher-bins/releases/download/$TAG/mcpelauncher_bins-$TAG.tar.gz"
           echo "Downloading from: $URL"
           curl -fL -o mcpelauncher_bins.tar.gz "$URL"
