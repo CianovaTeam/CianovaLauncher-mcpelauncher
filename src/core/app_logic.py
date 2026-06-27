@@ -50,9 +50,7 @@ def disable_shaders(app):
     try:
         with open(p, "r") as f:
             content = f.read()
-        new = content.replace("graphics_mode:2", "graphics_mode:0").replace(
-            "graphics_mode:1", "graphics_mode:0"
-        )
+        new = re.sub(r"^graphics_mode\s*:\s*[12]$", "graphics_mode:0", content, flags=re.MULTILINE)
         with open(p, "w") as f:
             f.write(new)
         check_shader_status(app)
@@ -104,8 +102,8 @@ def get_flatpak_app_id():
             for line in f:
                 if line.startswith("app="):
                     return line.split("=")[1].strip()
-    except Exception:
-        pass
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning("Failed to read flatpak app file: %s", e)
     return None
 
 

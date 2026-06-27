@@ -3,26 +3,53 @@
 # ==========================================
 DEPENDENCY_MAP = {
     "APT": [
-        "libcurl4", "libssl3", "libx11-6", "libxext6", "libxi6",
+        "libcurl4t64", "libssl3t64", "libx11-6", "libxext6", "libxi6",
         "libxrandr2", "libxcursor1", "libxfixes3", "libxrender1",
-        "libasound2", "libpulse0", "libsystemd0", "libgl1", "libegl1",
-        "libqt6core6", "libqt6gui6", "libqt6widgets6", "libqt6network6",
-        "libqt6webengine6", "libqt6qml6", "libqt6quick6",
-        "libqt6quickcontrols2-6", "libqt6svg6",
+        "libasound2t64", "libpulse0", "libsystemd0",
+        "libgl1", "libegl1", "libgles2",
+        "libgl1-mesa-dri", "mesa-vulkan-drivers",
+        "libudev1", "libevdev2",
+        "libpng16-16t64", "zlib1g",
+        "libdbus-1-3",
+        "libxkbcommon0", "libfontconfig1", "libfreetype6",
+        "libgbm1", "libdrm2",
+        "libzip4t64",
+        "libqt6core6t64", "libqt6gui6t64", "libqt6widgets6t64",
+        "libqt6network6t64",
+        "libqt6webenginecore6", "libqt6webenginewidgets6",
+        "libqt6qml6", "libqt6webchannel6",
+        "qml6-module-qtquick", "qml6-module-qtquick-window",
+        "qml6-module-qtquick-controls", "qml6-module-qtquick-layouts",
         "zenity", "unzip"
     ],
     "DNF": [
         "libcurl", "openssl-libs", "libX11", "libXext", "libXi",
         "libXrandr", "libXcursor", "libXfixes", "libXrender", "alsa-lib",
-        "pulseaudio-libs", "systemd-libs", "mesa-libGL", "mesa-libEGL",
-        "qt6-qtbase", "qt6-qtwebengine", "qt6-qtdeclarative", "qt6-qtsvg",
+        "pulseaudio-libs", "systemd-libs",
+        "mesa-libGL", "mesa-libEGL", "mesa-libGLES",
+        "mesa-dri-drivers", "mesa-vulkan-drivers",
+        "libevdev", "libpng", "zlib",
+        "dbus-libs",
+        "libxkbcommon", "fontconfig", "freetype",
+        "mesa-libgbm", "libdrm",
+        "SDL3",
+        "libzip",
+        "qt6-qtbase", "qt6-qtwebengine", "qt6-qtdeclarative",
         "zenity", "unzip"
     ],
     "PACMAN": [
         "curl", "openssl", "libx11", "libxext", "libxi", "libxrandr",
         "libxcursor", "libxfixes", "libxrender", "alsa-lib", "pulseaudio",
-        "systemd-libs", "mesa", "qt6-base", "qt6-webengine",
-        "qt6-declarative", "qt6-svg", "zenity", "unzip"
+        "systemd-libs",
+        "libglvnd", "mesa", "vulkan-icd-loader",
+        "libevdev", "libpng", "zlib",
+        "dbus",
+        "libxkbcommon", "fontconfig", "freetype2",
+        "libdrm",
+        "sdl3",
+        "libzip",
+        "qt6-base", "qt6-webengine", "qt6-declarative",
+        "zenity", "unzip"
     ]
 }
 
@@ -128,6 +155,10 @@ COLOR_ORANGE_BUTTON_HOVER = "#ea580c"
 COLOR_SELECTED_GREEN = "#15803d"
 
 CORNER_RADIUS = 12
+RADIUS_SMALL = 6
+RADIUS_TINY = 4
+RADIUS_BUTTON = 10
+RADIUS_INPUT = 6
 BTN_HEIGHT = 32
 SECTION_PADDING = 10
 ELEMENT_SPACING = 5
@@ -165,13 +196,21 @@ from .core.values import *
 from .core.config_keys import *
 from .core.ui_strings import *
 
+# Derive UI_COLOR_THEMES from THEME_COLOR_MAP to keep a single source of truth
+UI_COLOR_THEMES = list(THEME_COLOR_MAP.keys())
+
 # ── Translation lookup (fallback; overridden by language_manager at startup) ──
+_FORMAT_VARS = {
+    "VERSION_LAUNCHER": VERSION_LAUNCHER,
+    "APP_NAME": APP_NAME,
+}
+
+
 def _t_fallback(key, **kwargs):
     val = globals().get(key, f"!{key}!")
     if isinstance(val, str):
         try:
-            # Expand {VAR_NAME} with own globals (e.g. {VERSION_LAUNCHER})
-            val = val.format(**{k: v for k, v in globals().items() if k.isupper()})
+            val = val.format(**_FORMAT_VARS)
         except (KeyError, ValueError):
             pass
         if kwargs:

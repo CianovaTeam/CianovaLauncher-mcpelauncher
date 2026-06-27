@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QLabel, QFrame, QVBoxLayout, QHBoxLayout, QGridLay
 
 from src import constants as c
 from src.utils.image_manager import ImageManager
+from src.utils.logger import logger
 
 
 def ensure_profile_system(app):
@@ -84,8 +85,8 @@ def detect_installation(app):
         app.play_tab.combo_mode.setCurrentText(disp)
         app.tools_tab.lbl_tools_status.setText(status_text)
         app.update_floating_labels()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to update install UI: %s", e)
 
 
 def change_mode_ui(app, disp):
@@ -134,8 +135,8 @@ def check_shader_status(app):
                         elif val == "2":
                             status = "Vibrant"
                         break
-        except Exception:
-            pass
+        except (OSError, UnicodeDecodeError) as e:
+            logger.warning("Failed to read options.txt for shader status: %s", e)
     if hasattr(app.tools_tab, "lbl_shader_status") and app.tools_tab.lbl_shader_status:
         app.tools_tab.lbl_shader_status.setText(f"Shaders: {status}")
 
@@ -283,8 +284,8 @@ def refresh_version_list(app):
             select_version(app, last)
         elif vers:
             select_version(app, vers[0])
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to populate version grid: %s", e)
 
 
 def select_version(app, version):
@@ -292,9 +293,11 @@ def select_version(app, version):
     app.play_tab.set(version)
     theme_color = app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue")
     accent = c.THEME_COLOR_MAP.get(theme_color, "#1f6aa5")
+    mode = app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark")
+    unselected_bg = "#3a3a3a" if mode == "Dark" else "#e0e0e0"
 
     for v, card in app.version_cards.items():
         if v == version:
             card.setStyleSheet(f"background-color: {accent};")
         else:
-            card.setStyleSheet("background-color: #3a3a3a;")
+            card.setStyleSheet(f"background-color: {unselected_bg};")

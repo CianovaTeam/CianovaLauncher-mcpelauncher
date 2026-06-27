@@ -1,14 +1,13 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QTabWidget, QPushButton, QFrame, QScrollArea,
-                             QComboBox, QApplication, QSystemTrayIcon, QMenu)
-from PySide6.QtCore import Qt, QTimer, QBuffer, QByteArray
+                             QComboBox, QApplication, QSystemTrayIcon, QMenu,
+                             QGraphicsDropShadowEffect)
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPainterPath, QAction
 import os
 import sys
 import time
-import base64
-import subprocess
-import shlex
+
 
 
 from src import constants as c
@@ -94,6 +93,7 @@ class CianovaLauncherApp(QMainWindow):
             w, h = map(int, size_str.split('x'))
             self.resize(w, h)
         except: self.resize(700, 550)
+        self.setMinimumSize(600, 450)
 
         self.setWindowIcon(ImageManager.get_icon("icon.png"))
 
@@ -330,9 +330,10 @@ class CianovaLauncherApp(QMainWindow):
     def change_appearance(self, type_change, value):
         """Change a visual setting (e.g. color theme) and update the UI."""
         if type_change == "color":
-            self.config[c.CONFIG_KEY_COLOR_THEME] = value
+            self.config_manager.set(c.CONFIG_KEY_COLOR_THEME, value)
             # Dynamic color change is complex with current QSS setup, usually requires reload
             messagebox.showinfo(self, c.t("UI_RESTART_REQUIRED_TITLE"), c.t("UI_RESTART_MSG"))
+            return
         self.config_manager.save_config()
         self.apply_theme_settings()
 
@@ -379,6 +380,8 @@ class CianovaLauncherApp(QMainWindow):
 
         # Generate down-arrow pixmap for QComboBox (stylesheets suppress native arrow)
         arrow_size = 12
+        arrow_path = os.path.join(c.HOME_DIR, ".local", "share", "cianovalauncher", "combo_arrow.png")
+        os.makedirs(os.path.dirname(arrow_path), exist_ok=True)
         arrow_pixmap = QPixmap(arrow_size, arrow_size)
         arrow_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(arrow_pixmap)
@@ -390,16 +393,11 @@ class CianovaLauncherApp(QMainWindow):
         path.closeSubpath()
         painter.fillPath(path, QColor(input_text))
         painter.end()
-        ba = QByteArray()
-        buf = QBuffer(ba)
-        buf.open(QBuffer.OpenModeFlag.WriteOnly)
-        arrow_pixmap.save(buf, "PNG")
-        buf.close()
-        arrow_data_uri = f"url(data:image/png;base64,{base64.b64encode(bytes(ba)).decode()})"
+        arrow_pixmap.save(arrow_path)
 
         # Fixed semi-transparent background for floating labels
-        floating_label_bg = hex_to_rgba("#555555" if mode == "Dark" else "#dddddd", 0.7)
-        floating_label_border = f"1px solid {hex_to_rgba('#ffffff' if mode == 'Dark' else '#000000', 0.2)}"
+        floating_label_bg = hex_to_rgba("#555555" if mode == "Dark" else "#dddddd", 0.85)
+        floating_label_border = f"1px solid {hex_to_rgba('#ffffff' if mode == 'Dark' else '#000000', 0.25)}"
 
         qss = f"""
             QMainWindow, QWidget#centralWidget {{
@@ -425,7 +423,7 @@ class CianovaLauncherApp(QMainWindow):
             QTabBar {{
                 alignment: center;
                 background: {tab_bg};
-                border-radius: 12px;
+                border-radius: {c.CORNER_RADIUS}px;
                 padding: 2px;
                 border: none;
             }}
@@ -433,7 +431,7 @@ class CianovaLauncherApp(QMainWindow):
                 background: transparent;
                 color: {text};
                 padding: 10px 25px;
-                border-radius: 10px;
+                border-radius: {c.RADIUS_BUTTON}px;
                 font-weight: bold;
                 margin: 2px;
                 border: none;
@@ -443,7 +441,7 @@ class CianovaLauncherApp(QMainWindow):
                 color: white;
             }}
             QTabBar::tab:hover:!selected {{
-                background: {"#444444" if mode == "Dark" else "#bbbbbb"};
+                background: {hex_to_rgba("#ffffff" if mode == "Dark" else "#000000", 0.08)};
             }}
             QTabWidget::tab-bar {{
                 top: 0px;
@@ -453,7 +451,7 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {accent};
                 color: white;
                 border: 1px solid {accent};
-                border-radius: 10px;
+                border-radius: {c.RADIUS_BUTTON}px;
                 padding: 8px 15px;
                 font-size: 13px;
                 font-weight: bold;
@@ -475,17 +473,17 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {input_bg};
                 color: {input_text};
                 border: 1px solid {input_border};
-                border-radius: 6px;
+                border-radius: {c.RADIUS_INPUT}px;
                 padding: 6px 8px;
             }}
             QComboBox::drop-down {{ 
                 border: none; 
                 width: 25px; 
-                border-top-right-radius: 6px;
-                border-bottom-right-radius: 6px;
+                border-top-right-radius: {c.RADIUS_INPUT}px;
+                border-bottom-right-radius: {c.RADIUS_INPUT}px;
             }}
             QComboBox::down-arrow {{
-                image: {arrow_data_uri};
+                image: url("{arrow_path}");
                 width: {arrow_size}px;
                 height: {arrow_size}px;
                 margin-right: 4px;
@@ -496,19 +494,19 @@ class CianovaLauncherApp(QMainWindow):
                 border: 1px solid {input_border};
                 selection-background-color: {accent};
                 selection-color: white;
-                border-radius: 6px;
+                border-radius: {c.RADIUS_INPUT}px;
                 padding: 2px;
             }}
             QComboBox QAbstractItemView::item {{
                 min-height: 30px;
                 padding: 4px 8px;
-                border-radius: 4px;
+                border-radius: {c.RADIUS_TINY}px;
             }}
             QComboBox QAbstractItemView::item:hover {{
                 background-color: {hex_to_rgba(accent, 0.3)};
             }}
             QCheckBox::indicator, QRadioButton::indicator {{
-                width: 18px; height: 18px; border-radius: 4px;
+                width: 18px; height: 18px; border-radius: {c.RADIUS_TINY}px;
                 border: 2px solid {accent}; background: {input_bg};
             }}
             QCheckBox::indicator:checked, QRadioButton::indicator:checked {{
@@ -517,7 +515,7 @@ class CianovaLauncherApp(QMainWindow):
             QPushButton#PlayButton, QPushButton#SaveButton, QPushButton#ActionButton {{
                 background-color: {accent};
                 color: white;
-                border-radius: 12px;
+                border-radius: {c.CORNER_RADIUS}px;
                 font-size: 16px;
                 font-weight: bold;
                 border: 1px solid rgba(255,255,255,0.2);
@@ -529,7 +527,7 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {accent};
                 color: white;
                 border: none;
-                border-radius: 10px;
+                border-radius: {c.RADIUS_BUTTON}px;
                 font-weight: bold;
                 min-width: 30px;
                 min-height: 30px;
@@ -660,8 +658,19 @@ class CianovaLauncherApp(QMainWindow):
         try:
             QApplication.instance().setStyleSheet(qss)
         except Exception as e:
-            # Silently catch stylesheet parsing errors to avoid log spam
             pass
+
+        # Apply drop shadow to all card-type frames
+        shadow_color = QColor(0, 0, 0, 60) if mode == "Dark" else QColor(0, 0, 0, 30)
+        for frame in self.findChildren(QFrame):
+            if frame.objectName() in ("GroupFrame", "ToolCard", "VersionCard"):
+                existing = frame.graphicsEffect()
+                if existing is None:
+                    shadow = QGraphicsDropShadowEffect()
+                    shadow.setBlurRadius(12)
+                    shadow.setOffset(0, 2)
+                    shadow.setColor(shadow_color)
+                    frame.setGraphicsEffect(shadow)
 
     def _apply_debounced_personalization(self):
         self.apply_theme_settings()
@@ -712,7 +721,6 @@ class CianovaLauncherApp(QMainWindow):
 
     def sync_gamemode_ui(self, value):
         """Synchronize the gamemode toggle between Play and Settings tabs."""
-        self.config[c.CONFIG_KEY_GAMEMODE_ENABLED] = value
         self.config_manager.set(c.CONFIG_KEY_GAMEMODE_ENABLED, value)
         if hasattr(self.play_tab, "check_gamemode"):
             self.play_tab.check_gamemode.blockSignals(True)
@@ -727,7 +735,7 @@ class CianovaLauncherApp(QMainWindow):
 
     def sync_discord_rpc_ui(self, value):
         """Synchronize the Discord RPC toggle between Play and Settings tabs."""
-        self.config[c.CONFIG_KEY_DISCORD_RPC_ENABLED] = value
+        self.config_manager.set(c.CONFIG_KEY_DISCORD_RPC_ENABLED, value)
         self._sync_discord_play(value)
         self._sync_discord_settings(value)
         if value:
@@ -750,7 +758,6 @@ class CianovaLauncherApp(QMainWindow):
 
     def sync_launch_action_ui(self, action_key):
         """Synchronize the launch-action combo between Play and Settings tabs."""
-        self.config[c.CONFIG_KEY_LAUNCH_ACTION] = action_key
         self.config_manager.set(c.CONFIG_KEY_LAUNCH_ACTION, action_key)
         for tab in (self.play_tab, self.settings_tab):
             if hasattr(tab, "combo_launch_action"):
@@ -838,8 +845,7 @@ class CianovaLauncherApp(QMainWindow):
                 messagebox.showwarning(self, c.t("UI_DOWNGRADE_WARNING_TITLE"),
                                      c.t("UI_DOWNGRADE_WARNING_MSG", old=config_ver))
 
-            self.config[c.CONFIG_KEY_VERSION] = current_ver
-            self.config_manager.save_config()
+            self.config_manager.set(c.CONFIG_KEY_VERSION, current_ver)
         except Exception as e:
             logger.error(f"Error comparing versions: {e}")
 
@@ -857,8 +863,7 @@ class CianovaLauncherApp(QMainWindow):
         self._update_checker = UpdateChecker(self)
         self._update_checker.check(on_result=lambda ok, ver, err: self._on_remote_check(ok, ver, ignored))
 
-        self.config[c.CONFIG_KEY_UPDATE_LAST_CHECK] = now
-        self.config_manager.save_config()
+        self.config_manager.set(c.CONFIG_KEY_UPDATE_LAST_CHECK, now)
 
     def _on_remote_check(self, available, remote_ver, ignored):
         """Handle the remote check result. Show dialog if update found and not ignored."""

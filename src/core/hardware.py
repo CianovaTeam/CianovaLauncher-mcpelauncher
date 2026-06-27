@@ -116,8 +116,11 @@ def get_compatibility_range(app):
 
 def check_requirements_dialog(app):
     """Analiza hardware y muestra resultado en diálogo."""
+    if getattr(app, '_hw_worker_running', False):
+        return
     from src.gui.progress_dialog import ProgressDialog
     from src.core.worker import LogicWorker
+    app._hw_worker_running = True
     app._prog = ProgressDialog(app, c.t("UI_ANALYZING_TITLE"), c.t("UI_ANALYZING_HW_MSG"))
     app._prog.show()
 
@@ -163,9 +166,19 @@ def check_requirements_dialog(app):
                 f"\n----------------------------\n" +
                 f"{c.t("UI_HARDWARE_ANALYSIS_RECOMMENDATION", compat_ver=compat_ver)}")
 
+    def _on_hw_finished(res):
+        app._hw_worker_running = False
+        app._prog.accept()
+        show_hw_results(app, res)
+
+    def _on_hw_error(e):
+        app._hw_worker_running = False
+        app._prog.accept()
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), e)
+
     app._worker = LogicWorker(task)
-    app._worker.finished.connect(lambda res: [app._prog.accept(), show_hw_results(app, res)])
-    app._worker.error.connect(lambda e: [app._prog.accept(), messagebox.showerror(app, c.t("UI_ERROR_TITLE"), e)])
+    app._worker.finished.connect(_on_hw_finished)
+    app._worker.error.connect(_on_hw_error)
     app._worker.start()
 
 

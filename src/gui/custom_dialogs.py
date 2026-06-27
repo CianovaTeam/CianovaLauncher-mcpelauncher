@@ -91,6 +91,9 @@ class CustomDialog(QDialog):
             elif is_negative:
                 bg_color = c.COLOR_RED_BUTTON
 
+            r = int(bg_color[1:3], 16)
+            g = int(bg_color[3:5], 16)
+            b = int(bg_color[5:7], 16)
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {bg_color};
@@ -100,7 +103,7 @@ class CustomDialog(QDialog):
                     font-weight: bold;
                 }}
                 QPushButton:hover {{
-                    background-color: {bg_color}bb;
+                    background-color: rgba({r}, {g}, {b}, 0.73);
                 }}
             """)
 

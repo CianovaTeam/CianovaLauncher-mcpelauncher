@@ -38,6 +38,7 @@ class VersionFetcher(QThread):
                     else:
                         self.error.emit(f"HTTP {response.status}")
             except urllib.error.URLError:
+                logger.warning(f"SSL connection failed for {url}, retrying without certificate verification")
                 ctx.check_hostname = False
                 ctx.verify_mode = ssl.CERT_NONE
                 with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
@@ -511,11 +512,11 @@ class LocalApkTab(QWidget):
         is_target_flatpak = (self.dialog.target_mode_val == c.MODE_INSTALL_FLATPAK)
         f_id = self.dialog.entry_flatpak_id.text().strip() if is_target_flatpak else None
 
-        self.dialog.accept()
         self.dialog.parent_app.logic.process_apk(
             self.dialog.parent_app, apk, name, target_root=target_root,
             is_target_flatpak=is_target_flatpak, flatpak_id=f_id
         )
+        self.dialog.accept()
 
 class InstallDialog(QDialog):
     """Dialog for installing new Minecraft versions from APK files or Google Play."""
@@ -611,6 +612,15 @@ class InstallDialog(QDialog):
             if entry.get("version") == version_name:
                 return entry.get("reason")
         return None
+
+    def closeEvent(self, event):
+        if self._warnings_fetcher and self._warnings_fetcher.isRunning():
+            self._warnings_fetcher.requestInterruption()
+            self._warnings_fetcher.wait(3000)
+        if hasattr(self, 'google_tab') and self.google_tab.fetcher and self.google_tab.fetcher.isRunning():
+            self.google_tab.fetcher.requestInterruption()
+            self.google_tab.fetcher.wait(3000)
+        super().closeEvent(event)
 
     def get_target_root(self):
         """Resolve the installation root path based on the selected mode."""

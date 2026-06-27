@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import threading
@@ -35,7 +36,7 @@ class ConfigManager:
                 c.CONFIG_KEY_WEBVIEW: "",
                 c.CONFIG_KEY_MSA_DAEMON: ""
             },
-            c.CONFIG_KEY_MODE: c.t("UI_DEFAULT_MODE"),
+            c.CONFIG_KEY_MODE: c.MODE_BIN_SYSTEM,
             c.CONFIG_KEY_INSTALL_MODE: c.MODE_INSTALL_LOCAL,
             c.CONFIG_KEY_LANGUAGE: "en",
             c.CONFIG_KEY_FLATPAK_ID: c.DEFAULT_FLATPAK_ID,
@@ -55,8 +56,8 @@ class ConfigManager:
             c.CONFIG_KEY_VERSION_LIST_STYLE: c.STYLE_LIST,
             c.CONFIG_KEY_VERSION_ICON_SIZE: 32,
             c.CONFIG_KEY_VERSION_TITLE_SIZE: 13,
-            c.CONFIG_KEY_PROFILES: [c.t("UI_PROFILE_DEFAULT")],
-            c.CONFIG_KEY_CURRENT_PROFILE: c.t("UI_PROFILE_DEFAULT"),
+            c.CONFIG_KEY_PROFILES: ["default"],
+            c.CONFIG_KEY_CURRENT_PROFILE: "default",
             c.CONFIG_KEY_SECTION_OPACITY: 100,
             c.CONFIG_KEY_VERSION: c.VERSION_LAUNCHER, # Initial version
             c.CONFIG_KEY_UI_SCALE: "1.0",
@@ -69,12 +70,12 @@ class ConfigManager:
 
     def restore_defaults(self):
         """Reset configuration to default values and persist them."""
-        self.config = self.default_config.copy()
+        self.config = copy.deepcopy(self.default_config)
         self.save_config()
 
     def _deep_merge(self, defaults, loaded):
         """Mezcla profundamente dos diccionarios para asegurar que las claves anidadas existan"""
-        result = defaults.copy()
+        result = copy.deepcopy(defaults)
         for key, value in loaded.items():
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)

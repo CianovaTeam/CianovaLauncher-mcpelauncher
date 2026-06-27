@@ -23,6 +23,11 @@ class PlayTab(QWidget):
         self.lbl_status.setStyleSheet(f"font-size: 12px; font-weight: bold;")
         self.header_layout.addWidget(self.lbl_status)
 
+        self.lbl_game_status = QLabel(c.t("UI_GAME_STATUS_IDLE"))
+        self.lbl_game_status.setObjectName("FloatingLabel")
+        self.lbl_game_status.setStyleSheet("font-size: 11px;")
+        self.header_layout.addWidget(self.lbl_game_status)
+
         self.header_layout.addStretch()
 
         # Frame para selectores
@@ -91,10 +96,6 @@ class PlayTab(QWidget):
         self.opts_layout.setAlignment(Qt.AlignCenter)
         self.main_layout.addLayout(self.opts_layout)
 
-        self.lbl_game_status = QLabel(c.t("UI_GAME_STATUS_IDLE"))
-        self.lbl_game_status.setStyleSheet("font-size: 11px; color: gray;")
-        self.opts_layout.addWidget(self.lbl_game_status)
-
         self.combo_launch_action = QComboBox()
         self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_CLOSE"), c.LAUNCH_ACTION_CLOSE)
         self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_HIDE"), c.LAUNCH_ACTION_HIDE)
@@ -151,12 +152,12 @@ class PlayTab(QWidget):
     def update_profile_indicator(self):
         """Refresh the profile name shown in the floating label."""
         current = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT"))
-        self.lbl_profile_indicator.setText(f"👤 {c.t("UI_LABEL_PROFILE")} {current}")
+        self.lbl_profile_indicator.setText(f"👤 {c.t('UI_LABEL_PROFILE')} {current}")
 
     def set_game_status(self, running):
         if running:
             self.lbl_game_status.setText(c.t("UI_GAME_STATUS_RUNNING"))
-            self.lbl_game_status.setStyleSheet("font-size: 11px; color: #4CAF50; font-weight: bold;")
+            self.lbl_game_status.setStyleSheet("font-size: 11px; font-weight: bold; color: #4CAF50;")
         else:
             self.lbl_game_status.setText(c.t("UI_GAME_STATUS_IDLE"))
             self.lbl_game_status.setStyleSheet("font-size: 11px; color: gray;")

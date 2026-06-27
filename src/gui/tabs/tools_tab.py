@@ -178,7 +178,11 @@ class ToolsTab(QWidget):
         btn.setFixedHeight(c.BTN_HEIGHT + 4)
 
         if tool.get("color"):
-            btn.setStyleSheet(f"background-color: {tool['color']}; color: white; border-radius: 8px; font-size: 13px; font-weight: bold;")
+            bg = tool['color']
+            r = int(bg[1:3], 16); g = int(bg[3:5], 16); b = int(bg[5:7], 16)
+            luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+            text_color = "#242424" if luminance > 0.5 else "white"
+            btn.setStyleSheet(f"background-color: {bg}; color: {text_color}; border-radius: 8px; font-size: 13px; font-weight: bold;")
         else:
             btn.setObjectName("ToolButton")
 

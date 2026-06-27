@@ -88,7 +88,7 @@ class AddonManagerDialog(QDialog):
 
         row1.addStretch()
 
-        btn_import = QPushButton(f"📥 {c.t("UI_BUTTON_IMPORT_FILE")}")
+        btn_import = QPushButton(f"📥 {c.t('UI_BUTTON_IMPORT_FILE')}")
         btn_import.setFixedHeight(35)
         btn_import.setStyleSheet(f"background-color: {c.COLOR_GREEN_BUTTON}; color: white; font-weight: bold;")
         btn_import.clicked.connect(self.import_file)
@@ -100,11 +100,11 @@ class AddonManagerDialog(QDialog):
         profile = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT"))
         install_mode = c.t("UI_INSTALL_MODES").get(self.app.config.get(c.CONFIG_KEY_INSTALL_MODE), "Unknown")
 
-        lbl_profile = QLabel(f"👤 {c.t("UI_LABEL_PROFILE")} {profile}")
+        lbl_profile = QLabel(f"👤 {c.t('UI_LABEL_PROFILE')} {profile}")
         lbl_profile.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-size: 11px;")
         row2.addWidget(lbl_profile)
 
-        lbl_mode = QLabel(f"📦 {c.t("UI_LABEL_INSTALLATION")} {install_mode}")
+        lbl_mode = QLabel(f"📦 {c.t('UI_LABEL_INSTALLATION')} {install_mode}")
         lbl_mode.setStyleSheet("color: gray; font-size: 11px;")
         row2.addWidget(lbl_mode)
         row2.addStretch()
@@ -191,10 +191,10 @@ class AddonManagerDialog(QDialog):
 
         filtered = [
             a for a in self.addons_data
-            if (a["folder"] == folder_filter or (folder_filter == "resource_packs" and a["folder"] in ("resource_packs", "skin_packs", "custom_skins")))
-            and (not search_query or search_query in a["name"].lower() or search_query in a["description"].lower())
+            if (a.get("folder") == folder_filter or (folder_filter == "resource_packs" and a.get("folder") in ("resource_packs", "skin_packs", "custom_skins")))
+            and (not search_query or search_query in a.get("name", "").lower() or search_query in a.get("description", "").lower())
         ]
-        filtered.sort(key=lambda x: x["name"].lower())
+        filtered.sort(key=lambda x: x.get("name", "").lower())
 
         for addon in filtered:
             self.create_item_ui(layout, addon)
@@ -210,8 +210,9 @@ class AddonManagerDialog(QDialog):
         lbl_icon = QLabel()
         lbl_icon.setFixedSize(90, 90)
         pixmap = None
-        if addon["icon_path"] and os.path.exists(addon["icon_path"]):
-            pixmap = QPixmap(addon["icon_path"]).scaled(90, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        icon_path = addon.get("icon_path")
+        if icon_path and os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path).scaled(90, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
         if not pixmap or pixmap.isNull():
             pixmap = ImageManager.get_image("icon.png", size=(90, 90))
@@ -221,21 +222,26 @@ class AddonManagerDialog(QDialog):
 
         # Info
         info_layout = QVBoxLayout()
-        name_text = addon["name"]
-        if addon["version"]: name_text += f" (v{addon['version']})"
+        addon_name = addon.get("name", "Unknown")
+        addon_version = addon.get("version", "")
+        addon_enabled = addon.get("enabled", False)
+        addon_folder = addon.get("folder", "")
+        name_text = addon_name
+        if addon_version:
+            name_text += f" (v{addon_version})"
 
         lbl_name = QLabel(name_text)
-        lbl_name.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {'white' if addon['enabled'] else '#888888'};")
+        lbl_name.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {'white' if addon_enabled else '#888888'};")
         info_layout.addWidget(lbl_name)
 
-        if addon["folder"] != "minecraftWorlds":
-            status_text = c.t("UI_STATUS_ACTIVE") if addon["enabled"] else c.t("UI_STATUS_DISABLED")
-            type_str = f"[{addon['type_label']}] - {status_text}"
+        if addon_folder != "minecraftWorlds":
+            status_text = c.t("UI_STATUS_ACTIVE") if addon_enabled else c.t("UI_STATUS_DISABLED")
+            type_str = f"[{addon.get('type_label', '?')}] - {status_text}"
             lbl_type = QLabel(type_str)
-            lbl_type.setStyleSheet(f"font-size: 11px; color: {c.COLOR_PRIMARY_GREEN if addon['enabled'] else 'gray'};")
+            lbl_type.setStyleSheet(f"font-size: 11px; color: {c.COLOR_PRIMARY_GREEN if addon_enabled else 'gray'};")
             info_layout.addWidget(lbl_type)
 
-        if addon["folder"] == "mods":
+        if addon_folder == "mods":
             size = addon.get("size", 0)
             if size < 1024:
                 size_str = f"{size} B"
@@ -247,8 +253,8 @@ class AddonManagerDialog(QDialog):
             lbl_size.setStyleSheet("font-size: 11px; color: gray;")
             info_layout.addWidget(lbl_size)
 
-        if addon["description"]:
-            lbl_desc = QLabel(addon["description"])
+        if addon.get("description"):
+            lbl_desc = QLabel(addon.get("description", ""))
             lbl_desc.setWordWrap(True)
             lbl_desc.setStyleSheet("font-size: 12px; color: gray;")
             info_layout.addWidget(lbl_desc)
@@ -257,9 +263,9 @@ class AddonManagerDialog(QDialog):
 
         # Actions
         actions_layout = QHBoxLayout()
-        if addon["folder"] != "minecraftWorlds":
-            btn_text = c.t("UI_BUTTON_DEACTIVATE") if addon["enabled"] else c.t("UI_BUTTON_ACTIVATE")
-            btn_color = c.COLOR_RED_BUTTON if addon["enabled"] else c.COLOR_GREEN_BUTTON
+        if addon_folder != "minecraftWorlds":
+            btn_text = c.t("UI_BUTTON_DEACTIVATE") if addon_enabled else c.t("UI_BUTTON_ACTIVATE")
+            btn_color = c.COLOR_RED_BUTTON if addon_enabled else c.COLOR_GREEN_BUTTON
 
             btn_toggle = QPushButton(btn_text)
             btn_toggle.setFixedSize(130, 40)
@@ -316,7 +322,7 @@ class AddonManagerDialog(QDialog):
 
     def delete(self, addon):
         """Delete the given addon after user confirmation."""
-        if messagebox.askyesno(self, c.t("UI_CONFIRM_DELETE_TITLE"), f"{c.t("UI_BUTTON_DELETE")} {addon['name']}?"):
+        if messagebox.askyesno(self, c.t("UI_CONFIRM_DELETE_TITLE"), f"{c.t('UI_BUTTON_DELETE')} {addon['name']}?"):
             from src.gui.progress_dialog import ProgressDialog
             self.progress_action = ProgressDialog(self, c.t("UI_INFO_TITLE"), c.t("UI_DELETING_RESOURCE"))
             self.progress_action.show()

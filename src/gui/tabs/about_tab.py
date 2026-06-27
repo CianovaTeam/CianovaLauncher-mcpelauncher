@@ -40,7 +40,7 @@ class AboutTab(QWidget):
         self.credits_label.setStyleSheet("font-size: 12px;")
         self.main_layout.addWidget(self.credits_label)
 
-        self.version_label = QLabel(f"{c.t("UI_VERSION_TEXT")}{c.VERSION_LAUNCHER}")
+        self.version_label = QLabel(f"{c.t('UI_VERSION_TEXT')}{c.VERSION_LAUNCHER}")
         self.version_label.setAlignment(Qt.AlignCenter)
         self.version_label.setStyleSheet("font-size: 11px; color: gray;")
         self.main_layout.addWidget(self.version_label)

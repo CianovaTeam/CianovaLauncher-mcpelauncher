@@ -6,6 +6,7 @@ import tempfile
 import time
 import re
 from src import constants as c
+from src.utils.logger import logger
 
 def get_com_mojang_path(active_path):
     """Retorna la ruta a games/com.mojang"""
@@ -44,7 +45,8 @@ def parse_lang_file(lang_path):
                         parts = line.split("=", 1)
                         if len(parts) == 2:
                             translations[parts[0].strip()] = strip_mc_codes(parts[1].strip())
-        except: pass
+        except (OSError, UnicodeDecodeError):
+            pass
     return translations
 
 def scan_all_addons(app):
@@ -85,7 +87,8 @@ def scan_all_addons(app):
                             "enabled": True,
                             "path": item_path
                         })
-            except: pass
+            except OSError:
+                pass
 
     # Escanear packs desactivados
     disabled_root = get_disabled_packs_path(app)
@@ -108,7 +111,8 @@ def scan_all_addons(app):
                                 "enabled": False,
                                 "path": item_path
                             })
-                except: pass
+                except OSError:
+                    pass
 
     return addon_list
 
@@ -147,7 +151,8 @@ def _peek_packed_info(path):
                 if real_type:
                     result["real_type"] = real_type
                 return result
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to peek packed info in %s: %s", path, e)
         return None
 
 def get_addon_info(path, folder_type=None):
@@ -180,7 +185,8 @@ def get_addon_info(path, folder_type=None):
             try:
                 with open(levelname_path, "r", errors="replace") as f:
                     info["name"] = f.read().strip()
-            except: pass
+            except (OSError, UnicodeDecodeError):
+                pass
         else:
             if os.path.basename(path) == "Texture":
                 info["is_valid"] = False
@@ -201,7 +207,8 @@ def get_addon_info(path, folder_type=None):
                     if os.path.exists(m):
                         manifest_path = m
                         break
-        except: pass
+        except OSError:
+            pass
 
     if os.path.exists(manifest_path):
         try:
@@ -249,7 +256,8 @@ def get_addon_info(path, folder_type=None):
                 min_ver = header.get("min_engine_version", [])
                 if isinstance(min_ver, list):
                     info["min_engine"] = ".".join(map(str, min_ver))
-        except: pass
+        except (json.JSONDecodeError, KeyError, OSError, UnicodeDecodeError) as e:
+            logger.warning("Failed to parse manifest at %s: %s", manifest_path, e)
     else:
         if folder_type in ["resource_packs", "behavior_packs"]:
              info["is_valid"] = False
@@ -273,7 +281,8 @@ def find_file_recursive(base_path, filename, max_depth=2, current_depth=0):
             if os.path.isdir(item_path):
                 found = find_file_recursive(item_path, filename, max_depth, current_depth + 1)
                 if found: return found
-    except: pass
+    except OSError:
+        pass
     return None
 
 def toggle_addon(app, addon_info):
@@ -320,7 +329,8 @@ def export_world(world_path, dest_dir):
                     raw = f.read().strip()
                     safe = re.sub(r'[<>:"/\\|?*]', '', raw).strip()[:200]
                     name = safe if safe else name
-            except: pass
+            except (OSError, UnicodeDecodeError):
+                pass
 
         save_path = os.path.join(dest_dir, f"{name}.mcworld")
         temp_base = os.path.join(tempfile.gettempdir(), f"{name}_{int(time.time())}")
@@ -369,11 +379,7 @@ def install_addon_file(active_path, file_path, manual_type=None):
                     item_name = os.path.basename(pack_dir)
                     p_type = detect_pack_type(manifest_path)
                     if p_type:
-                        dest_folder = {
-                            c.t("UI_TYPE_RESOURCE"): "resource_packs",
-                            c.t("UI_TYPE_BEHAVIOR"): "behavior_packs",
-                            c.t("UI_TYPE_SKIN"): "skin_packs"
-                        }.get(p_type, "resource_packs")
+                        dest_folder = PACK_TYPE_FOLDER_MAP.get(p_type, "resource_packs")
                         target = os.path.join(com_mojang, dest_folder, item_name)
                         if os.path.exists(target):
                             if os.path.isdir(target): shutil.rmtree(target)
@@ -410,7 +416,8 @@ def validate_zip(file_path):
         with zipfile.ZipFile(file_path, 'r') as z:
             bad = z.testzip()
             return bad is None
-    except Exception:
+    except Exception as e:
+        logger.warning("validate_zip failed for %s: %s", file_path, e)
         return False
 
 def install_single_pack(file_path, com_mojang, manual_type=None):
@@ -427,12 +434,7 @@ def install_single_pack(file_path, com_mojang, manual_type=None):
         if not pack_type:
             shutil.rmtree(temp_dir)
             return ("NEED_TYPE", file_path)
-        dest_folder = {
-            c.t("UI_TYPE_RESOURCE"): "resource_packs",
-            c.t("UI_TYPE_BEHAVIOR"): "behavior_packs",
-            c.t("UI_TYPE_SKIN"): "skin_packs",
-            c.t("UI_TYPE_WORLD"): "minecraftWorlds"
-        }.get(pack_type, "resource_packs")
+        dest_folder = PACK_TYPE_FOLDER_MAP.get(pack_type, "resource_packs")
         final_dest = os.path.join(com_mojang, dest_folder)
         os.makedirs(final_dest, exist_ok=True)
         item_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -444,6 +446,14 @@ def install_single_pack(file_path, com_mojang, manual_type=None):
         if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
         return ("ERROR", str(e))
 
+PACK_TYPE_FOLDER_MAP = {
+    "resources": "resource_packs",
+    "data": "behavior_packs",
+    "skin_pack": "skin_packs",
+    "world_template": "minecraftWorlds",
+}
+
+
 def detect_pack_type(manifest_path):
     try:
         with open(manifest_path, "r", encoding="utf-8") as f:
@@ -451,11 +461,10 @@ def detect_pack_type(manifest_path):
             modules = data.get("modules", [])
             for mod in modules:
                 m_type = mod.get("type")
-                if m_type == "resources": return c.t("UI_TYPE_RESOURCE")
-                if m_type == "data": return c.t("UI_TYPE_BEHAVIOR")
-                if m_type == "skin_pack": return c.t("UI_TYPE_SKIN")
-                if m_type == "world_template": return c.t("UI_TYPE_WORLD")
-    except: pass
+                if m_type in PACK_TYPE_FOLDER_MAP:
+                    return m_type
+    except Exception:
+        return None
     return None
 
 def install_mcaddon(file_path, com_mojang):
@@ -475,11 +484,7 @@ def install_mcaddon(file_path, com_mojang):
                 if os.path.exists(manifest):
                     p_type = detect_pack_type(manifest)
                     if p_type:
-                        dest_folder = {
-                            c.t("UI_TYPE_RESOURCE"): "resource_packs",
-                            c.t("UI_TYPE_BEHAVIOR"): "behavior_packs",
-                            c.t("UI_TYPE_SKIN"): "skin_packs"
-                        }.get(p_type, "resource_packs")
+                        dest_folder = PACK_TYPE_FOLDER_MAP.get(p_type, "resource_packs")
                         target = os.path.join(com_mojang, dest_folder, item)
                         if os.path.exists(target):
                             base, ext = os.path.splitext(item)
@@ -508,7 +513,7 @@ def _collect_mods_recursive(search_path):
                     continue
                 try:
                     size = os.path.getsize(item_path)
-                except:
+                except OSError:
                     size = 0
                 mods.append({
                     "name": base_name,
@@ -524,7 +529,7 @@ def _collect_mods_recursive(search_path):
                     "path": item_path,
                     "size": size
                 })
-    except:
+    except OSError:
         pass
     return mods
 

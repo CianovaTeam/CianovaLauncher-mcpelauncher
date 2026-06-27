@@ -188,13 +188,13 @@ class SettingsTab(QWidget):
         else:
             mode_keys = [c.MODE_BIN_SYSTEM, c.MODE_BIN_CUSTOM, c.MODE_BIN_FLATPAK]
 
-        modes_display = [c.t("UI_BIN_MODES")[k] for k in mode_keys]
-
         self.combo_settings_mode = QComboBox()
-        self.combo_settings_mode.addItems(modes_display)
-        current_mode = self.app.config.get(c.CONFIG_KEY_MODE, c.t("UI_DEFAULT_MODE"))
-        initial_display = c.t("UI_BIN_MODES").get(current_mode, c.t("UI_BIN_MODES")[c.MODE_BIN_SYSTEM])
-        self.combo_settings_mode.setCurrentText(initial_display)
+        for k in mode_keys:
+            self.combo_settings_mode.addItem(c.t("UI_BIN_MODES")[k], k)
+        current_mode = self.app.config.get(c.CONFIG_KEY_MODE, c.MODE_BIN_SYSTEM)
+        idx = self.combo_settings_mode.findData(current_mode)
+        if idx >= 0:
+            self.combo_settings_mode.setCurrentIndex(idx)
         self.combo_settings_mode.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         layout.addWidget(self.combo_settings_mode)
 
@@ -464,11 +464,12 @@ class SettingsTab(QWidget):
         grid.addWidget(QLabel(c.t("UI_LABEL_COLOR_THEME")), 0, 0)
         self.combo_theme = QComboBox()
         theme_keys = list(c.t("UI_THEME_NAMES").keys())
-        self.theme_map = {c.t("UI_THEME_NAMES").get(k, k.capitalize()): k for k in theme_keys}
-        self.combo_theme.addItems(list(self.theme_map.keys()))
+        for k in theme_keys:
+            self.combo_theme.addItem(c.t("UI_THEME_NAMES").get(k, k.capitalize()), k)
         current_theme = self.app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue")
-        current_display = next((display for display, key in self.theme_map.items() if key == current_theme), "Blue")
-        self.combo_theme.setCurrentText(current_display)
+        idx = self.combo_theme.findData(current_theme)
+        if idx >= 0:
+            self.combo_theme.setCurrentIndex(idx)
         self.combo_theme.currentTextChanged.connect(self.on_theme_change)
         self.combo_theme.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         grid.addWidget(self.combo_theme, 0, 1)
@@ -476,9 +477,12 @@ class SettingsTab(QWidget):
         # App Mode
         grid.addWidget(QLabel(c.t("UI_LABEL_APPEARANCE_MODE")), 1, 0)
         self.combo_app_mode = QComboBox()
-        self.combo_app_mode.addItems(list(c.t("UI_APPEARANCE_MODES").values()))
+        for k, v in c.t("UI_APPEARANCE_MODES").items():
+            self.combo_app_mode.addItem(v, k)
         current_app_mode = self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark")
-        self.combo_app_mode.setCurrentText(c.t("UI_APPEARANCE_MODES").get(current_app_mode, "Dark"))
+        idx = self.combo_app_mode.findData(current_app_mode)
+        if idx >= 0:
+            self.combo_app_mode.setCurrentIndex(idx)
         self.combo_app_mode.currentTextChanged.connect(self.on_appearance_mode_change)
         self.combo_app_mode.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         grid.addWidget(self.combo_app_mode, 1, 1)
@@ -487,9 +491,12 @@ class SettingsTab(QWidget):
         grid.addWidget(QLabel(c.t("UI_LABEL_LANGUAGE")), 3, 0)
         self.langs_dict = language_manager.get_available_languages()
         self.combo_lang = QComboBox()
-        self.combo_lang.addItems(list(self.langs_dict.values()))
+        for k, v in self.langs_dict.items():
+            self.combo_lang.addItem(v, k)
         current_lang = self.app.config.get(c.CONFIG_KEY_LANGUAGE, "en")
-        self.combo_lang.setCurrentText(self.langs_dict.get(current_lang, "English"))
+        idx = self.combo_lang.findData(current_lang)
+        if idx >= 0:
+            self.combo_lang.setCurrentIndex(idx)
         self.combo_lang.currentTextChanged.connect(self.on_language_change)
         self.combo_lang.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         grid.addWidget(self.combo_lang, 3, 1)
@@ -509,9 +516,12 @@ class SettingsTab(QWidget):
         # List Style
         grid.addWidget(QLabel(c.t("UI_LABEL_VERSION_LIST_STYLE")), 5, 0)
         self.combo_list_style = QComboBox()
-        self.combo_list_style.addItems(list(c.t("UI_LIST_STYLES").values()))
+        for k, v in c.t("UI_LIST_STYLES").items():
+            self.combo_list_style.addItem(v, k)
         current_style = self.app.config.get(c.CONFIG_KEY_VERSION_LIST_STYLE, c.STYLE_LIST)
-        self.combo_list_style.setCurrentText(c.t("UI_LIST_STYLES").get(current_style, c.STYLE_LIST))
+        idx = self.combo_list_style.findData(current_style)
+        if idx >= 0:
+            self.combo_list_style.setCurrentIndex(idx)
         self.combo_list_style.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.combo_list_style.currentTextChanged.connect(self.on_style_combo_changed)
         grid.addWidget(self.combo_list_style, 5, 1)
@@ -653,10 +663,13 @@ class SettingsTab(QWidget):
         # Mode
         grid.addWidget(QLabel(c.t("UI_LABEL_STICKER_MODE")), 0, 0)
         self.combo_sticker_mode = QComboBox()
-        self.sticker_mode_map = c.t("UI_STICKER_MODES")
-        self.combo_sticker_mode.addItems(list(self.sticker_mode_map.values()))
+        mode_map = c.t("UI_STICKER_MODES")
+        for k, v in mode_map.items():
+            self.combo_sticker_mode.addItem(v, k)
         curr_mode = self.app.config.get(c.CONFIG_KEY_STICKER_MODE, "none")
-        self.combo_sticker_mode.setCurrentText(self.sticker_mode_map.get(curr_mode, "Desactivado"))
+        idx = self.combo_sticker_mode.findData(curr_mode)
+        if idx >= 0:
+            self.combo_sticker_mode.setCurrentIndex(idx)
         self.combo_sticker_mode.currentTextChanged.connect(self.on_sticker_change)
         self.combo_sticker_mode.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         grid.addWidget(self.combo_sticker_mode, 0, 1)
@@ -675,10 +688,13 @@ class SettingsTab(QWidget):
         # Corner
         grid.addWidget(QLabel(c.t("UI_LABEL_STICKER_CORNER")), 2, 0)
         self.combo_sticker_corner = QComboBox()
-        self.sticker_corner_map = c.t("UI_STICKER_CORNERS")
-        self.combo_sticker_corner.addItems(list(self.sticker_corner_map.values()))
+        corner_map = c.t("UI_STICKER_CORNERS")
+        for k, v in corner_map.items():
+            self.combo_sticker_corner.addItem(v, k)
         curr_corner = self.app.config.get(c.CONFIG_KEY_STICKER_CORNER, "bottom-right")
-        self.combo_sticker_corner.setCurrentText(self.sticker_corner_map.get(curr_corner, "Inferior Derecha"))
+        idx = self.combo_sticker_corner.findData(curr_corner)
+        if idx >= 0:
+            self.combo_sticker_corner.setCurrentIndex(idx)
         self.combo_sticker_corner.currentTextChanged.connect(self.on_sticker_change)
         self.combo_sticker_corner.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         grid.addWidget(self.combo_sticker_corner, 2, 1)
@@ -731,13 +747,13 @@ class SettingsTab(QWidget):
 
     def browse_path(self, key, entry):
         """Open a file picker and set the result into the given entry widget."""
-        path = ask_open_filename_native(self.app, title=f"{c.t("UI_OPEN_FILE_TITLE")}")
+        path = ask_open_filename_native(self.app, title=f"{c.t('UI_OPEN_FILE_TITLE')}")
         if path:
             entry.setText(path)
 
     def on_settings_mode_change(self, display_name):
         """Toggle visibility of Flatpak ID and custom path inputs when the binary mode changes."""
-        mode_key = next((k for k, v in c.t("UI_BIN_MODES").items() if v == display_name), c.MODE_BIN_SYSTEM)
+        mode_key = self.combo_settings_mode.currentData() or c.MODE_BIN_SYSTEM
         is_flatpak = mode_key == c.MODE_BIN_FLATPAK
         is_custom = mode_key == c.MODE_BIN_CUSTOM
 
@@ -769,21 +785,20 @@ class SettingsTab(QWidget):
 
     def on_theme_change(self, display_name):
         """Apply the selected color theme."""
-        theme_key = self.theme_map.get(display_name, "blue")
+        theme_key = self.combo_theme.currentData() or "blue"
         self.app.change_appearance("color", theme_key)
 
     def on_appearance_mode_change(self, display_name):
         """Switch between Dark and Light appearance modes."""
-        mode_key = next((k for k, v in c.t("UI_APPEARANCE_MODES").items() if v == display_name), "Dark")
-        self.app.config[c.CONFIG_KEY_APPEARANCE] = mode_key
-        self.app.config_manager.save_config()
+        mode_key = self.combo_app_mode.currentData() or "Dark"
+        self.app.config_manager.set(c.CONFIG_KEY_APPEARANCE, mode_key)
         self.app.apply_theme_settings()
 
     def on_language_change(self, display_name):
         """Save the selected language to config."""
-        lang_code = next((k for k, v in self.langs_dict.items() if v == display_name), "en")
-        self.app.config[c.CONFIG_KEY_LANGUAGE] = lang_code
-        self.app.config_manager.save_config()
+        lang_code = self.combo_lang.currentData() or "en"
+        self.app.config_manager.set(c.CONFIG_KEY_LANGUAGE, lang_code)
+        self.app.apply_theme_settings()
 
     def on_scale_change(self, value):
         """Save the selected UI scale factor to config."""
@@ -794,8 +809,13 @@ class SettingsTab(QWidget):
         """Update section opacity label and preview live while dragging."""
         val = self.slider_section_opacity.value()
         self.lbl_section_opacity.setText(str(val))
-        self.app.config[c.CONFIG_KEY_SECTION_OPACITY] = val
-        self.app.apply_theme_settings()
+        self.app.config_manager.set(c.CONFIG_KEY_SECTION_OPACITY, val)
+        if not hasattr(self, '_opacity_debounce'):
+            from PySide6.QtCore import QTimer
+            self._opacity_debounce = QTimer()
+            self._opacity_debounce.setSingleShot(True)
+            self._opacity_debounce.timeout.connect(self.app.apply_theme_settings)
+        self._opacity_debounce.start(50)
 
     def on_section_opacity_released(self):
         self.app.config_manager.set(c.CONFIG_KEY_SECTION_OPACITY, self.slider_section_opacity.value())
@@ -834,10 +854,8 @@ class SettingsTab(QWidget):
         self.lbl_sticker_zoom.setText(str(self.slider_sticker_zoom.value()))
         self.lbl_sticker_opacity.setText(str(self.slider_sticker_opacity.value()))
 
-        mode_disp = self.combo_sticker_mode.currentText()
-        mode_key = next((k for k, v in self.sticker_mode_map.items() if v == mode_disp), "none")
-        corner_disp = self.combo_sticker_corner.currentText()
-        corner_key = next((k for k, v in self.sticker_corner_map.items() if v == corner_disp), "bottom-right")
+        mode_key = self.combo_sticker_mode.currentData() or "none"
+        corner_key = self.combo_sticker_corner.currentData() or "bottom-right"
 
         self.app.config[c.CONFIG_KEY_STICKER_MODE] = mode_key
         self.app.config[c.CONFIG_KEY_STICKER_CONTENT] = self.entry_sticker_content.text()
@@ -874,8 +892,7 @@ class SettingsTab(QWidget):
 
     def on_style_combo_changed(self):
         """Save list style immediately on combo box selection (not debounced like sliders)."""
-        style_disp = self.combo_list_style.currentText()
-        style_key = next((k for k, v in c.t("UI_LIST_STYLES").items() if v == style_disp), c.STYLE_LIST)
+        style_key = self.combo_list_style.currentData() or c.STYLE_LIST
         self.app.config_manager.set(c.CONFIG_KEY_VERSION_LIST_STYLE, style_key)
         self.app.logic.refresh_version_list(self.app)
 
@@ -908,22 +925,21 @@ class SettingsTab(QWidget):
 
     def save_settings(self):
         """Persist all settings (binary mode, Flatpak ID, checkboxes, custom paths) to config."""
-        disp = self.combo_settings_mode.currentText()
-        mode_key = next((k for k, v in c.t("UI_BIN_MODES").items() if v == disp), c.MODE_BIN_SYSTEM)
+        mode_key = self.combo_settings_mode.currentData() or c.MODE_BIN_SYSTEM
 
-        self.app.config[c.CONFIG_KEY_MODE] = mode_key
-        self.app.config[c.CONFIG_KEY_FLATPAK_ID] = self.entry_flatpak_id.text()
+        self.app.config_manager.set(c.CONFIG_KEY_MODE, mode_key)
+        self.app.config_manager.set(c.CONFIG_KEY_FLATPAK_ID, self.entry_flatpak_id.text())
 
         for key, cb in self.checks.items():
-            self.app.config[key] = cb.isChecked()
+            self.app.config_manager.set(key, cb.isChecked())
 
-        self.app.config[c.CONFIG_KEY_CUSTOM_ENV_VARS] = self.entry_custom_vars.text()
-        self.app.config[c.CONFIG_KEY_DISCORD_RPC_CLIENT_ID] = self.entry_discord_client_id.text().strip()
+        self.app.config_manager.set(c.CONFIG_KEY_CUSTOM_ENV_VARS, self.entry_custom_vars.text())
+        self.app.config_manager.set(c.CONFIG_KEY_DISCORD_RPC_CLIENT_ID, self.entry_discord_client_id.text().strip())
 
         if mode_key == c.MODE_BIN_CUSTOM:
             for key, (e, b, f) in self.inputs.items():
-                self.app.config[c.CONFIG_KEY_BINARY_PATHS][key] = e.text()
-
-        self.app.config_manager.save_config()
+                paths = dict(self.app.config.get(c.CONFIG_KEY_BINARY_PATHS, {}))
+                paths[key] = e.text()
+                self.app.config_manager.set(c.CONFIG_KEY_BINARY_PATHS, paths)
         from src.gui import custom_dialogs as messagebox
         messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), c.t("UI_SAVE_SUCCESS_MSG"))

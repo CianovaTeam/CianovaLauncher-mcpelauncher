@@ -67,10 +67,7 @@ def check_google_session(app):
     try:
         bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_GPLAYVER, "gplayver")
         cmd = [bin_path, "-nv", "-a", "com.mojang.minecraftpe", "--accept-tos"]
-        gv_env = os.environ.copy()
-        if app.running_in_flatpak:
-            gv_env.pop("LD_LIBRARY_PATH", None)
-        res = subprocess.run(cmd, capture_output=True, timeout=3, env=gv_env)
+        res = subprocess.run(cmd, capture_output=True, timeout=3)
         return res.returncode == 0
     except Exception:
         pass
@@ -233,18 +230,6 @@ def launch_google_login(app, on_finished=None):
         # at /usr/lib/x86_64-linux-gnu/ where 6.10.3 lives.
         env = QProcessEnvironment.systemEnvironment()
         env.remove("LD_LIBRARY_PATH")
-        # Clear QT_STYLE_OVERRIDE — kvantum is not available inside the sandbox
-        # and can cause crashes in the Qt style resolution on some systems.
-        env.remove("QT_STYLE_OVERRIDE")
-        # Ensure QT_PLUGIN_PATH includes the KDE runtime's plugin directory
-        # (/usr/lib/plugins). The flatpak runtime sets QT_PLUGIN_PATH to
-        # /app/lib/plugins:/usr/share/runtime/lib/plugins by default, which
-        # does NOT include /usr/lib/plugins — where the xcb/wayland platform
-        # plugins live. Without it, playdl-signin-ui-qt fails with
-        # "Could not find the Qt platform plugin".
-        pp = env.value("QT_PLUGIN_PATH", "")
-        if "/usr/lib/plugins" not in pp:
-            env.insert("QT_PLUGIN_PATH", (pp + ":" if pp else "") + "/usr/lib/plugins")
         proc.setProcessEnvironment(env)
 
     state = {"stdout": b"", "stderr": b""}
@@ -489,13 +474,9 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             logger.debug("playdl.conf exists=%s token_len=%d email=%s",
                 os.path.exists(os.path.join(signin_cwd, "playdl.conf")), len(token), user_email)
 
-            gplay_env = None
-            if app.running_in_flatpak:
-                gplay_env = os.environ.copy()
-                gplay_env.pop("LD_LIBRARY_PATH", None)
             process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                       bufsize=0, cwd=signin_cwd, env=gplay_env)
+                                       bufsize=0, cwd=signin_cwd)
             logger.debug("gplaydl pid=%s", process.pid)
 
             stdout_tail = []
