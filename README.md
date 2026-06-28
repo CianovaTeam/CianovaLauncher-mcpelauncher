@@ -16,7 +16,7 @@
 ---
 
 ## ✨ Características
-- **ModDB Integration:** Navega e instala 12 mods MCPELauncher (zoom, fullbright, legacy, etc.) directamente desde el Gestor de Recursos, con progreso en tiempo real.
+- **ModDB Integration:** Navega e instala 12 mods oficiales de MCPELauncher (zoom, fullbright, legacy, etc.) directamente desde el repositorio oficial [mcpelauncher-moddb](https://github.com/minecraft-linux/mcpelauncher-moddb) en el Gestor de Recursos, con progreso en tiempo real.
 - **DRM Automático:** Si la versión se instaló desde Google Play y falta el mod DRM, el launcher pregunta si instalarlo antes de lanzar el juego.
 - **Control de lanzamiento:** Marca qué mods cargar al iniciar el juego con persistencia individual.
 - **Migración a Qt6:** Interfaz rediseñada desde cero con PySide6 para mayor fluidez, estabilidad y soporte HiDPI.

@@ -2,7 +2,7 @@
 
 ### 📦 ModDB Integration
 - **`moddb_service.py`:** Nuevo módulo central con `ModInstallWorker` (descarga/extrae ZIP de cualquier mod), `ModDBFetchWorker` (fetch+cache de moddb.json), y helpers: `fetch_moddb`, `get_cached_moddb`, `find_asset_for_arch`, `detect_architecture`.
-- **12 mods disponibles:** La pestaña Mods del Gestor de Recursos ahora muestra mods descargables desde [mcpelauncher-moddb](https://github.com/minecraft-linux/mcpelauncher-moddb) (zoom, fullbright, legacy, etc.) con botón "Instalar" y progreso en tiempo real.
+- **12 mods oficiales:** La pestaña Mods del Gestor de Recursos ahora muestra mods descargables desde el repositorio oficial de MCPELauncher ([mcpelauncher-moddb](https://github.com/minecraft-linux/mcpelauncher-moddb)) — zoom, fullbright, legacy, etc. — con botón "Instalar" y progreso en tiempo real.
 - **Lista bajo demanda:** La lista de mods disponibles NO se descarga automáticamente al abrir — solo al presionar "↻ Actualizar lista de mods".
 
 ### 🔧 DRM Mod mejorado
