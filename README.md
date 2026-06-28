@@ -88,7 +88,7 @@ flatpak install org.kde.Platform//6.10 io.qt.qtwebengine.BaseApp//6.10
 
 ### Instalación no-Flatpak:
 
-Descarga de la última **RELEASE** el archivo `CianovaLauncher-v3.0.tar.gz` y lo extraes en la carpeta que desees. También compila o descarga los binarios del **MCPELAUNCHER-MANIFEST**; se recomienda usar un pack de confianza y colocar la carpeta `bin` dentro de la raíz del launcher.
+Descarga de la última **RELEASE** el archivo `CianovaLauncher-v3.1.tar.gz` y lo extraes en la carpeta que desees. También compila o descarga los binarios del **MCPELAUNCHER-MANIFEST**; se recomienda usar un pack de confianza y colocar la carpeta `bin` dentro de la raíz del launcher.
 
 **NOTA:** En el paquete portable ya se incluyen binarios pre-compilados y sus librerías necesarias de forma local.
 

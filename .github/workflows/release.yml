@@ -15,8 +15,8 @@
 #   - mcpelauncher-bins repo with compiled binaries as GitHub Releases
 #
 # ── How to trigger ──
-#   git tag v3.0.0
-#   git push origin v3.0.0
+#   git tag v3.1.0
+#   git push origin v3.1.0
 
 name: Release
 
@@ -27,9 +27,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release (e.g. v3.0.0)"
+        description: "Version to release (e.g. v3.1.0)"
         required: true
-        default: "v3.0.0"
+        default: "v3.1.0"
       mcpelauncher_bins_version:
         description: "mcpelauncher-bins version to use (leave empty for latest)"
         required: false
