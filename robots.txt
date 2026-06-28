@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /CianovaLauncher-mcpelauncher/
+
+Sitemap: https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/sitemap.xml

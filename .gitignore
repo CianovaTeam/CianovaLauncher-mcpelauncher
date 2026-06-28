@@ -1,0 +1,30 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Local dev server and script artifacts
+*.log
+__pycache__/
+*.py[cod]
+
+# Dependency/cache noise from local experiments
+node_modules/
+.npm/
+.cache/
+.parcel-cache/
+.vite/
+.eslintcache
+
+# Local bundles used for review/import, not deploy
+public.zip
+
+# Generated Flatpak repository output, not website source
+repo_dist/
+
+# Local environment files
+.env
+.env.*
+!.env.example
