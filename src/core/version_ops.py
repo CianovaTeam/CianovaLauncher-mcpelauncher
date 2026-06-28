@@ -5,10 +5,46 @@ import shutil
 import subprocess
 import shlex
 import threading
+from datetime import datetime
 from PySide6.QtCore import QTimer
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
 from src.utils.logger import logger
+
+
+def _write_install_source(version_dir, source):
+    """Write a metadata file recording how this version was installed.
+    
+    Args:
+        version_dir: path to the version directory
+        source: 'google_play' or 'apk'
+    """
+    try:
+        meta = {
+            "source": source,
+            "installed_at": datetime.now().isoformat()
+        }
+        meta_path = os.path.join(version_dir, ".install_source")
+        with open(meta_path, "w") as f:
+            json.dump(meta, f)
+    except OSError:
+        pass
+
+
+def read_install_source(version_dir):
+    """Read the install source metadata for a version.
+    
+    Returns 'google_play', 'apk', or None if unknown.
+    """
+    meta_path = os.path.join(version_dir, ".install_source")
+    if not os.path.exists(meta_path):
+        return None
+    try:
+        with open(meta_path, "r") as f:
+            meta = json.load(f)
+        return meta.get("source")
+    except (json.JSONDecodeError, OSError):
+        return None
 
 
 def get_installed_versions(app):
@@ -93,6 +129,7 @@ def process_apk(app, apk_path, ver_name, target_root=None, is_target_flatpak=Non
             def finish():
                 progress_dialog.accept()
                 if process.returncode == 0:
+                    _write_install_source(target_dir, "apk")
                     messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"), c.t("UI_EXTRACTION_SUCCESS_MSG", ver_name=ver_name))
                     if current_root == app.active_path:
                         from src.core.install_ops import refresh_version_list

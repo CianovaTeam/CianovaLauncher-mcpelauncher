@@ -1,6 +1,6 @@
 # ⚖️ LICENCIA & TÉRMINOS Y CONDICIONES
 
-**Última Actualización:** 21 de Mayo de 2026
+**Última Actualización:** 28 de Junio de 2026
 
 ---
 
@@ -18,6 +18,7 @@ Este "launcher" solo funciona de forma independiente en su apartado visual pero 
 **CianovaLauncher** hace uso de componentes del ecosistema mcpelauncher, incluyendo:
 * **Google Play API:** Utilizada para la autenticación y descarga de archivos APK oficiales (vía `playdl-signin-ui-qt` y `gplaydl`).
 * **VersionDB:** Repositorio de base de datos de versiones utilizado para consultar las actualizaciones oficiales.
+* **mcpelauncher-updates (DRM Mod):** El launcher facilita la descarga e instalación del mod `mcpelauncher-updates` desde el repositorio oficial del proyecto ([github.com/minecraft-linux/mcpelauncher-updates](https://github.com/minecraft-linux/mcpelauncher-updates)), necesario para ejecutar versiones recientes de Minecraft Bedrock. El launcher no redistribuye ni aloja este mod; la descarga se realiza directamente desde la fuente oficial.
 
 **CianovaLauncher** no busca reemplazar, competir ni apropiarse del crédito del proyecto mencionado anteriormente ni ningún otro launcher que cumpla su misma función. Su único propósito es facilitar la gestión de versiones y procesos para los usuarios de dicho manifest sin pretender ser el soporte oficial del proyecto.
 

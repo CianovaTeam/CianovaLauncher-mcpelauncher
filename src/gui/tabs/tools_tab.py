@@ -31,10 +31,12 @@ class ToolsTab(QWidget):
         # Scroll Area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setFrameShape(QFrame.NoFrame)
         self.scroll_area.setStyleSheet("border: none;")
 
         self.scroll_content = QWidget()
+        self.scroll_content.setMinimumWidth(480)
         self.scroll_layout = QVBoxLayout(self.scroll_content)
         self.scroll_layout.setAlignment(Qt.AlignTop)
 
@@ -75,15 +77,6 @@ class ToolsTab(QWidget):
                 ]
             },
             {
-                "title": c.t("UI_SECTION_MODS"),
-                "icon": "🔧",
-                "tools": [
-                    {"text": c.t("UI_DRM_MOD_TITLE"), "icon": "🛡️", "cmd": None, "show_drm_status": True},
-                    {"text": c.t("UI_BUTTON_INSTALL_DRM_MOD"), "icon": "📥", "cmd": self._on_install_drm_clicked, "color": None},
-                    {"text": c.t("UI_BUTTON_OPEN_MODS_FOLDER"), "icon": "📂", "cmd": lambda: self.app.logic.open_mods_folder(self.app), "color": None},
-                ]
-            },
-            {
                 "title": c.t("UI_SECTION_SYSTEM"),
                 "icon": "💻",
                 "tools": [
@@ -97,11 +90,6 @@ class ToolsTab(QWidget):
             }
         ]
         return groups
-
-    def _on_install_drm_clicked(self):
-        """Install DRM mod and refresh the tools UI afterwards."""
-        self.app.logic.install_drm_mod(self.app)
-        self.refresh_tools_ui()
 
     def refresh_tools_ui(self):
         """Rebuild the tools area, honoring the current layout style (list, columns, or grid)."""
@@ -157,9 +145,16 @@ class ToolsTab(QWidget):
             t1.setAlignment(Qt.AlignCenter)
             l.addWidget(t1)
 
-            installed = self.app.logic.check_drm_mod_installed(self.app)
-            status_text = c.t("UI_DRM_MOD_STATUS_INSTALLED") if installed else c.t("UI_DRM_MOD_STATUS_MISSING")
-            status_color = c.COLOR_PRIMARY_GREEN if installed else c.COLOR_RED_BUTTON
+            drm_status = self.app.logic.get_drm_mod_status(self.app)
+            if drm_status == "installed":
+                status_text = c.t("UI_DRM_MOD_STATUS_INSTALLED")
+                status_color = c.COLOR_PRIMARY_GREEN
+            elif drm_status == "disabled":
+                status_text = c.t("UI_DRM_MOD_STATUS_DISABLED")
+                status_color = c.COLOR_YELLOW_BUTTON
+            else:
+                status_text = c.t("UI_DRM_MOD_STATUS_MISSING")
+                status_color = c.COLOR_RED_BUTTON
             t2 = QLabel(status_text)
             t2.setStyleSheet(f"color: {status_color}; font-weight: bold; font-size: 14px;")
             t2.setAlignment(Qt.AlignCenter)
@@ -170,6 +165,12 @@ class ToolsTab(QWidget):
             desc.setStyleSheet("font-size: 11px; color: gray;")
             desc.setAlignment(Qt.AlignCenter)
             l.addWidget(desc)
+
+            credit = QLabel(c.t("UI_DRM_MOD_CREDIT"))
+            credit.setWordWrap(True)
+            credit.setStyleSheet("font-size: 10px; color: #888888; font-style: italic;")
+            credit.setAlignment(Qt.AlignCenter)
+            l.addWidget(credit)
 
             parent_layout.addWidget(container)
             return

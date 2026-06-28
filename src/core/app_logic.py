@@ -8,7 +8,6 @@ import threading
 import time
 import re
 from datetime import datetime
-from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QLabel
 
 from src.gui import custom_dialogs as messagebox
@@ -16,6 +15,7 @@ from src import constants as c
 from src.utils.image_manager import ImageManager
 from src.utils.logger import logger
 
+from .moddb_service import ModInstallWorker, detect_architecture, fetch_moddb, get_mod_info, find_asset_for_arch, cache_moddb
 from .worker import LogicWorker
 from .install_ops import (
     detect_installation,
@@ -156,6 +156,34 @@ def check_drm_mod_installed(app):
     return _find_drm_mod_dir(app) is not None
 
 
+def get_drm_mod_status(app):
+    """Return the status of the DRM mod.
+    
+    Returns:
+        "installed" — libmcpelauncher-updates.so found
+        "disabled"  — only libmcpelauncher-updates.so.disabled found
+        "missing"   — nothing found
+    """
+    if not app.active_path:
+        return "missing"
+    mods_base = os.path.join(app.active_path, c.MODS_DIR, "mcpelauncher-updates")
+    if not os.path.isdir(mods_base):
+        return "missing"
+    found_active = False
+    found_disabled = False
+    for root, dirs, files in os.walk(mods_base):
+        for f in files:
+            if f == "libmcpelauncher-updates.so":
+                found_active = True
+            elif f == "libmcpelauncher-updates.so.disabled":
+                found_disabled = True
+    if found_active:
+        return "installed"
+    if found_disabled:
+        return "disabled"
+    return "missing"
+
+
 def _find_drm_mod_dir(app):
     """Find the deepest directory containing libmcpelauncher-updates.so.
 
@@ -171,6 +199,29 @@ def _find_drm_mod_dir(app):
         if "libmcpelauncher-updates.so" in files:
             return root
     return None
+
+
+def _get_enabled_mod_dirs(app):
+    """Return list of directories for enabled mods with launch=True.
+
+    Scans all mod .so files and returns the parent directory of each
+    enabled mod that has its launch flag set.
+    """
+    if not app.active_path:
+        return []
+    from .addon_manager import scan_mods, get_mod_launch_state
+    mods = scan_mods(app)
+    dirs = set()
+    for mod in mods:
+        if not mod.get("enabled", False):
+            continue
+        if not get_mod_launch_state(app, mod["path"]):
+            continue
+        mod_dir = os.path.dirname(mod["path"])
+        if mod_dir:
+            dirs.add(mod_dir)
+    # Sort for deterministic order
+    return sorted(dirs)
 
 
 def get_latest_version_needs_drm(app):
@@ -207,56 +258,6 @@ def get_latest_version_needs_drm(app):
     return None
 
 
-def _fetch_json(url, app):
-    """Fetch a JSON document from a URL using urllib."""
-    import json, urllib.request, urllib.error
-
-    req = urllib.request.Request(url, headers={"User-Agent": "CianovaLauncher/3.1"})
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = resp.read().decode("utf-8")
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"HTTP {e.code}: {e.reason}")
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Error de red: {e.reason}")
-    return json.loads(data)
-
-
-def _fetch_moddb(app):
-    """Fetch the mod database from mcpelauncher-moddb."""
-    url = "https://github.com/minecraft-linux/mcpelauncher-moddb/raw/main/moddb.json"
-    return _fetch_json(url, app)
-
-
-def _download_zip(url, dest_path, app):
-    """Download a ZIP file and extract it to dest_path."""
-    import zipfile
-    import io
-    import urllib.request, urllib.error
-    from src.gui.progress_dialog import ProgressDialog
-
-    dialog = ProgressDialog(app, c.t("UI_DOWNLOADING_TITLE"),
-                            f"{c.t('UI_DOWNLOADING_MSG')}\n{url}")
-    dialog.show()
-
-    req = urllib.request.Request(url, headers={"User-Agent": "CianovaLauncher/3.1"})
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = resp.read()
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"HTTP {e.code}: {e.reason}")
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Error de red: {e.reason}")
-    finally:
-        dialog.close()
-
-    if not data:
-        raise RuntimeError(c.t("UI_DOWNLOAD_EMPTY"))
-
-    with zipfile.ZipFile(io.BytesIO(data)) as zf:
-        zf.extractall(dest_path)
-
-
 def _resolve_version_code(app, version_name):
     """Read the version code from a game version's manifest."""
     vpath = os.path.join(app.active_path, c.VERSIONS_DIR, version_name)
@@ -267,117 +268,212 @@ def _resolve_version_code(app, version_name):
     return ver_str
 
 
-def install_drm_mod(app):
-    """One-click: descarga el mod DRM desde los repos oficiales y lo instala."""
-    import platform as _platform
+def _dialog_close(dialog):
+    """Close a dialog safely from any thread."""
+    if dialog and dialog.isVisible():
+        dialog.close()
+
+
+def _on_drm_success(app, drm_dir):
+    """Handle successful DRM mod installation."""
+    messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"),
+                       f"Mod DRM instalado correctamente")
+    logger.info(f"Mod DRM instalado en {drm_dir}")
+
+
+def _on_drm_error(app, err_msg):
+    """Handle DRM mod installation error."""
+    logger.error(f"Error instalando mod DRM: {err_msg}")
+    messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                        c.t("UI_DRM_INSTALL_ERROR_MSG", error=err_msg))
+
+
+def _on_mod_install_success(app, dest_dir, on_done=None):
+    """Handle successful mod installation."""
+    messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"),
+                       f"Mod instalado correctamente:\n{dest_dir}")
+    logger.info(f"Mod instalado en {dest_dir}")
+    if on_done:
+        on_done()
+
+
+def _on_mod_install_error(app, mod_name, err_msg, on_done=None):
+    """Handle mod installation error."""
+    logger.error(f"Error instalando mod {mod_name}: {err_msg}")
+    messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                        f"No se pudo instalar el mod {mod_name}:\n{err_msg}")
+    if on_done:
+        on_done()
+
+
+def install_drm_mod(app, on_done=None):
+    """One-click: descarga el mod DRM desde los repos oficiales y lo instala.
+
+    Uses the general ModInstallWorker from moddb_service.
+    """
+    from src.gui.progress_dialog import ProgressDialog
 
     if not app.active_path:
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_DRM_NO_MODS_FOLDER"))
         return
 
-    # Detectar arquitectura
-    machine = _platform.machine()
-    if machine in ("x86_64", "amd64"):
-        arch = "x86_64"
-    elif machine in ("aarch64", "arm64"):
-        arch = "arm64-v8a"
-    elif machine in ("i386", "i686", "x86"):
-        arch = "x86"
-    elif machine.startswith("arm"):
-        arch = "armeabi-v7a"
-    else:
+    arch = detect_architecture()
+    if not arch:
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                             f"Arquitectura no soportada: {machine}")
+                             f"Arquitectura no soportada")
         return
 
-    # Buscar la versión instalada más reciente para hacer match con moddb
-    from .version_ops import get_installed_versions
-    installed_versions = get_installed_versions(app)
-    latest_installed = installed_versions[0] if installed_versions else None
-    if latest_installed:
-        logger.info(f"Buscando mod DRM para la versión {latest_installed} (arch={arch})")
+    mods_base = os.path.join(app.active_path, c.MODS_DIR, "mcpelauncher-updates")
+    already_installed = any(
+        os.path.isfile(os.path.join(root, "libmcpelauncher-updates.so"))
+        for root, dirs, files in os.walk(mods_base)
+    ) if os.path.isdir(mods_base) else False
+
+    if already_installed:
+        if not messagebox.askyesno(app, c.t("UI_CONFIRM_TITLE"),
+                                   "El mod mcpelauncher-updates ya está instalado.\n¿Reinstalar?"):
+            return
 
     try:
-        # 1. Fetch moddb
-        logger.info("Obteniendo lista de mods desde mcpelauncher-moddb...")
-        moddb = _fetch_moddb(app)
-
-        # 2. Find mcpelauncher-updates entry
-        updates = None
-        for entry in moddb:
-            if entry.get("name") == "mcpelauncher-updates":
-                updates = entry
-                break
-
-        if not updates:
-            raise RuntimeError("mcpelauncher-updates no encontrado en el mod database")
-
-        # 3. Find the matching version entry
-        download_url = None
-        mod_version = None
-        for ver_entry in updates.get("versions", []):
-            for extra in ver_entry.get("extraVersions", []):
-                if arch in extra.get("codes", {}):
-                    if latest_installed and extra.get("version_name", "").startswith(latest_installed):
-                        download_url = ver_entry.get("assets", {}).get(arch)
-                        mod_version = ver_entry.get("version")
-                        break
-            if download_url:
-                break
-
-        # 4. Fallback: tomar la última versión del mod (sin matchear contra una versión instalada)
-        if not download_url and updates.get("versions"):
-            fallback_ver = updates["versions"][0]
-            download_url = fallback_ver.get("assets", {}).get(arch)
-            mod_version = fallback_ver.get("version")
-            if download_url:
-                logger.info(f"No se encontró match, usando última versión del mod: {mod_version}")
-
-        if not download_url:
-            raise RuntimeError(
-                f"No se encontró URL de descarga para la arquitectura {arch} "
-                f"en mcpelauncher-moddb"
-            )
-
-        logger.info(f"Descargando mod desde: {download_url}")
-
-        # 4. Download and extract
-        mod_ver = mod_version or "latest"
-        dest_dir = os.path.join(app.active_path, c.MODS_DIR, "mcpelauncher-updates", mod_ver, arch)
-        os.makedirs(dest_dir, exist_ok=True)
-
-        # Si el mod ya está instalado, preguntar si reinstalar
-        if os.path.isfile(os.path.join(dest_dir, "libmcpelauncher-updates.so")):
-            if not messagebox.askyesno(app, c.t("UI_CONFIRM_TITLE"),
-                                       f"El mod mcpelauncher-updates {mod_ver} ya está instalado.\n¿Reinstalar?"):
-                return
-
-        _download_zip(download_url, dest_dir, app)
-
-        # Verificar que se extrajo correctamente
-        so_path = os.path.join(dest_dir, "libmcpelauncher-updates.so")
-        if not os.path.isfile(so_path):
-            raise RuntimeError(f"El ZIP descargado no contenía libmcpelauncher-updates.so")
-
-        os.chmod(so_path, 0o755)
-        # Dar permisos a los parches también
-        patches_dir = os.path.join(dest_dir, "patches")
-        if os.path.isdir(patches_dir):
-            for root, dirs, files in os.walk(patches_dir):
-                for f in files:
-                    if f.endswith(".so"):
-                        os.chmod(os.path.join(root, f), 0o755)
-
-        _ensure_drm_token(app)
-
-        messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"),
-                           f"Mod DRM instalado correctamente:\n{so_path}")
-        logger.info(f"Mod DRM instalado en {so_path}")
-
+        moddb = fetch_moddb()
+        cache_moddb(app.active_path, moddb)
+        mod_entry = get_mod_info(moddb, "mcpelauncher-updates")
+        if not mod_entry:
+            messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                                "mcpelauncher-updates no encontrado en el mod database")
+            return
     except Exception as e:
-        logger.error(f"Error instalando mod DRM: {e}")
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                            c.t("UI_DRM_INSTALL_ERROR_MSG", error=str(e)))
+                            f"Error al obtener lista de mods: {e}")
+        return
+
+    download_url, mod_ver = find_asset_for_arch(mod_entry, arch)
+    if not download_url:
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                            f"No se encontró URL de descarga para la arquitectura {arch}")
+        return
+
+    mod_ver_str = mod_ver or "latest"
+    dest_dir = os.path.join(
+        app.active_path, c.MODS_DIR, "mcpelauncher-updates", mod_ver_str, arch
+    )
+
+    dialog = ProgressDialog(app, c.t("UI_DOWNLOADING_TITLE"), "Iniciando...")
+    dialog.show()
+
+    worker = ModInstallWorker("mcpelauncher-updates", download_url, dest_dir)
+    app._drm_worker = worker
+    worker.progress.connect(lambda msg: dialog.set_message(msg))
+    worker.finished.connect(lambda path: (
+        _dialog_close(dialog),
+        _ensure_drm_token(app),
+        _on_drm_success(app, path),
+        _cleanup_mod_worker(app, '_drm_worker'),
+        on_done() if on_done else None
+    ))
+    worker.error.connect(lambda err: (
+        _dialog_close(dialog),
+        _on_drm_error(app, err),
+        _cleanup_mod_worker(app, '_drm_worker'),
+        on_done() if on_done else None
+    ))
+    worker.start()
+
+
+def install_mod_from_moddb(app, mod_name, on_done=None):
+    """Install any mod from the mod database by name.
+
+    Fetches moddb, finds the mod entry, downloads the ZIP for the current
+    architecture, and extracts it to mods/<mod_name>/<version>/<arch>/.
+    """
+    from src.gui.progress_dialog import ProgressDialog
+
+    if not app.active_path:
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                            "No hay una carpeta de datos activa.")
+        return
+
+    arch = detect_architecture()
+    if not arch:
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                             f"Arquitectura no soportada")
+        return
+
+    try:
+        moddb = fetch_moddb()
+        cache_moddb(app.active_path, moddb)
+        mod_entry = get_mod_info(moddb, mod_name)
+        if not mod_entry:
+            messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                                f"El mod '{mod_name}' no se encontró en la base de datos")
+            return
+    except Exception as e:
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                            f"Error al obtener lista de mods: {e}")
+        return
+
+    download_url, mod_ver = find_asset_for_arch(mod_entry, arch)
+    if not download_url:
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                            f"No se encontró URL de descarga para {mod_name} "
+                            f"en la arquitectura {arch}")
+        return
+
+    mod_ver_str = mod_ver or "latest"
+    dest_dir = os.path.join(
+        app.active_path, c.MODS_DIR, mod_name, mod_ver_str, arch
+    )
+
+    if os.path.isdir(dest_dir):
+        if not messagebox.askyesno(app, c.t("UI_CONFIRM_TITLE"),
+                                   f"El mod {mod_name} ya está instalado.\n¿Reinstalar?"):
+            return
+
+    dialog = ProgressDialog(app, c.t("UI_DOWNLOADING_TITLE"), "Iniciando...")
+    dialog.show()
+
+    worker = ModInstallWorker(mod_name, download_url, dest_dir)
+    attr_name = f"_mod_worker_{mod_name.replace('-', '_')}"
+    setattr(app, attr_name, worker)
+    worker.progress.connect(lambda msg: dialog.set_message(msg))
+    worker.finished.connect(lambda path: (
+        _dialog_close(dialog),
+        _on_mod_install_success(app, path, on_done),
+        _cleanup_mod_worker(app, attr_name)
+    ))
+    worker.error.connect(lambda err: (
+        _dialog_close(dialog),
+        _on_mod_install_error(app, mod_name, err, on_done),
+        _cleanup_mod_worker(app, attr_name)
+    ))
+    worker.start()
+
+
+def _cleanup_mod_worker(app, attr_name):
+    """Clean up a ModInstallWorker reference after thread finishes."""
+    if hasattr(app, attr_name):
+        w = getattr(app, attr_name)
+        setattr(app, attr_name, None)
+        w.deleteLater()
+
+
+def _prompt_install_drm(app, version):
+    """Ask the user if they want to install the DRM mod.
+    Returns True if the user accepted."""
+    return messagebox.askyesno(
+        app,
+        c.t("UI_DRM_REQUIRED_TITLE"),
+        c.t("UI_DRM_REQUIRED_MSG", version=version)
+    )
+
+
+def _warn_drm_disabled(app, version):
+    """Warn the user that the DRM mod is disabled."""
+    messagebox.showwarning(
+        app,
+        c.t("UI_DRM_DISABLED_TITLE"),
+        c.t("UI_DRM_DISABLED_MSG", version=version)
+    )
 
 
 def open_mods_folder(app):
@@ -535,6 +631,7 @@ def _ensure_mc_libraries(app):
 
 def launch_game(app):
     """Launch the selected Minecraft version with the configured environment."""
+    from .version_ops import read_install_source
     version = app.play_tab.get()
     if not version:
         messagebox.showwarning(app, c.t("UI_INFO_TITLE"),
@@ -595,11 +692,34 @@ def launch_game(app):
     if not cmd:
         return
 
-    # Add DRM mod directory if installed (mod is loaded via -m flag by mcpelauncher-client)
-    mod_dir = _find_drm_mod_dir(app)
-    if mod_dir:
-        logger.info(f"DRM mod found at {mod_dir}, adding -m flag")
-        cmd.extend(["-m", mod_dir])
+    # ── Check install source and DRM mod status ──
+    drm_mod_dir = _find_drm_mod_dir(app)
+    drm_status = get_drm_mod_status(app)
+    install_source = read_install_source(vpath)
+
+    if install_source == "google_play":
+        if drm_status == "missing":
+            if _prompt_install_drm(app, version):
+                install_drm_mod(app)
+                return  # will re-launch on next click after install
+            else:
+                pass  # user declined, launch without DRM mod
+        elif drm_status == "disabled":
+            _warn_drm_disabled(app, version)
+    elif install_source == "apk":
+        if drm_mod_dir:
+            logger.info(f"APK install detected, excluding DRM mod from launch")
+        # DrM mod is not needed for APK versions
+    elif drm_status == "missing" and get_latest_version_needs_drm(app):
+        if _prompt_install_drm(app, version):
+            install_drm_mod(app)
+            return
+
+    # Add enabled mod directories (loaded via -m flag by mcpelauncher-client)
+    mod_dirs = _get_enabled_mod_dirs(app)
+    # Filter out DRM mod for APK installs
+    if install_source == "apk" and drm_mod_dir:
+        mod_dirs = [d for d in mod_dirs if d != drm_mod_dir]
 
     # Ensure libsqliteX.so is available (needed by Minecraft >= 1.21.130)
     _ensure_mc_libraries(app)

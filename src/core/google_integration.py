@@ -620,6 +620,8 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                             logger.error(f"Rename latest→{real} failed: {e}")
 
             if extract_proc.returncode == 0:
+                from .version_ops import _write_install_source
+                _write_install_source(target_dir, "google_play")
                 if target_root == app.active_path:
                     from src.core.install_ops import refresh_version_list
                     QTimer.singleShot(0, app, lambda: refresh_version_list(app))

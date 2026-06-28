@@ -5,7 +5,7 @@ class ProgressDialog(QDialog):
     def __init__(self, parent, title, message):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setFixedSize(400, 150)
+        self.setFixedSize(450, 160)
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
         layout = QVBoxLayout(self)
@@ -14,11 +14,13 @@ class ProgressDialog(QDialog):
         from src import constants as c
         self.label = QLabel(message)
         self.label.setAlignment(Qt.AlignCenter)
+        self.label.setWordWrap(True)
         self.label.setStyleSheet("font-size: 13px; color: white;")
         layout.addWidget(self.label)
 
         self.progressbar = QProgressBar()
-        self.progressbar.setRange(0, 0) # Indeterminate mode
+        self.progressbar.setRange(0, 0)
+        self.progressbar.setMinimumWidth(380)
         self.progressbar.setStyleSheet("""
             QProgressBar {
                 border: 2px solid grey;
@@ -33,6 +35,9 @@ class ProgressDialog(QDialog):
         layout.addWidget(self.progressbar)
 
         self.setStyleSheet("background-color: #2b2b2b;")
+
+    def set_message(self, text):
+        self.label.setText(text)
 
     def close(self):
         self.accept()

@@ -8,6 +8,72 @@ import re
 from src import constants as c
 from src.utils.logger import logger
 
+
+def _mods_config_path(active_path):
+    return os.path.join(active_path, c.MODS_DIR, "mods_config.json")
+
+def load_mods_config(app):
+    """Carga la config de mods (qué mods se lanzan al iniciar el juego)."""
+    if not app.active_path:
+        return {}
+    cfg_path = _mods_config_path(app.active_path)
+    config = {}
+    if os.path.exists(cfg_path):
+        try:
+            with open(cfg_path, "r") as f:
+                config = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            config = {}
+    return config
+
+def save_mods_config(app, config):
+    """Guarda la config de mods."""
+    if not app.active_path:
+        logger.warning("save_mods_config: no active_path")
+        return
+    cfg_path = _mods_config_path(app.active_path)
+    os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
+    tmp_path = cfg_path + ".tmp"
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(config, f, indent=2)
+        os.replace(tmp_path, cfg_path)
+        logger.debug(f"mods config saved: {cfg_path}")
+    except OSError as e:
+        logger.warning(f"Failed to save mods config: {e}")
+
+def _mod_stable_key(mod_path):
+    """Return a stable identifier for a mod using its .so filename only."""
+    base = os.path.basename(mod_path)
+    if base.lower().endswith(".disabled"):
+        base = base[:-9]
+    if base.lower().endswith(".so"):
+        base = base[:-3]
+    return base
+
+
+def get_mod_launch_state(app, mod_path):
+    """Retorna si un mod debe cargarse al lanzar el juego."""
+    config = load_mods_config(app)
+    mod_key = _mod_stable_key(mod_path)
+    if mod_key in config:
+        val = config[mod_key].get("launch", True)
+        logger.debug(f"get_mod_launch_state: {mod_key} -> {val} (from {mod_path})")
+        return val
+    logger.debug(f"get_mod_launch_state: {mod_key} not in config, default True")
+    return True
+
+
+def set_mod_launch_state(app, mod_path, launch_enabled):
+    """Establece si un mod debe cargarse al lanzar el juego."""
+    config = load_mods_config(app)
+    mod_key = _mod_stable_key(mod_path)
+    if mod_key not in config:
+        config[mod_key] = {}
+    config[mod_key]["launch"] = launch_enabled
+    logger.debug(f"set_mod_launch_state: {mod_key} -> {launch_enabled} (path={mod_path})")
+    save_mods_config(app, config)
+
 def get_com_mojang_path(active_path):
     """Retorna la ruta a games/com.mojang"""
     if not active_path:
@@ -499,13 +565,13 @@ def install_mcaddon(file_path, com_mojang):
         results.append(("ERROR", str(e)))
     return results
 
-def _collect_mods_recursive(search_path):
+def _collect_mods_recursive(search_path, app=None):
     mods = []
     try:
         for item in os.listdir(search_path):
             item_path = os.path.join(search_path, item)
             if os.path.isdir(item_path):
-                mods.extend(_collect_mods_recursive(item_path))
+                mods.extend(_collect_mods_recursive(item_path, app))
             elif os.path.isfile(item_path):
                 is_disabled = item.lower().endswith(".disabled")
                 base_name = item[:-9] if is_disabled else item
@@ -515,9 +581,16 @@ def _collect_mods_recursive(search_path):
                     size = os.path.getsize(item_path)
                 except OSError:
                     size = 0
+                launch = get_mod_launch_state(app, item_path) if app else True
+
+                # Detect DRM mod (mcpelauncher-updates)
+                desc = ""
+                if "mcpelauncher-updates" in search_path and base_name == "libmcpelauncher-updates.so":
+                    desc = "Parchea Pairip Core DRM para ejecutar Minecraft Bedrock ≥ 1.21.30 en Linux. Solo necesario para versiones instaladas desde Google Play."
+
                 mods.append({
                     "name": base_name,
-                    "description": "",
+                    "description": desc,
                     "version": "",
                     "min_engine": "",
                     "icon_path": None,
@@ -526,6 +599,7 @@ def _collect_mods_recursive(search_path):
                     "type_label": "Mod MCPELauncher",
                     "folder": "mods",
                     "enabled": not is_disabled,
+                    "launch": launch,
                     "path": item_path,
                     "size": size
                 })
@@ -540,7 +614,7 @@ def scan_mods(app):
     mods_path = os.path.join(active_path, c.MODS_DIR)
     if not os.path.exists(mods_path):
         return []
-    return _collect_mods_recursive(mods_path)
+    return _collect_mods_recursive(mods_path, app)
 
 def toggle_mod(app, mod_info):
     current_path = mod_info["path"]

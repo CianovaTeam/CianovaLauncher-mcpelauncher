@@ -1,13 +1,19 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-                             QLineEdit, QPushButton, QFrame, QTabWidget, QScrollArea, QWidget)
+                             QLineEdit, QPushButton, QFrame, QTabWidget,
+                             QScrollArea, QWidget, QCheckBox)
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap, QIcon
 from src.gui import custom_dialogs as messagebox
 from src import constants as c
 from src.core import addon_manager
+from src.core.moddb_service import (
+    ModDBFetchWorker, get_cached_moddb, is_mod_installed,
+    get_mod_info, find_asset_for_arch
+)
 from src.utils.image_manager import ImageManager
 from src.utils import dialogs
 import os
+import subprocess
 import threading
 from PySide6.QtCore import QThread, Signal
 
@@ -55,12 +61,27 @@ class AddonManagerDialog(QDialog):
         self.resize(950, 750)
 
         self.addons_data = []
+        self.moddb_data = None
+        self._moddb_fetch_started = False
+        self._moddb_fetch_error = None
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.timeout.connect(self.render_filtered_list)
 
+        # Load cached moddb immediately (fast, local) — no network fetch on open
+        self.moddb_data = get_cached_moddb(self.app.active_path)
+        self._moddb_worker = None
+
         self.setup_ui()
         self.refresh_list()
+
+    def closeEvent(self, event):
+        """Clean up background workers when the dialog closes."""
+        if self._moddb_worker and self._moddb_worker.isRunning():
+            self._moddb_worker.quit()
+            self._moddb_worker.wait(2000)
+            self._moddb_worker = None
+        super().closeEvent(event)
 
     def setup_ui(self):
         """Build the dialog layout with search bar, tabs (worlds/RP/BP), and filter controls."""
@@ -145,6 +166,36 @@ class AddonManagerDialog(QDialog):
         """Start a debounce timer to re-render the list after the user stops typing."""
         self._search_timer.start(300)
 
+    def _start_moddb_fetch(self):
+        """Start background fetch of mod database."""
+        if self._moddb_fetch_started:
+            return
+        self._moddb_fetch_started = True
+        self._moddb_fetch_error = None
+        self._moddb_worker = ModDBFetchWorker(self.app.active_path)
+        self._moddb_worker.finished.connect(self.on_moddb_fetched)
+        self._moddb_worker.error.connect(self._on_moddb_fetch_error)
+        self._moddb_worker.start()
+
+    def _on_moddb_fetch_error(self, err):
+        """Handle moddb fetch error."""
+        self._moddb_worker = None
+        self._moddb_fetch_error = err
+        self.moddb_data = self.moddb_data or []
+        current_idx = self.tab_widget.currentIndex()
+        tab_id = self.tabs.get(current_idx, (None, None, None))[2]
+        if tab_id == "mods":
+            self.render_filtered_list()
+
+    def on_moddb_fetched(self, data):
+        """Handle fresh moddb data from the background fetch."""
+        self._moddb_worker = None
+        self.moddb_data = data
+        current_idx = self.tab_widget.currentIndex()
+        tab_id = self.tabs.get(current_idx, (None, None, None))[2]
+        if tab_id == "mods":
+            self.render_filtered_list()
+
     def refresh_list(self):
         """Start a background scan of all addons and show a progress dialog."""
         from src.gui.progress_dialog import ProgressDialog
@@ -196,8 +247,237 @@ class AddonManagerDialog(QDialog):
         ]
         filtered.sort(key=lambda x: x.get("name", "").lower())
 
-        for addon in filtered:
-            self.create_item_ui(layout, addon)
+        # Open folder button per tab
+        folder_paths = {
+            "worlds": os.path.join(self.app.active_path, "games", "com.mojang", "minecraftWorlds"),
+            "rp": os.path.join(self.app.active_path, "games", "com.mojang", "resource_packs"),
+            "bp": os.path.join(self.app.active_path, "games", "com.mojang", "behavior_packs"),
+            "mods": os.path.join(self.app.active_path, c.MODS_DIR),
+        }
+        tab_folder = folder_paths.get(tab_id)
+        if tab_folder:
+            header_row = QHBoxLayout()
+            lbl_folder = QLabel(f"📂 {tab_folder}")
+            lbl_folder.setStyleSheet("font-size: 11px; color: #666666;")
+            header_row.addWidget(lbl_folder)
+            header_row.addStretch()
+            btn_open = QPushButton(c.t("UI_BUTTON_OPEN_FOLDER"))
+            btn_open.setFixedHeight(28)
+            btn_open.setStyleSheet("font-size: 11px; padding: 2px 10px;")
+            btn_open.clicked.connect(lambda checked=False, p=tab_folder: subprocess.Popen(["xdg-open", p]))
+            header_row.addWidget(btn_open)
+            layout.addLayout(header_row)
+
+        # ── Mods tab: DRM header + installed mods + available mods ──
+        if tab_id == "mods":
+            installed_mods = [a for a in filtered if a.get("folder") == "mods"]
+            available_from_moddb = []
+
+            if self.moddb_data:
+                installed_names = set()
+                for m in installed_mods:
+                    base = os.path.basename(m["name"])
+                    if base.endswith(".so"):
+                        base = base[:-3]
+                    installed_names.add(base)
+                for entry in self.moddb_data:
+                    mname = entry.get("name", "")
+                    if mname == "mcpelauncher-updates":
+                        continue
+                    # Extract mod dir name from entry (usually the name itself)
+                    mod_dir_name = mname
+                    if not is_mod_installed(self.app.active_path, mod_dir_name):
+                        available_from_moddb.append(entry)
+
+            # DRM header
+            drm_status = self.app.logic.get_drm_mod_status(self.app)
+            drm_header_frame = QFrame()
+            drm_header_frame.setStyleSheet("background-color: #2a2a2a; border-radius: 8px; padding: 4px;")
+            drm_header_layout = QVBoxLayout(drm_header_frame)
+            drm_header_layout.setContentsMargins(10, 8, 10, 8)
+
+            status_icons = {
+                "installed": "✓",
+                "disabled": "⚠",
+                "missing": "✗"
+            }
+            status_colors = {
+                "installed": c.COLOR_PRIMARY_GREEN,
+                "disabled": c.COLOR_YELLOW_BUTTON,
+                "missing": c.COLOR_RED_BUTTON
+            }
+            status_labels = {
+                "installed": c.t("UI_DRM_MOD_STATUS_INSTALLED"),
+                "disabled": c.t("UI_DRM_MOD_STATUS_DISABLED"),
+                "missing": c.t("UI_DRM_MOD_STATUS_MISSING")
+            }
+            icon = status_icons.get(drm_status, "?")
+            color = status_colors.get(drm_status, "gray")
+            label_text = status_labels.get(drm_status, "?")
+
+            status_line = QHBoxLayout()
+            lbl_icon = QLabel(icon)
+            lbl_icon.setStyleSheet(f"font-size: 16px; color: {color};")
+            status_line.addWidget(lbl_icon)
+
+            lbl_info = QLabel(f"<b>Mod DRM (mcpelauncher-updates)</b> — {label_text}")
+            lbl_info.setStyleSheet(f"font-size: 12px; color: {color};")
+            status_line.addWidget(lbl_info)
+            status_line.addStretch()
+            drm_header_layout.addLayout(status_line)
+
+            lbl_desc = QLabel(c.t("UI_DRM_MOD_DESC"))
+            lbl_desc.setWordWrap(True)
+            lbl_desc.setStyleSheet("font-size: 11px; color: #888888;")
+            drm_header_layout.addWidget(lbl_desc)
+
+            if drm_status == "missing":
+                btn_install = QPushButton(f"📥 {c.t('UI_BUTTON_INSTALL_DRM_MOD')}")
+                btn_install.setFixedHeight(35)
+                btn_install.setStyleSheet(f"background-color: {c.COLOR_GREEN_BUTTON}; color: white; font-weight: bold; border-radius: 8px;")
+                btn_install.clicked.connect(lambda: self._install_drm_and_refresh())
+                drm_header_layout.addWidget(btn_install)
+            elif drm_status == "disabled":
+                btn_activate = QPushButton("▶ Activar Mod DRM")
+                btn_activate.setFixedHeight(35)
+                btn_activate.setStyleSheet(f"background-color: {c.COLOR_YELLOW_BUTTON}; color: white; font-weight: bold; border-radius: 8px;")
+                btn_activate.clicked.connect(lambda: self._toggle_drm_mod())
+                drm_header_layout.addWidget(btn_activate)
+
+            layout.addWidget(drm_header_frame)
+
+            # Installed mods
+            for addon in installed_mods:
+                self.create_item_ui(layout, addon)
+
+            # Available mods from moddb — only fetched on user request
+            if self.moddb_data is None:
+                if self._moddb_fetch_error:
+                    lbl_moddb = QLabel(f"⚠ Error de red — {c.t('UI_AVAILABLE_MODS_HEADER')}")
+                    lbl_moddb.setStyleSheet("font-size: 12px; color: #ef4444; padding: 8px 0;")
+                    layout.addWidget(lbl_moddb)
+                    btn_retry = QPushButton("↻ Reintentar")
+                    btn_retry.setFixedHeight(28)
+                    btn_retry.setStyleSheet("font-size: 11px; padding: 2px 10px;")
+                    btn_retry.clicked.connect(lambda: (setattr(self, '_moddb_fetch_started', False), self._start_moddb_fetch()))
+                    layout.addWidget(btn_retry)
+                elif self._moddb_fetch_started:
+                    lbl_moddb = QLabel("⏳ Cargando lista de mods...")
+                    lbl_moddb.setStyleSheet("font-size: 12px; color: #888; padding: 8px 0;")
+                    layout.addWidget(lbl_moddb)
+                else:
+                    lbl_prompt = QLabel("Presiona '↻ Actualizar' para ver los mods disponibles en mcpelauncher-moddb")
+                    lbl_prompt.setStyleSheet("font-size: 12px; color: #888; padding: 12px 0;")
+                    lbl_prompt.setWordWrap(True)
+                    layout.addWidget(lbl_prompt)
+                    btn_refresh = QPushButton("↻ Actualizar lista de mods")
+                    btn_refresh.setFixedHeight(32)
+                    btn_refresh.setStyleSheet("font-size: 12px; padding: 4px 16px;")
+                    btn_refresh.clicked.connect(self._start_moddb_fetch)
+                    layout.addWidget(btn_refresh)
+            elif available_from_moddb:
+                sep_frame = QFrame()
+                sep_frame.setFrameShape(QFrame.HLine)
+                sep_frame.setStyleSheet("color: #555; margin: 10px 0;")
+                layout.addWidget(sep_frame)
+
+                avail_header = QLabel(f"📦 {c.t('UI_AVAILABLE_MODS_HEADER')}")
+                avail_header.setStyleSheet("font-size: 14px; font-weight: bold; color: #aaa; padding: 8px 0;")
+                layout.addWidget(avail_header)
+
+                for entry in available_from_moddb:
+                    self._create_available_mod_ui(layout, entry)
+
+                btn_refresh = QPushButton("↻ Actualizar lista")
+                btn_refresh.setFixedHeight(28)
+                btn_refresh.setStyleSheet("font-size: 11px; padding: 2px 10px; margin-top: 8px;")
+                btn_refresh.clicked.connect(lambda: (setattr(self, '_moddb_fetch_started', False), self._start_moddb_fetch()))
+                layout.addWidget(btn_refresh)
+
+        else:
+            # Non-mods tabs: render normally
+            for addon in filtered:
+                self.create_item_ui(layout, addon)
+
+    def _install_drm_and_refresh(self):
+        """Install DRM mod and refresh the mods list when done."""
+        self.app.logic.install_drm_mod(self.app, on_done=self.refresh_list)
+
+    def _create_available_mod_ui(self, layout, mod_entry):
+        """Render a card for an available (not installed) mod from the moddb."""
+        mod_name = mod_entry.get("name", "Unknown")
+        mod_desc = mod_entry.get("description", "")
+        mod_url = mod_entry.get("url", "")
+
+        latest_ver = ""
+        versions = mod_entry.get("versions", [])
+        if versions:
+            latest_ver = versions[-1].get("version", "")
+
+        item_frame = QFrame()
+        item_frame.setStyleSheet("background-color: #333333; border-radius: 12px;")
+        item_layout = QHBoxLayout(item_frame)
+        item_layout.setContentsMargins(15, 15, 15, 15)
+
+        # Icon placeholder
+        lbl_icon = QLabel()
+        lbl_icon.setFixedSize(90, 90)
+        pixmap = ImageManager.get_image("icon.png", size=(90, 90))
+        lbl_icon.setPixmap(pixmap)
+        item_layout.addWidget(lbl_icon)
+
+        # Info
+        info_layout = QVBoxLayout()
+        name_text = mod_name
+        if latest_ver:
+            name_text += f" (v{latest_ver})"
+
+        lbl_name = QLabel(name_text)
+        lbl_name.setStyleSheet("font-size: 16px; font-weight: bold; color: #cccccc;")
+        info_layout.addWidget(lbl_name)
+
+        lbl_status = QLabel(f"[Mod MCPELauncher] — {c.t('UI_MOD_NOT_INSTALLED')}")
+        lbl_status.setStyleSheet("font-size: 11px; color: gray;")
+        info_layout.addWidget(lbl_status)
+
+        if mod_desc:
+            lbl_desc = QLabel(mod_desc)
+            lbl_desc.setWordWrap(True)
+            lbl_desc.setStyleSheet("font-size: 12px; color: #888888;")
+            info_layout.addWidget(lbl_desc)
+
+        item_layout.addLayout(info_layout, 1)
+
+        # Actions
+        actions_layout = QHBoxLayout()
+
+        btn_install = QPushButton(f"📥 {c.t('UI_BUTTON_INSTALL_MOD')}")
+        btn_install.setFixedSize(130, 40)
+        btn_install.setStyleSheet(f"background-color: {c.COLOR_GREEN_BUTTON}; color: white; font-weight: bold; border-radius: 8px;")
+        btn_install.clicked.connect(lambda checked=False, n=mod_name: self._install_from_moddb(n))
+        actions_layout.addWidget(btn_install)
+
+        item_layout.addLayout(actions_layout)
+        layout.addWidget(item_frame)
+
+    def _install_from_moddb(self, mod_name):
+        """Install a mod from the mod database."""
+        self.app.logic.install_mod_from_moddb(self.app, mod_name, on_done=self.refresh_list)
+
+    def _toggle_drm_mod(self):
+        """Find and activate the disabled DRM mod."""
+        drm_dir = os.path.join(self.app.active_path, c.MODS_DIR, "mcpelauncher-updates")
+        for root, dirs, files in os.walk(drm_dir):
+            for f in files:
+                if f == "libmcpelauncher-updates.so.disabled":
+                    src = os.path.join(root, f)
+                    dst = os.path.join(root, "libmcpelauncher-updates.so")
+                    try:
+                        os.rename(src, dst)
+                        self.refresh_list()
+                    except OSError:
+                        pass
+                    return
 
     def create_item_ui(self, layout, addon):
         """Create a single addon item widget with icon, info, and action buttons."""
@@ -226,6 +506,7 @@ class AddonManagerDialog(QDialog):
         addon_version = addon.get("version", "")
         addon_enabled = addon.get("enabled", False)
         addon_folder = addon.get("folder", "")
+        addon_launch = addon.get("launch", True) if addon_folder == "mods" else None
         name_text = addon_name
         if addon_version:
             name_text += f" (v{addon_version})"
@@ -253,6 +534,11 @@ class AddonManagerDialog(QDialog):
             lbl_size.setStyleSheet("font-size: 11px; color: gray;")
             info_layout.addWidget(lbl_size)
 
+            lbl_path = QLabel(f"📁 {addon.get('path', '')}")
+            lbl_path.setWordWrap(True)
+            lbl_path.setStyleSheet("font-size: 10px; color: #666666;")
+            info_layout.addWidget(lbl_path)
+
         if addon.get("description"):
             lbl_desc = QLabel(addon.get("description", ""))
             lbl_desc.setWordWrap(True)
@@ -263,6 +549,13 @@ class AddonManagerDialog(QDialog):
 
         # Actions
         actions_layout = QHBoxLayout()
+        if addon_folder == "mods" and addon_enabled:
+            chk_launch = QCheckBox(c.t("UI_MOD_LAUNCH_CHECK"))
+            chk_launch.setChecked(addon_launch)
+            chk_launch.setStyleSheet("font-size: 11px; color: white;")
+            chk_launch.clicked.connect(lambda checked, a=addon: self._on_launch_toggle(a, checked))
+            actions_layout.addWidget(chk_launch)
+
         if addon_folder != "minecraftWorlds":
             btn_text = c.t("UI_BUTTON_DEACTIVATE") if addon_enabled else c.t("UI_BUTTON_ACTIVATE")
             btn_color = c.COLOR_RED_BUTTON if addon_enabled else c.COLOR_GREEN_BUTTON
@@ -287,6 +580,12 @@ class AddonManagerDialog(QDialog):
 
         item_layout.addLayout(actions_layout)
         layout.addWidget(item_frame)
+
+    def _on_launch_toggle(self, addon, checked):
+        """Toggle the launch flag for a mod and persist it."""
+        addon["launch"] = checked
+        if addon.get("path"):
+            addon_manager.set_mod_launch_state(self.app, addon["path"], checked)
 
     def export_world(self, addon):
         """Export the selected world as a .mcworld file to a chosen directory."""
