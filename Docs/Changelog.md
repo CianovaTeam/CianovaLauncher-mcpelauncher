@@ -1,86 +1,69 @@
 # 📝 Changelog - CianovaLauncher
 
-### 📦 ModDB Integration
-- **`moddb_service.py`:** Nuevo módulo central con `ModInstallWorker` (descarga/extrae ZIP de cualquier mod), `ModDBFetchWorker` (fetch+cache de moddb.json), y helpers: `fetch_moddb`, `get_cached_moddb`, `find_asset_for_arch`, `detect_architecture`.
-- **12 mods oficiales:** La pestaña Mods del Gestor de Recursos ahora muestra mods descargables desde el repositorio oficial de MCPELauncher ([mcpelauncher-moddb](https://github.com/minecraft-linux/mcpelauncher-moddb)) — zoom, fullbright, legacy, etc. — con botón "Instalar" y progreso en tiempo real.
-- **Lista bajo demanda:** La lista de mods disponibles NO se descarga automáticamente al abrir — solo al presionar "↻ Actualizar lista de mods".
-
-### 🔧 DRM Mod mejorado
-- **Instalación generalizada:** `install_drm_mod` ahora usa el mismo `ModInstallWorker` que cualquier otro mod; se eliminó `DrmInstallWorker` y la duplicación de lógica de fetch/networking.
-- **Prompt al lanzar:** Si la versión se instaló desde Google Play y falta el mod DRM, el launcher pregunta si instalarlo antes de lanzar. Si está desactivado, muestra advertencia.
-- **Sección de mods eliminada de ToolsTab:** La gestión de mods DRM se movió completamente al Gestor de Recursos.
-
-### 🏷️ Control de lanzamiento por mod
-- **Checkbox "Cargar al inicio":** Cada mod instalado tiene un checkbox que persiste en `mods_config.json` con escritura atómica (tmp + `os.replace`) para evitar corrupción.
-- **Flag `launch` en `_collect_mods_recursive`:** Los mods se escanean con su estado de lanzamiento individual.
-- **`_get_enabled_mod_dirs`:** Filtra mods habilitados + launch=True para el flag `-m` de mcpelauncher-client.
-
-### 📋 Metadatos de instalación
-- **`.install_source`:** Nuevo archivo de metadatos que registra si una versión se instaló desde Google Play o APK local.
-
-### 🐛 Correcciones
-- **Escritura atómica:** `save_mods_config` ahora usa `os.replace` en lugar de `fsync` para compatibilidad con más sistemas de archivos.
-- **Señal `clicked`:** El checkbox de lanzamiento ahora usa `clicked` (solo interacción del usuario) en lugar de `toggled`.
-- **ProgressDialog:** Añadido `set_message()`, `setWordWrap(True)` y `setMinimumWidth` para mensajes largos sin truncar.
-- **CloseEvent en AddonManager:** Limpieza segura del worker de moddb para evitar crash "QThread destroyed while running".
-
-### 🧹 Limpieza
-- **`_fetch_json` / `_fetch_moddb` / `_download_zip`:** Eliminadas de `app_logic.py` — toda la lógica de red ahora está en `moddb_service.py`.
-- **Import de `QTimer`, `Qt`:** Limpiados de `app_logic.py`.
-- **Scroll horizontal en ToolsTab:** Ajuste para evitar desbordamiento en resoluciones pequeñas.
-
-# [3.1] - 2026-06-25 — Refinements & Fixes
+# [3.1] - 2026-06-28 — Refinements & New Features
 
 ### 🔧 Gestor de Recursos
-- **Multi-manifest en ZIP:** Los `.zip` con RP+BP ahora se detectan e instalan por separado.
-- **Validación de ZIP:** `testzip()` ejecutado antes de extraer para evitar instalaciones corruptas.
-- **Soporte `.mctemplate`:** Añadido al escaneo y filtro de archivos.
-- **Mods recursivos:** Escaneo de subdirectorios en `mods/` para encontrar `.so`.
-- **Nombres duplicados en `.mcaddon`:** Se añade sufijo (`_1`, `_2`) automáticamente.
-- **Race conditions:** Mitigadas con chequeos `os.path.exists` antes de operaciones.
-- **Info empaquetada:** `_peek_packed_info` extrae nombre/versión de zips sin extraer.
-- **Exportación de mundos:** Sanitización más permisiva para nombres de archivo.
-- **Filtro de pestañas corregido:** La pestaña RP ya no captura `mods` por error.
+- Los `.zip` con múltiples manifests ahora se detectan y los RP+BP se instalan por separado.
+- Validación de ZIP con `testzip()` antes de extraer para evitar instalaciones corruptas.
+- Añadido soporte para `.mctemplate` en escaneo y filtro de archivos.
+- Escaneo recursivo de subdirectorios en `mods/` para encontrar `.so`.
+- Nombres duplicados en `.mcaddon` se resuelven con sufijo (`_1`, `_2`) automáticamente.
+- `_peek_packed_info` extrae nombre/versión de zips sin extraer todo.
+- Exportación de mundos con sanitización más permisiva para nombres de archivo.
+- Corregido el filtro de pestañas: la pestaña RP ya no muestra mods por error.
+
+### 📦 Nuevo sistema de mods desde el repositorio oficial de MCPELauncher
+- El Gestor de Recursos ahora puede descargar e instalar mods directamente desde el repositorio oficial [mcpelauncher-moddb](https://github.com/minecraft-linux/mcpelauncher-moddb) (zoom, fullbright, legacy, etc.).
+- Para ver los mods disponibles hay que presionar "↻ Actualizar lista de mods" — no se descarga nada automáticamente.
+- La descarga e instalación muestra el progreso en tiempo real y se hace en segundo plano sin congelar la interfaz.
+- La infraestructura de red y descarga se unificó en un solo módulo para que tanto los mods comunes como el mod DRM usen el mismo código.
+
+### 🔧 Mod DRM mejorado
+- Ahora al lanzar una versión instalada desde Google Play, si falta el mod DRM el launcher pregunta si instalarlo antes de continuar. Si está desactivado, muestra una advertencia.
+- La gestión del mod DRM se movió completamente al Gestor de Recursos, eliminando la sección duplicada en Herramientas.
+
+### 🏷️ Control de qué mods cargar al iniciar
+- Cada mod tiene un checkbox "Cargar al inicio" que persiste entre sesiones. Puedes elegir qué mods se cargan al lanzar el juego.
+- El estado se guarda con escritura atómica para evitar corrupción del archivo de configuración.
+
+### 📋 Metadatos de instalación
+- Ahora se registra si una versión se instaló desde Google Play o desde un APK local.
 
 ### 🚀 Comportamiento de Inicio
-- **Nuevo sistema LaunchAction:** Valores `close`/`hide`/`none` reemplazan el viejo booleano `close_on_launch`.
-- **Modo Hide:** Minimiza a bandeja del sistema (`QSystemTrayIcon`); la ventana reaparece al salir del juego.
-- **Modo None:** Indicador de estado "▶ En juego"/"⏹ Inactivo" en la UI.
-- **Monitor de juego:** `QTimer` cada 2s para detectar cuándo termina el proceso.
-- **Migración automática:** `close_on_launch: true` → `launch_action: "close"` en config existente.
+- Nuevo sistema LaunchAction con tres modos: `close` (cerrar launcher), `hide` (minimizar a bandeja del sistema), `none` (indicador de estado en la UI).
+- Monitor de juego con QTimer cada 2s para detectar cuándo termina el proceso.
+- Migración automática: si tenías `close_on_launch: true`, se convierte a `launch_action: "close"`.
 
 ### 💾 Persistencia de Configuración
-- **Flush en cierre:** `closeEvent` llama a `config_manager.flush()` para guardar cambios pendientes.
-- **Auto-guardado:** Checkboxes de Nvidia/Zink/Gamemode/LaunchAction y campo de variables de entorno ahora persisten inmediatamente.
-- **Sincronización:** Gamemode y LaunchAction sincronizados entre pestañas Play y Settings.
+- Los checkboxes de Nvidia/Zink/Gamemode/LaunchAction y el campo de variables de entorno ahora persisten inmediatamente al cambiar.
+- Gamemode y LaunchAction sincronizados entre pestañas Play y Settings.
 
 ### 🎮 Discord Rich Presence
-- **Sincronización inmediata:** `set_idle`/`set_playing` envían ahora de forma síncrona además de la cola.
-- **Sockets Flatpak:** Añadidas rutas IPC para Discord Canary y PTB Flatpak.
-- **Limpieza:** `stop()` llama a `clear()` antes de `close()`; `closeEvent` detiene RPC.
+- Envío síncrono de estado además de la cola para actualización inmediata.
+- Añadidas rutas IPC para Discord Canary y PTB Flatpak.
+- Limpieza mejorada: `stop()` llama a `clear()` antes de `close()`.
 
 ### 📋 Diálogo de Instalación
-- **Orden de pestañas:** APK Local es ahora la pestaña predeterminada (Google Play en segundo lugar).
+- La pestaña APK Local es ahora la predeterminada (Google Play en segundo lugar).
 
 ### ⚙️ Ajustes reorganizados
-- **Barra de categorías:** Los ajustes ahora se organizan en 4 pestañas superiores — General, Lanzamiento, Apariencia e Integraciones — cada una con sus opciones agrupadas.
-- **Navegación por QStackedWidget:** Cada categoría es una página independiente con scroll, evitando el scroll infinito de antes.
-- **Botones con estado activo:** La categoría seleccionada se resalta con el color de acento.
+- Los ajustes ahora se organizan en 4 categorías con pestañas superiores: General, Lanzamiento, Apariencia e Integraciones.
+- Navegación por QStackedWidget para evitar el scroll infinito.
+- La categoría seleccionada se resalta con el color de acento.
 
-### 🖥️ Detector de Hardware
-- **Soporte ARM:** `_detect_cpu_flags` ahora lee `Features` (ARM) además de `flags` (x86).
-- **Timeout en glxinfo:** `timeout=3`/`5s` para evitar congelamientos si `glxinfo` no responde.
-- **Parseo robusto de GL:** Regex `_parse_es_major_minor` extrae versión exacta de OpenGL ES (sin substring matching frágil).
-- **Soporte x86 (32-bit):** Añadida arquitectura `i686`/`i386` con requisito SSSE3.
-- **Soporte ARM NEON:** Detección y clasificación para `aarch64`/`armv7l`.
-- **GL desconocido:** Ya no marca como Incompatible — asume ES 3.0 (rango `1.13.0 - 1.21.124`).
-- **Rangos actualizados:** ES 2.0→1.20.20, ES 3.0→1.21.124, ES 3.1→1.21.132, ES 3.2+→1.26.0+.
-- **Display adaptativo:** El indicador CPU muestra SSE / SSSE3 / NEON según la arquitectura.
+### 🖥️ Detector de Hardware mejorado
+- Soporte para arquitecturas ARM (lectura de `Features` además de `flags`).
+- Timeout en `glxinfo` para evitar congelamientos.
+- Parseo robusto de OpenGL ES con regex.
+- Soporte x86 (32-bit) con requisito SSSE3.
+- Soporte ARM NEON con detección y clasificación.
+- GL desconocido ya no marca como Incompatible — asume ES 3.0.
+- Rangos de versión actualizados.
+- El indicador CPU muestra SSE/SSSE3/NEON según la arquitectura.
 
 ### 🐛 Correcciones
-- **ChangelogDialog:** Añadido import faltante de `QHBoxLayout` que causaba `NameError` al mostrar el changelog.
-- **Filtro de addons:** Pestaña RP ya no muestra mods (solo `resource_packs`, `skin_packs`, `custom_skins`).
-
+- ProgressDialog: ahora muestra mensajes largos sin cortarlos, con método para actualizar texto en vivo.
+- Guardado de configuración de mods ahora atómico (tmp + `os.replace`) para evitar archivos corruptos.
 # [3.0] - 2026-05-12 — The Qt6 Evolution
 
 ### 🔄 Framework: CustomTkinter → PySide6 (Qt6)
@@ -198,16 +181,10 @@
 ### 🐛 Correcciones
 - **UI freezes eliminados:** Cambio de pestañas y carga de versiones ya no bloquean la interfaz.
 - **"Searching..." corregido:** La lista de versiones ya no se queda cargando infinitamente.
-- **Ruta de sesión de Google Play:** Corregida para funcionar dentro del sandbox de Flatpak.
-- **Detección alternativa de sesión:** Fallback vía `gplayver` cuando falla la lectura de archivos.
-- **Nombre de archivo device.conf:** Corregido (era `cianova-device.conf`).
 - **Detección de runtimes Flatpak:** Ahora funciona desde dentro del sandbox.
-- **Artefactos visuales:** Al hacer clic en tarjetas de versión durante movimiento de ventana.
-- **Suavidad de overlays:** Movimiento de fondo y sticker al redimensionar.
 - **execve fallback:** En equipos restrictivos, si falla el lanzamiento normal, reemplaza el proceso.
 - **Señales de checkbox:** Actualizadas con `Qt.Checked.value` para compatibilidad PySide6 reciente.
 - **Sincronización de ajustes:** GameMode y Cerrar-al-iniciar ahora sincronizados entre pestañas.
-- **Visibilidad de stickers:** Corregido orden Z y caché de pixmaps.
 - **Alpha de Qt:** Corregido rango de 0.0-1.0 (Tkinter) a 0-255 (Qt).
 - **Clave "Blur" residual:** Eliminada de configuración (feature roto).
 - **Importaciones faltantes:** `json`, `platform`, `shlex` restauradas tras la migración.
