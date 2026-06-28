@@ -1,4 +1,4 @@
-# <img src="icon.png" width="48" height="48"> CianovaLauncher v3.0
+# <img src="icon.png" width="48" height="48"> CianovaLauncher v3.1P2
 ### 🚀 Edición definitiva migrada a Qt6 (PySide6)
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
@@ -15,7 +15,10 @@
 
 ---
 
-## ✨ Características de la v3.0
+## ✨ Características
+- **ModDB Integration:** Navega e instala 12 mods MCPELauncher (zoom, fullbright, legacy, etc.) directamente desde el Gestor de Recursos, con progreso en tiempo real.
+- **DRM Automático:** Detecta si la versión se instaló desde Google Play o APK y activa/omite el mod DRM según corresponda.
+- **Control de lanzamiento:** Marca qué mods cargar al iniciar el juego con persistencia individual.
 - **Migración a Qt6:** Interfaz rediseñada desde cero con PySide6 para mayor fluidez, estabilidad y soporte HiDPI.
 - **Asistente de Configuración:** Guía paso a paso para nuevos usuarios (idioma, temas, términos legales).
 - **Google Play Integration:** Descarga versiones oficiales directamente (requiere cuenta con el juego comprado).

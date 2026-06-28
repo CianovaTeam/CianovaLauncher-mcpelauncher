@@ -1,5 +1,38 @@
 # 📝 Changelog - CianovaLauncher
 
+# [3.1P2] - 2026-06-28 — ModDB Integration & Launch Controls
+
+### 📦 ModDB Integration
+- **`moddb_service.py`:** Nuevo módulo central con `ModInstallWorker` (descarga/extrae ZIP de cualquier mod), `ModDBFetchWorker` (fetch+cache de moddb.json), y helpers: `fetch_moddb`, `get_cached_moddb`, `find_asset_for_arch`, `detect_architecture`.
+- **12 mods disponibles:** La pestaña Mods del Gestor de Recursos ahora muestra mods descargables desde [mcpelauncher-moddb](https://github.com/minecraft-linux/mcpelauncher-moddb) (zoom, fullbright, legacy, etc.) con botón "Instalar" y progreso en tiempo real.
+- **Lista bajo demanda:** La lista de mods disponibles NO se descarga automáticamente al abrir — solo al presionar "↻ Actualizar lista de mods".
+
+### 🔧 DRM Mod mejorado
+- **Instalación generalizada:** `install_drm_mod` ahora usa el mismo `ModInstallWorker` que cualquier otro mod; se eliminó `DrmInstallWorker` y la duplicación de lógica de fetch/networking.
+- **Prompt al lanzar:** Si la versión se instaló desde Google Play y falta el mod DRM, el launcher pregunta si instalarlo antes de lanzar. Si está desactivado, muestra advertencia.
+- **Exclusión APK:** Las versiones de APK omiten el mod DRM automáticamente.
+- **Sección de mods eliminada de ToolsTab:** La gestión de mods DRM se movió completamente al Gestor de Recursos.
+
+### 🏷️ Control de lanzamiento por mod
+- **Checkbox "Cargar al inicio":** Cada mod instalado tiene un checkbox que persiste en `mods_config.json` con escritura atómica (tmp + `os.replace`) para evitar corrupción.
+- **Flag `launch` en `_collect_mods_recursive`:** Los mods se escanean con su estado de lanzamiento individual.
+- **`_get_enabled_mod_dirs`:** Filtra mods habilitados + launch=True para el flag `-m` de mcpelauncher-client.
+
+### 📋 Metadatos de instalación
+- **`.install_source`:** Nuevo archivo de metadatos que registra si una versión se instaló desde Google Play o APK local.
+- **`_write_install_source` / `read_install_source`:** Escribe/lee el origen de instalación para decisiones de DRM.
+
+### 🐛 Correcciones
+- **Escritura atómica:** `save_mods_config` ahora usa `os.replace` en lugar de `fsync` para compatibilidad con más sistemas de archivos.
+- **Señal `clicked`:** El checkbox de lanzamiento ahora usa `clicked` (solo interacción del usuario) en lugar de `toggled`.
+- **ProgressDialog:** Añadido `set_message()`, `setWordWrap(True)` y `setMinimumWidth` para mensajes largos sin truncar.
+- **CloseEvent en AddonManager:** Limpieza segura del worker de moddb para evitar crash "QThread destroyed while running".
+
+### 🧹 Limpieza
+- **`_fetch_json` / `_fetch_moddb` / `_download_zip`:** Eliminadas de `app_logic.py` — toda la lógica de red ahora está en `moddb_service.py`.
+- **Import de `QTimer`, `Qt`:** Limpiados de `app_logic.py`.
+- **Scroll horizontal en ToolsTab:** Ajuste para evitar desbordamiento en resoluciones pequeñas.
+
 # [3.1] - 2026-06-25 — Refinements & Fixes
 
 ### 🔧 Gestor de Recursos
