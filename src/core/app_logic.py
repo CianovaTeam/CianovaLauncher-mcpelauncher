@@ -217,7 +217,10 @@ def _get_enabled_mod_dirs(app):
             continue
         if not get_mod_launch_state(app, mod["path"]):
             continue
-        mod_dir = os.path.dirname(mod["path"])
+        path = mod["path"]
+        if "/patches" in path.replace("\\", "/"):
+            continue
+        mod_dir = os.path.dirname(path)
         if mod_dir:
             dirs.add(mod_dir)
     # Sort for deterministic order
@@ -720,6 +723,9 @@ def launch_game(app):
     # Filter out DRM mod for APK installs
     if install_source == "apk" and drm_mod_dir:
         mod_dirs = [d for d in mod_dirs if d != drm_mod_dir]
+
+    for d in mod_dirs:
+        cmd.extend(["-m", d])
 
     # Ensure libsqliteX.so is available (needed by Minecraft >= 1.21.130)
     _ensure_mc_libraries(app)
