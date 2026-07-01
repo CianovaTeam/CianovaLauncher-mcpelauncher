@@ -16,6 +16,18 @@ from src.utils.image_manager import ImageManager
 from src.utils.logger import logger
 
 from .moddb_service import ModInstallWorker, detect_architecture, fetch_moddb, get_mod_info, find_asset_for_arch, cache_moddb
+
+# Own build source — mod compiled from https://github.com/Leimsoto/mcpelauncher-updates (MIT)
+# Release ZIP naming: mcpelauncher-updates-{arch}-release.zip  (arch: x86_64 | arm64)
+OWN_DRM_RELEASE_TAG = "v1.0.0"
+OWN_DRM_RELEASE_URL_TPL = (
+    "https://github.com/Leimsoto/mcpelauncher-updates/releases/download/"
+    "{tag}/mcpelauncher-updates-{arch}-release.zip"
+)
+OWN_DRM_ARCH_MAP = {
+    "x86_64": "x86_64",
+    "arm64-v8a": "arm64",
+}
 from .worker import LogicWorker
 from .install_ops import (
     detect_installation,
@@ -310,8 +322,9 @@ def _on_mod_install_error(app, mod_name, err_msg, on_done=None):
 
 
 def install_drm_mod(app, on_done=None):
-    """One-click: descarga el mod DRM desde los repos oficiales y lo instala.
+    """One-click: descarga el mod DRM desde nuestra release y lo instala.
 
+    Build source: https://github.com/Leimsoto/mcpelauncher-updates
     Uses the general ModInstallWorker from moddb_service.
     """
     from src.gui.progress_dialog import ProgressDialog
@@ -337,26 +350,15 @@ def install_drm_mod(app, on_done=None):
                                    "El mod mcpelauncher-updates ya está instalado.\n¿Reinstalar?"):
             return
 
-    try:
-        moddb = fetch_moddb()
-        cache_moddb(app.active_path, moddb)
-        mod_entry = get_mod_info(moddb, "mcpelauncher-updates")
-        if not mod_entry:
-            messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                                "mcpelauncher-updates no encontrado en el mod database")
-            return
-    except Exception as e:
+    own_arch = OWN_DRM_ARCH_MAP.get(arch)
+    if not own_arch:
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                            f"Error al obtener lista de mods: {e}")
+                            f"Arquitectura no soportada para este mod: {arch}")
         return
 
-    download_url, mod_ver = find_asset_for_arch(mod_entry, arch)
-    if not download_url:
-        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                            f"No se encontró URL de descarga para la arquitectura {arch}")
-        return
-
-    mod_ver_str = mod_ver or "latest"
+    download_url = OWN_DRM_RELEASE_URL_TPL.format(tag=OWN_DRM_RELEASE_TAG, arch=own_arch)
+    mod_ver = OWN_DRM_RELEASE_TAG
+    mod_ver_str = mod_ver
     dest_dir = os.path.join(
         app.active_path, c.MODS_DIR, "mcpelauncher-updates", mod_ver_str, arch
     )
