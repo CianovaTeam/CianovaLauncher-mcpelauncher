@@ -614,13 +614,26 @@ def _ensure_mc_libraries(app):
     candidates.append(os.path.join(launcher_dir, "libs_mc", "lib", arch))
     # 3) En el directorio flatpak
     candidates.append(os.path.join("/app", "libs_mc", "lib", arch))
+    # 4) En el mod mcpelauncher-updates instalado (libmcpelauncher-updates.so -> libmcpelauncher_mod.so)
+    if app.active_path:
+        mods_base = os.path.join(app.active_path, c.MODS_DIR, "mcpelauncher-updates")
+        if os.path.isdir(mods_base):
+            for root, dirs, files in os.walk(mods_base):
+                if "libmcpelauncher-updates.so" in files:
+                    candidates.append(root)
+                    break
 
+    name_fallback = {
+        "libmcpelauncher_mod.so": "libmcpelauncher-updates.so",
+    }
     for lib_name in needed:
         dest = os.path.join(dest_dir, lib_name)
         if os.path.isfile(dest):
             continue
         for src_dir in candidates:
             src = os.path.normpath(os.path.join(src_dir, lib_name))
+            if not os.path.isfile(src) and lib_name in name_fallback:
+                src = os.path.normpath(os.path.join(src_dir, name_fallback[lib_name]))
             if os.path.isfile(src):
                 try:
                     os.makedirs(dest_dir, exist_ok=True)
