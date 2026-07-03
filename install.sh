@@ -40,6 +40,11 @@ print_step "Añadiendo repositorio Flathub (necesario para runtimes KDE)"
 flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 print_ok "Flathub añadido correctamente."
 
+#Limpiar repo anterior si existia
+print_info "Limpiando repositorio anterior..."
+flatpak remote-delete cianovaLauncher
+flatpak remote-delete $REPO_NAME
+
 print_step "Añadiendo repositorio $REPO_NAME"
 flatpak remote-add --user --if-not-exists "$REPO_NAME" "$REPO_URL"
 print_ok "Repositorio añadido correctamente."
