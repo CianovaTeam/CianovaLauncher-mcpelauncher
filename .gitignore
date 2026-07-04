@@ -11,7 +11,6 @@ BIN-PACKS
 /build
 build-dir
 dist
-repo_dist
 venv
 COMMAND.txt
 TEMPLATE_RELEASE.md
