@@ -12,7 +12,7 @@ echo "Building executable..."
 # --collect-all customtkinter es necesario para incluir los temas y archivos json de la librería
 # --add-data "icon.png:." incluye el icono dentro del ejecutable (en la raíz)
 # --icon "icon.png" establece el icono del ejecutable (para el explorador de archivos)
-./venv/bin/pyinstaller --noconfirm --onedir --clean CianovaLauncherMCPE.spec
+./venv/bin/pyinstaller --noconfirm --clean CianovaLauncherMCPE.spec
 
 echo "Build complete!"
 echo "Executable is located at: dist/CianovaLauncherMCPE"
