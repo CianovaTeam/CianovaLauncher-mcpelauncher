@@ -36,9 +36,15 @@ if ! command -v flatpak &>/dev/null; then
     exit 1
 fi
 
-print_step "Añadiendo repositorio Flathub (necesario para runtimes KDE)"
-flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-print_ok "Flathub añadido correctamente."
+print_step "Verificando repositorio Flathub"
+if flatpak remote-list --user 2>/dev/null | grep -q "^flathub\b"; then
+    print_ok "Flathub ya configurado (usuario)."
+elif flatpak remote-list --system 2>/dev/null | grep -q "^flathub\b"; then
+    print_ok "Flathub ya configurado (sistema)."
+else
+    flatpak remote-add --user flathub https://flathub.org/repo/flathub.flatpakrepo
+    print_ok "Flathub añadido correctamente."
+fi
 
 #Limpiar repo anterior si existia
 print_info "Limpiando repositorio anterior..."
