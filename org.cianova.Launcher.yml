@@ -119,7 +119,7 @@ modules:
     build-commands:
       # Crear directorio para el launcher
       - mkdir -p /app/lib/cianova
-      - cp -r dist/CianovaLauncherMCPE/* /app/lib/cianova
+      - cp -r launcher-build/* /app/lib/cianova
       - install -Dm755 cianova-launcher.sh /app/bin/cianova-launcher.sh
 
 
