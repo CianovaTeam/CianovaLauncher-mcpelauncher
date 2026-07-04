@@ -23,13 +23,8 @@ NEEDED_PYSIDE_MODULES = [
 # ── La única data que necesitamos de PySide6 (además de lo que los hooks
 #    recolectan automáticamente) es el __init__.py del package.
 #    Los Qt .so, plugins, y traducciones los colectan los hooks individuales.
-import importlib.util
-_pyside6_spec = importlib.util.find_spec('PySide6')
-_pyside6_dir = _pyside6_spec.submodule_search_locations[0] if _pyside6_spec else None
-if _pyside6_dir is None:
-    raise SystemExit("ERROR: PySide6 not found")
 PYSIDE_INIT = [
-    (_pyside6_dir + '/__init__.py', 'PySide6'),
+    ('/home/willyos/.local/lib/python3.12/site-packages/PySide6/__init__.py', 'PySide6'),
 ]
 
 # ── Pillow ──
@@ -48,6 +43,7 @@ pp_bin = collect_dynamic_libs('pypresence')
 my_datas = [
     ('icon.png', '.'),
     ('src/langs', 'src/langs'),
+    ('src/themes', 'src/themes'),
     ('Docs', 'Docs'),
 ]
 
