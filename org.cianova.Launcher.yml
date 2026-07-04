@@ -196,3 +196,7 @@ modules:
     sources:
       - type: dir
         path: .
+        collect-include:
+          - "*"
+          - bin/*
+          - launcher-build/*
