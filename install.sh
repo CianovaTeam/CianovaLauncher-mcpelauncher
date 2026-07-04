@@ -36,10 +36,15 @@ if ! command -v flatpak &>/dev/null; then
 fi
 
 print_step "Añadiendo repositorio Flathub"
-# Eliminar flathub de usuario si existe (evita ambiguedad al instalar runtimes)
-flatpak remote-delete --user flathub 2>/dev/null || true
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 print_ok "Flathub añadido correctamente."
+
+#Detectar en qué scope está Flathub para evitar ambigüedad
+if flatpak remote-list --system 2>/dev/null | grep -q "^flathub\b"; then
+    FLATHUB_SCOPE="--system"
+else
+    FLATHUB_SCOPE="--user"
+fi
 
 #Limpiar repo anterior si existia
 print_info "Limpiando repositorio anterior..."
@@ -53,7 +58,7 @@ print_ok "Repositorio añadido correctamente."
 print_step "Instalando runtimes necesarios"
 for rt in "${RUNTIMES[@]}"; do
     print_info "Instalando $rt ..."
-    flatpak install --noninteractive --assumeyes flathub "$rt"
+    flatpak install --noninteractive --assumeyes $FLATHUB_SCOPE flathub "$rt"
     print_ok "$rt instalado."
 done
 
