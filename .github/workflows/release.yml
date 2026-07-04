@@ -96,6 +96,7 @@ jobs:
           echo "Downloading from: $URL"
           curl -fL -o mcpelauncher_bins.tar.gz "$URL"
           tar -xzf mcpelauncher_bins.tar.gz
+          rm -rf bin libs_mc
           mv mcpelauncher_bins-*/bin ./bin
           mv mcpelauncher_bins-*/libs_mc ./libs_mc
           rm -rf mcpelauncher_bins-* mcpelauncher_bins.tar.gz
