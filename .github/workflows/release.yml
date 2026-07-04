@@ -100,35 +100,13 @@ jobs:
           mv mcpelauncher_bins-*/libs_mc ./libs_mc
           rm -rf mcpelauncher_bins-* mcpelauncher_bins.tar.gz
 
-      # ── Prepare launcher build for Flatpak ──
-      - name: Prepare launcher build for Flatpak
-        run: |
-          if [ -d "dist/CianovaLauncherMCPE" ]; then
-            mkdir -p launcher-build
-            cp -r dist/CianovaLauncherMCPE/* launcher-build/
-          fi
-
       # ── Flatpak ──
       - name: Import GPG key
         env:
           GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
         run: |
           if [ -n "$GPG_KEY" ]; then
-            mkdir -p ~/.gnupg
-            chmod 700 ~/.gnupg
-            echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-            echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
-            echo "trust-model always" >> ~/.gnupg/gpg.conf
-            gpgconf --kill gpg-agent || true
-            echo "$GPG_KEY" | gpg --import --no-tty --batch --pinentry-mode loopback
-            GPG_PASSPHRASE="${{ secrets.GPG_KEY_PASSPHRASE }}"
-            if [ -n "$GPG_PASSPHRASE" ] && [ -n "$GPG_KEY_ID" ]; then
-              echo "Caching GPG passphrase in agent..."
-              echo "dummy" | gpg --no-tty --batch --pinentry-mode loopback \
-                --passphrase "$GPG_PASSPHRASE" \
-                --local-user "$GPG_KEY_ID" --detach-sign > /dev/null 2>&1
-            fi
+            echo "$GPG_KEY" | gpg --import --no-tty --batch
             echo "GPG key imported successfully"
           else
             echo "No GPG_PRIVATE_KEY secret set — skipping GPG import"
@@ -181,7 +159,7 @@ jobs:
             mv dist/CianovaLauncherMCPE "$DIR"
             cp -r bin "$DIR/bin"
             cp -r libs_mc "$DIR/lib"
-            cp assets/CianovaLauncher.sh "$DIR/CianovaLauncher.sh" 2>/dev/null || true
+            cp cianova-launcher.sh "$DIR/CianovaLauncher.sh" 2>/dev/null || true
             tar -czf "$DIR.tar.gz" "$DIR"
             rm -rf "$DIR"
           fi
