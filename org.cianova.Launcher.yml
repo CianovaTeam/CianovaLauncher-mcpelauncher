@@ -117,19 +117,18 @@ modules:
   - name: cianova-launcher
     buildsystem: simple
     build-commands:
-      # Crear directorio para el launcher
+      # Crear directorio para el launcher  
       - mkdir -p /app/lib/cianova
       - cp -r launcher-build/* /app/lib/cianova
       - install -Dm755 cianova-launcher.sh /app/bin/cianova-launcher.sh
 
-
       # Copiar binarios de mcpelauncher al directorio bin/
       - mkdir -p /app/bin
-      - cp -r bin/* /app/bin/ || true
+      - cp -r launcher-build/bin/* /app/bin/ || true
       - chmod +x /app/bin/* || true
 
       # Copiar librerías auxiliares (libprotobuf.so.32 para gplaydl) a /app/lib/
-      - cp -r bin/lib/* /app/lib/ || true
+      - cp -r launcher-build/bin/lib/* /app/lib/ || true
 
       # qt.conf para que las apps Qt6 (mcpelauncher-webview, playdl-signin-ui-qt)
       # encuentren los módulos QML tanto del runtime KDE (/usr/lib/qml/) como
@@ -196,7 +195,3 @@ modules:
     sources:
       - type: dir
         path: .
-        collect-include:
-          - "*"
-          - bin/*
-          - launcher-build/*

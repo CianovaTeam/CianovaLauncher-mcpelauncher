@@ -105,8 +105,9 @@ jobs:
       - name: Prepare launcher build for Flatpak
         run: |
           if [ -d "dist/CianovaLauncherMCPE" ]; then
-            mkdir -p launcher-build
+            mkdir -p launcher-build/bin
             cp -r dist/CianovaLauncherMCPE/* launcher-build/
+            cp -r bin/* launcher-build/bin/
           fi
 
       - name: Import GPG key
