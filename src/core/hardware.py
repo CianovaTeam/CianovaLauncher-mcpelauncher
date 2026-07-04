@@ -6,6 +6,7 @@ import shutil
 from PySide6.QtWidgets import QFrame
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
+from src.utils.logger import logger
 
 
 def _detect_cpu_flags():
