@@ -42,8 +42,8 @@ print_ok "Flathub añadido correctamente."
 
 #Limpiar repo anterior si existia
 print_info "Limpiando repositorio anterior..."
-flatpak remote-delete cianovaLauncher
-flatpak remote-delete $REPO_NAME
+flatpak remote-delete cianovaLauncher 2>/dev/null || true
+flatpak remote-delete "$REPO_NAME" 2>/dev/null || true
 
 print_step "Añadiendo repositorio $REPO_NAME"
 flatpak remote-add --user --if-not-exists "$REPO_NAME" "$REPO_URL"
