@@ -187,12 +187,21 @@ jobs:
           fi
 
       # ── GitHub Release ──
+      - name: Extract changelog section
+        run: |
+          CHANGELOG_VERSION="${{ env.VERSION }}"
+          CHANGELOG_SECTION="${CHANGELOG_VERSION#v}"
+          CHANGELOG_SECTION="${CHANGELOG_SECTION%.*}"
+          awk -v ver="[$CHANGELOG_SECTION]" \
+            '/^# \[/ {if (found) exit; if (index($0, "# " ver) == 1) found=1}
+             found {print}' Docs/Changelog.md > Docs/Changelog-current.md
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
           name: Cianova Launcher ${{ env.VERSION }}
-          body_path: Docs/Changelog.md
+          body_path: Docs/Changelog-current.md
           fail_on_unmatched_files: false
           overwrite: true
           draft: true
