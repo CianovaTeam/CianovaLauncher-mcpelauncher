@@ -8,7 +8,6 @@ REPO_NAME="CianovaLauncher"
 REPO_URL="https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo"
 APP_ID="org.cianova.Launcher"
 RUNTIMES=("org.kde.Platform//6.10" "io.qt.qtwebengine.BaseApp//6.10")
-SUDO=""
 
 print_bold() { echo -e "\033[1m$1\033[0m"; }
 print_ok()   { echo -e "  [\033[32mOK\033[0m] $1"; }
@@ -36,25 +35,9 @@ if ! command -v flatpak &>/dev/null; then
     exit 1
 fi
 
-if [ "$(id -u)" -ne 0 ]; then
-    if command -v sudo &>/dev/null; then
-        SUDO="sudo"
-    elif command -v doas &>/dev/null; then
-        SUDO="doas"
-    else
-        print_err "Se requiere sudo para instalar los runtimes del sistema."
-        echo "  Ejecuta el script con: sudo $0"
-        exit 1
-    fi
-fi
-
-print_step "Verificando repositorio Flathub"
-if $SUDO flatpak remote-list --system 2>/dev/null | grep -q "^flathub\b"; then
-    print_ok "Flathub ya configurado (sistema)."
-else
-    $SUDO flatpak remote-add --system flathub https://flathub.org/repo/flathub.flatpakrepo
-    print_ok "Flathub añadido correctamente."
-fi
+print_step "Añadiendo repositorio Flathub"
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+print_ok "Flathub añadido correctamente."
 
 #Limpiar repo anterior si existia
 print_info "Limpiando repositorio anterior..."
@@ -68,7 +51,7 @@ print_ok "Repositorio añadido correctamente."
 print_step "Instalando runtimes necesarios"
 for rt in "${RUNTIMES[@]}"; do
     print_info "Instalando $rt ..."
-    $SUDO flatpak install --system --noninteractive --assumeyes flathub "$rt"
+    flatpak install --noninteractive --assumeyes flathub "$rt"
     print_ok "$rt instalado."
 done
 
