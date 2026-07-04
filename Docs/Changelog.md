@@ -2,29 +2,29 @@
 
 # [3.1] - 2026-06-28 — Refinements & New Features
 
-### 🔧 Gestor de Recursos
+### 🔧 Gestor de Recursos (Addons + Mods)
 - Los `.zip` con múltiples manifests ahora se detectan y los RP+BP se instalan por separado.
 - Validación de ZIP con `testzip()` antes de extraer para evitar instalaciones corruptas.
 - Añadido soporte para `.mctemplate` en escaneo y filtro de archivos.
 - Escaneo recursivo de subdirectorios en `mods/` para encontrar `.so`.
 - Nombres duplicados en `.mcaddon` se resuelven con sufijo (`_1`, `_2`) automáticamente.
-- `_peek_packed_info` extrae nombre/versión de zips sin extraer todo.
 - Exportación de mundos con sanitización más permisiva para nombres de archivo.
 - Corregido el filtro de pestañas: la pestaña RP ya no muestra mods por error.
 
-### 📦 Nuevo sistema de mods desde el repositorio oficial de MCPELauncher
-- El Gestor de Recursos ahora puede descargar e instalar mods directamente desde el repositorio oficial [mcpelauncher-moddb](https://github.com/minecraft-linux/mcpelauncher-moddb) (zoom, fullbright, legacy, etc.).
-- Para ver los mods disponibles hay que presionar "↻ Actualizar lista de mods" — no se descarga nada automáticamente.
-- La descarga e instalación muestra el progreso en tiempo real y se hace en segundo plano sin congelar la interfaz.
-- La infraestructura de red y descarga se unificó en un solo módulo para que tanto los mods comunes como el mod DRM usen el mismo código.
-
-### 🔧 Mod DRM mejorado
-- Ahora al lanzar una versión instalada desde Google Play, si falta el mod DRM el launcher pregunta si instalarlo antes de continuar. Si está desactivado, muestra una advertencia.
+### 📦 Mod DRM desde compilación propia de Leimsoto
+- El mod DRM (mcpelauncher-updates) ahora se descarga directamente desde [github.com/Leimsoto/mcpelauncher-updates](https://github.com/Leimsoto/mcpelauncher-updates/releases) en lugar del repositorio oficial ModDB.
+- Arquitecturas mapeadas: `x86_64` y `arm64-v8a` con release tagging `v1.0.0`.
+- Fallback de librerías: `libmcpelauncher-updates.so` resuelve como `libmcpelauncher_mod.so` en `_ensure_mc_libraries`.
+- El launcher busca librerías dentro del mod instalado como fuente adicional.
+- Mensajes y créditos actualizados para reflejar la fuente MIT de Leimsoto.
+- Al lanzar una versión instalada desde Google Play, si falta el mod DRM el launcher pregunta si instalarlo antes de continuar. Si está desactivado, muestra advertencia.
 - La gestión del mod DRM se movió completamente al Gestor de Recursos, eliminando la sección duplicada en Herramientas.
 
-### 🏷️ Control de qué mods cargar al iniciar
-- Cada mod tiene un checkbox "Cargar al inicio" que persiste entre sesiones. Puedes elegir qué mods se cargan al lanzar el juego.
-- El estado se guarda con escritura atómica para evitar corrupción del archivo de configuración.
+### 🏷️ Control de carga de mods
+- Cada mod tiene checkbox "Cargar al inicio" que persiste entre sesiones.
+- El estado se guarda con escritura atómica (`tmp` + `os.replace`) para evitar corrupción.
+- Directorios `patches/` se filtran automáticamente del listado de mods a cargar.
+- Los directorios de mod ahora se pasan explícitamente al comando de lanzamiento con flags `-m`.
 
 ### 📋 Metadatos de instalación
 - Ahora se registra si una versión se instaló desde Google Play o desde un APK local.
