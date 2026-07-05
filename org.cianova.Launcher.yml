@@ -97,7 +97,8 @@ modules:
         Qml2Imports = /app/lib/qml:/usr/lib/qml
         EOF
 
-      - rm -f /app/lib/cianova/_internal/libharfbuzz.so.0 /app/lib/cianova/_internal/libfontconfig.so.1 /app/lib/cianova/_internal/libfreetype.so.6 /app/lib/cianova/_internal/libpng16.so.16 /app/lib/cianova/_internal/libjpeg.so.8 /app/lib/cianova/_internal/libcrypto.so.3 /app/lib/cianova/_internal/libssl.so.3
+      # libharfbuzz del bundle (v8) entra en conflicto con runtime KDE (v11)
+      - rm -f /app/lib/cianova/_internal/libharfbuzz.so.0
 
       - mkdir -p /app/share/mcpelauncher
       - cp -r libs_mc/lib /app/share/mcpelauncher/
