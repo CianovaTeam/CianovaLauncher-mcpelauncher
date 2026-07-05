@@ -16,7 +16,6 @@ build-options:
     - --share=network
 
 finish-args:
-  # Acceso a X11 y Wayland para GUI
   - --socket=x11
   - --socket=wayland
   - --share=ipc
@@ -25,66 +24,30 @@ finish-args:
   - --env=GTK_THEME=Adwaita-dark
   - --metadata=X-DCONF=true
   - --env=XDG_CURRENT_DESKTOP=KDE
-  # Variables de entorno para forzar modo oscuro en la aplicación
   - --env=QT_QPA_PLATFORMTHEME=kde
   - --env=QT_STYLE_OVERRIDE=kvantum
   - --env=COLOR_SCHEME=dark
-
-  # Acceso a GPU para OpenGL
   - --device=dri
-
-  # Permitir diálogos de archivos nativos
   - --talk-name=org.freedesktop.portal.FileChooser
-
-  # Acceso a red para descargas
   - --share=network
-
-  # Acceso al sistema de archivos home para guardar datos
   - --filesystem=home
-  # Acceso explícito a datos locales para migración (Flatpak suele ocultar .local)
   - --filesystem=~/.local/share/mcpelauncher
-  # Acceso explícito a datos flatpak para migración (Flatpak Custom .var)
   - --filesystem=~/.var/app
-
-  # Acceso a PulseAudio para sonido
   - --socket=pulseaudio
-
-  # Permitir ejecución de binarios empaquetados
   - --talk-name=org.freedesktop.Flatpak
-  # Acceso a GameMode
   - --talk-name=com.feralinteractive.GameMode
-
-  # Acceso para leer /.flatpak-info (detección de contexto)
   - --filesystem=/.flatpak-info:ro
-
-  # Persistir datos entre actualizaciones
   - --persist=.mcpelauncher
-
-  # Soporte para los mandos y dispositivos a bajo nivel
   - --device=all
-
-  # Acceso a Discord IPC para Rich Presence (opcional)
   - --filesystem=xdg-run/discord-ipc-0
   - --filesystem=xdg-run/app/com.discordapp.Discord
-
-  # Buses D-Bus — necesarios para Qt6 WebEngine (portals, sandbox IPC, sys bus)
   - --socket=session-bus
   - --socket=system-bus
-
-  # Variables de entorno necesarias
   - --env=PATH=/app/bin:/usr/bin
   - --env=LD_LIBRARY_PATH=/app/lib:/app/lib/cianova:$LD_LIBRARY_PATH
   - --env=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-  # Qt6 WebEngine QML modules provided by the base extension (io.qt.qtwebengine.BaseApp)
-  # live at /app/lib/qml/ inside the sandbox. QML engine needs this path to find
-  # the QtWebEngine QML plugin required by mcpelauncher-webview.
-  # QML2_IMPORT_PATH (Qt5 compat) and QML_IMPORT_PATH are both set. Also include
-  # the runtime's default QML path (/usr/lib/qml/) as a fallback.
   - --env=QML_IMPORT_PATH=/app/lib/qml:/usr/lib/qml
   - --env=QML2_IMPORT_PATH=/app/lib/qml:/usr/lib/qml
-  # Chromium/WebEngine sandbox conflicts with Flatpak's own sandboxing (zygote
-  # fails to spawn child processes). Disable the inner sandbox — Flatpak already
-  # provides process isolation.
   - --env=QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
 
 modules:
@@ -110,56 +73,39 @@ modules:
       - type: archive
         path: flatlibs/libzip-1.11.3.tar.xz
     post-install:
-      # Symlink para compatibilidad con binarios viejos que buscan libzip.so.4
       - ln -s libzip.so.5 /app/lib/libzip.so.4
       - ls -la /app/lib/libzip.so.5 /app/lib/libzip.so.4
-  # Módulo principal del launcher con dependencias Python
+
   - name: cianova-launcher
     buildsystem: simple
     build-commands:
-      # Crear directorio para el launcher  
       - mkdir -p /app/lib/cianova
       - cp -r launcher-build/* /app/lib/cianova
       - install -Dm755 cianova-launcher.sh /app/bin/cianova-launcher.sh
 
-      # Copiar binarios de mcpelauncher al directorio bin/
       - mkdir -p /app/bin
-      - cp -r launcher-build/bin/* /app/bin/
+      - cp -r bin/* /app/bin/
       - chmod +x /app/bin/*
 
-      # Copiar librerías auxiliares (libprotobuf.so.32 para gplaydl) a /app/lib/
-      - if [ -d launcher-build/bin/lib ]; then cp -r launcher-build/bin/lib/* /app/lib/; fi
+      - if [ -d bin/lib ]; then cp -r bin/lib/* /app/lib/; fi
 
-      # Validar que los binarios esenciales existen
       - test -f /app/bin/mcpelauncher-client || { echo "ERROR: mcpelauncher-client no encontrado en /app/bin/"; exit 1; }
 
-      # qt.conf para que las apps Qt6 (mcpelauncher-webview, playdl-signin-ui-qt)
-      # encuentren los módulos QML tanto del runtime KDE (/usr/lib/qml/) como
-      # del base extension QtWebEngine (/app/lib/qml/).
       - |
         cat > /app/bin/qt.conf << EOF
         [Paths]
         Qml2Imports = /app/lib/qml:/usr/lib/qml
         EOF
 
-      # Eliminar librerías empaquetadas que entran en conflicto con las del
-      # runtime KDE 6.10. PyInstaller las incluye automáticamente como
-      # dependencias, pero el runtime ya las provee con versiones compatibles.
-      # Mantener ambas copias causa heap corruption (free(): invalid pointer).
       - rm -f /app/lib/cianova/_internal/libharfbuzz.so.0 /app/lib/cianova/_internal/libfontconfig.so.1 /app/lib/cianova/_internal/libfreetype.so.6 /app/lib/cianova/_internal/libpng16.so.16 /app/lib/cianova/_internal/libjpeg.so.8 /app/lib/cianova/_internal/libcrypto.so.3 /app/lib/cianova/_internal/libssl.so.3
 
-      # Pasar los lib necesarios
       - mkdir -p /app/share/mcpelauncher
       - cp -r libs_mc/lib /app/share/mcpelauncher/
       - cp libs_mc/gamecontrollerdb.txt /app/share/mcpelauncher/
 
-      # Mod DRM (empaquetado junto a los binarios)
       - if [ -d mods ]; then cp -r mods /app/share/mcpelauncher/; fi
 
-      # Copiar icono
       - install -Dm644 org.cianova.Launcher.png /app/share/icons/hicolor/256x256/apps/org.cianova.Launcher.png
-
-      # Crear archivo .desktop
       - |
         cat > org.cianova.Launcher.desktop << EOF
         [Desktop Entry]
@@ -172,7 +118,6 @@ modules:
         Terminal=false
         EOF
       - install -Dm644 org.cianova.Launcher.desktop /app/share/applications/org.cianova.Launcher.desktop
-      # Crear archivo de metadatos AppStream
       - |
         cat > org.cianova.Launcher.metainfo.xml << EOF
         <?xml version="1.0" encoding="UTF-8"?>
@@ -200,3 +145,5 @@ modules:
     sources:
       - type: dir
         path: .
+        collect-include:
+          - "*"

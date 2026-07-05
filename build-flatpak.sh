@@ -61,15 +61,11 @@ fi
 
 echo -e "${YELLOW}[4/6]${NC} Preparando el build para Flatpak..."
 
-# Preparar launcher-build/ (estructura que espera org.cianova.Launcher.yml)
 rm -rf launcher-build
-mkdir -p launcher-build/bin
+mkdir -p launcher-build
 cp -r dist/CianovaLauncherMCPE/* launcher-build/
 
-if [ -f "bin/mcpelauncher-client" ]; then
-    echo -e "${GREEN}✓ Binarios de mcpelauncher encontrados en bin/${NC}"
-    cp -r bin/* launcher-build/bin/
-else
+if [ ! -f "bin/mcpelauncher-client" ]; then
     echo -e "${YELLOW}⚠ No se encontraron binarios en bin/${NC}"
     echo "El Flatpak se construirá SIN binarios mcpelauncher empaquetados."
     echo "El launcher necesitará usar modo Flatpak Personalizado o Personalizado."
