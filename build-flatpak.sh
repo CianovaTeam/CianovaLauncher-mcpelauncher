@@ -54,52 +54,37 @@ flatpak install -y flathub io.qt.qtwebengine.BaseApp//6.10 || echo "BaseApp ya i
 
 echo -e "${GREEN}✓ Runtime instalado${NC}"
 
-echo -e "${GREEN}✓ Runtime instalado${NC}"
-
-if [ -d "dist/CianovaLauncherMCPE" ]; then
-    echo -e "${YELLOW}[4/6]${NC} Saltando compilación (no necesaria)..."
-    # Nota: Ya no usamos PyInstaller. El Flatpak instalará las dependencias de Python nativamente.
-
-    echo -e "${GREEN}✓ Compilación OK${NC}"
-
-    # Crear directorio bin si no existe y copiar binarios
-    echo -e "${YELLOW}[5/7]${NC} Preparando binarios..."
-    mkdir -p bin
-
-else
-    echo -e "${RED}No se encuentra el proyecto compilado porfavor ejecuta build.sh primero${NC}"
+if [ ! -d "dist/CianovaLauncherMCPE" ]; then
+    echo -e "${RED}No se encuentra el proyecto compilado. Ejecuta build.sh primero.${NC}"
     exit 1
 fi
 
-# Verificar si hay binarios de mcpelauncher
-if [ -d "bin" ] && [ -f "bin/mcpelauncher-client" ]; then
-    echo -e "${GREEN}✓ Binarios de mcpelauncher encontrados:${NC}"
-    ls -lh bin/
+echo -e "${YELLOW}[4/6]${NC} Preparando el build para Flatpak..."
+
+# Preparar launcher-build/ (estructura que espera org.cianova.Launcher.yml)
+rm -rf launcher-build
+mkdir -p launcher-build/bin
+cp -r dist/CianovaLauncherMCPE/* launcher-build/
+
+if [ -f "bin/mcpelauncher-client" ]; then
+    echo -e "${GREEN}✓ Binarios de mcpelauncher encontrados en bin/${NC}"
+    cp -r bin/* launcher-build/bin/
 else
-    echo -e "${YELLOW}⚠ ADVERTENCIA: No se encontraron binarios en bin/${NC}"
-    echo ""
-    echo "El Flatpak se construirá SIN binarios empaquetados."
-    echo "El launcher necesitará usar uno de estos modos:"
-    echo "  - Flatpak Personalizado (requiere com.mcpelauncher.MCPELauncher instalado)"
-    echo "  - Personalizado (rutas manuales, limitado por sandbox)"
+    echo -e "${YELLOW}⚠ No se encontraron binarios en bin/${NC}"
+    echo "El Flatpak se construirá SIN binarios mcpelauncher empaquetados."
+    echo "El launcher necesitará usar modo Flatpak Personalizado o Personalizado."
     echo ""
     read -p "¿Deseas continuar de todos modos? (s/N): " confirm
     if [[ ! $confirm =~ ^[Ss]$ ]]; then
         echo "Build cancelado."
-        echo ""
-        echo "Para incluir binarios, compila mcpelauncher y copia los binarios a bin/:"
-        echo "  mkdir -p bin"
-        echo "  cp /ruta/a/mcpelauncher-client bin/"
-        echo "  cp /ruta/a/mcpelauncher-extract bin/"
-        echo "  # etc..."
         exit 1
     fi
 fi
 
-echo -e "${GREEN}✓ Binarios preparados${NC}"
+echo -e "${GREEN}✓ Build preparado${NC}"
 
 # Construir el Flatpak
-echo -e "${YELLOW}[6/6]${NC} Construyendo paquete Flatpak..."
+echo -e "${YELLOW}[5/5]${NC} Construyendo paquete Flatpak (org.cianova.Launcher.yml)..."
 echo "Esto puede tomar varios minutos..."
 
 # Limpiar build anterior si existe

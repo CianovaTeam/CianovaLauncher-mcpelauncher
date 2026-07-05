@@ -155,6 +155,17 @@ jobs:
             $SIGN \
             build-dir org.cianova.Launcher.yml
 
+      - name: Validate Flatpak has mcpelauncher binaries
+        run: |
+          echo "Checking binaries in flatpak build..."
+          test -f build-dir/files/bin/mcpelauncher-client || { echo "ERROR: mcpelauncher-client not found in flatpak build"; exit 1; }
+          echo "  mcpelauncher-client: OK"
+          test -f build-dir/files/bin/mcpelauncher-extract || { echo "ERROR: mcpelauncher-extract not found in flatpak build"; exit 1; }
+          echo "  mcpelauncher-extract: OK"
+          test -f build-dir/files/bin/mcpelauncher-webview || { echo "ERROR: mcpelauncher-webview not found in flatpak build"; exit 1; }
+          echo "  mcpelauncher-webview: OK"
+          echo "All binaries present in flatpak build."
+
       - name: Update Flatpak repo
         env:
           GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}

@@ -124,11 +124,14 @@ modules:
 
       # Copiar binarios de mcpelauncher al directorio bin/
       - mkdir -p /app/bin
-      - cp -r launcher-build/bin/* /app/bin/ || true
-      - chmod +x /app/bin/* || true
+      - cp -r launcher-build/bin/* /app/bin/
+      - chmod +x /app/bin/*
 
       # Copiar librerías auxiliares (libprotobuf.so.32 para gplaydl) a /app/lib/
-      - cp -r launcher-build/bin/lib/* /app/lib/ || true
+      - if [ -d launcher-build/bin/lib ]; then cp -r launcher-build/bin/lib/* /app/lib/; fi
+
+      # Validar que los binarios esenciales existen
+      - test -f /app/bin/mcpelauncher-client || { echo "ERROR: mcpelauncher-client no encontrado en /app/bin/"; exit 1; }
 
       # qt.conf para que las apps Qt6 (mcpelauncher-webview, playdl-signin-ui-qt)
       # encuentren los módulos QML tanto del runtime KDE (/usr/lib/qml/) como
@@ -139,14 +142,16 @@ modules:
         Qml2Imports = /app/lib/qml:/usr/lib/qml
         EOF
 
-      # Eliminar libharfbuzz empaquetado (v8) que entra en conflicto con
-      # el del runtime KDE 6.10 (v11) — libharfbuzz-subset necesita hb_free
-      - rm -f /app/lib/cianova/_internal/libharfbuzz.so.0
+      # Eliminar librerías empaquetadas que entran en conflicto con las del
+      # runtime KDE 6.10. PyInstaller las incluye automáticamente como
+      # dependencias, pero el runtime ya las provee con versiones compatibles.
+      # Mantener ambas copias causa heap corruption (free(): invalid pointer).
+      - rm -f /app/lib/cianova/_internal/libharfbuzz.so.0 /app/lib/cianova/_internal/libfontconfig.so.1 /app/lib/cianova/_internal/libfreetype.so.6 /app/lib/cianova/_internal/libpng16.so.16 /app/lib/cianova/_internal/libjpeg.so.8 /app/lib/cianova/_internal/libcrypto.so.3 /app/lib/cianova/_internal/libssl.so.3
 
       # Pasar los lib necesarios
-      - mkdir -p /app/share/mcpelauncher || true
+      - mkdir -p /app/share/mcpelauncher
       - cp -r libs_mc/lib /app/share/mcpelauncher/
-      - cp libs_mc/gamecontrollerdb.txt /app/share/mcpelauncher/ || true
+      - cp libs_mc/gamecontrollerdb.txt /app/share/mcpelauncher/
 
       # Mod DRM (empaquetado junto a los binarios)
       - if [ -d mods ]; then cp -r mods /app/share/mcpelauncher/; fi
