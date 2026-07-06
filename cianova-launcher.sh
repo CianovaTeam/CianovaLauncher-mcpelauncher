@@ -11,6 +11,9 @@ export MCPELAUNCHER_DATA_DIR="/app/share/mcpelauncher"
 export QML_IMPORT_PATH="/app/lib/qml:/usr/lib/qml"
 export QML2_IMPORT_PATH="/app/lib/qml:/usr/lib/qml"
 
+# Qt6 plugins (xcb, wayland) for subprocesses like playdl-signin-ui-qt
+export QT_PLUGIN_PATH="/app/lib/plugins:/usr/lib/plugins"
+
 # Directorio de datos del usuario
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.var/app/org.cianova.Launcher/data}/mcpelauncher"
 mkdir -p "$DATA_DIR"
