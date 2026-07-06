@@ -48,7 +48,7 @@ finish-args:
   - --env=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
   - --env=QML_IMPORT_PATH=/app/lib/qml:/usr/lib/qml
   - --env=QML2_IMPORT_PATH=/app/lib/qml:/usr/lib/qml
-  - --env=QT_PLUGIN_PATH=/app/lib/plugins:/usr/lib/plugins
+  - --env=QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/plugins/platforms
   - --env=QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
 
 modules:

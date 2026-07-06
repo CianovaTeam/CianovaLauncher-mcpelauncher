@@ -11,8 +11,11 @@ export MCPELAUNCHER_DATA_DIR="/app/share/mcpelauncher"
 export QML_IMPORT_PATH="/app/lib/qml:/usr/lib/qml"
 export QML2_IMPORT_PATH="/app/lib/qml:/usr/lib/qml"
 
-# Qt6 plugins (xcb, wayland) for subprocesses like playdl-signin-ui-qt
-export QT_PLUGIN_PATH="/app/lib/plugins:/usr/lib/plugins"
+# Qt6 plugins (xcb, wayland) para subprocesos (playdl-signin-ui-qt, etc.)
+# QT_PLUGIN_PATH busca todos los tipos; QT_QPA_PLATFORM_PLUGIN_PATH busca
+# solo platform plugins y anula el compile-time prefix que en Flatpak
+# suele estar vacio.
+export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/plugins/platforms:/app/lib/plugins/platforms"
 
 # Directorio de datos del usuario
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.var/app/org.cianova.Launcher/data}/mcpelauncher"
