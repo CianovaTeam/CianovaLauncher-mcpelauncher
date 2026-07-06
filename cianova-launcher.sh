@@ -15,7 +15,7 @@ export QML2_IMPORT_PATH="/app/lib/qml:/usr/lib/qml"
 # QT_PLUGIN_PATH busca todos los tipos; QT_QPA_PLATFORM_PLUGIN_PATH busca
 # solo platform plugins y anula el compile-time prefix que en Flatpak
 # suele estar vacio.
-export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/plugins/platforms:/app/lib/plugins/platforms"
+export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/plugins/platforms"
 
 # Directorio de datos del usuario
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.var/app/org.cianova.Launcher/data}/mcpelauncher"
