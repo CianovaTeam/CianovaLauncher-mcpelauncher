@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QFrame, QScrollArea, QWidget, QFileDialog)
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from src.gui import custom_dialogs as messagebox
 import os
 import shutil
@@ -8,7 +9,7 @@ import tempfile
 import zipfile
 import json
 import uuid
-from src.utils.dialogs import ask_open_filenames_native
+from src.utils.dialogs import ask_open_filenames_native, ask_save_filename_native
 from src import constants as c
 
 class SkinPackTool(QDialog):
@@ -17,9 +18,28 @@ class SkinPackTool(QDialog):
         super().__init__(parent)
         self.setWindowTitle(c.t("UI_SKIN_PACK_CREATOR_TITLE"))
         self.resize(700, 550)
+        self.setAcceptDrops(True)
 
         self.skins = []
         self.setup_ui()
+
+    def _add_skin_from_path(self, path):
+        name = os.path.splitext(os.path.basename(path))[0]
+        self.skins.append({"name": name, "path": path})
+        self.refresh_list()
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                if url.toLocalFile().endswith(".png"):
+                    event.acceptProposedAction()
+                    return
+
+    def dropEvent(self, event: QDropEvent):
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if path.endswith(".png"):
+                self._add_skin_from_path(path)
 
     def setup_ui(self):
         """Build the dialog with pack name entry, skin list, and add/export buttons."""
@@ -77,9 +97,7 @@ class SkinPackTool(QDialog):
         paths = ask_open_filenames_native(self, filetypes=[("PNG Files", "*.png")])
         if paths:
             for path in paths:
-                name = os.path.splitext(os.path.basename(path))[0]
-                self.skins.append({"name": name, "path": path})
-            self.refresh_list()
+                self._add_skin_from_path(path)
 
     def refresh_list(self):
         """Rebuild the skin list UI showing editable names and delete buttons."""
@@ -124,7 +142,7 @@ class SkinPackTool(QDialog):
             messagebox.showwarning(self, c.t("UI_ERROR_TITLE"), c.t("UI_ERROR_MISSING_NAME_OR_SKINS"))
             return
 
-        save_path, _ = QFileDialog.getSaveFileName(self, filter=f"{c.t("UI_MCPACK_FILES_TYPE")} (*.mcpack)")
+        save_path = ask_save_filename_native(self, filetypes=[(c.t("UI_MCPACK_FILES_TYPE"), "*.mcpack")], default_name=f"{pack_name}.mcpack")
         if not save_path: return
 
         temp_dir = tempfile.mkdtemp(prefix="skin_pack_")

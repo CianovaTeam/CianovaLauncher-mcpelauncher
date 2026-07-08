@@ -2,6 +2,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QFrame, QRadioButton,
                              QTabWidget, QWidget, QComboBox, QProgressBar)
 from PySide6.QtCore import Qt, QThread, Signal, QProcess, QTimer
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import os
 import ssl
 import zipfile
@@ -364,7 +365,37 @@ class LocalApkTab(QWidget):
     def __init__(self, parent_dialog):
         super().__init__()
         self.dialog = parent_dialog
+        self.setAcceptDrops(True)
         self.setup_ui()
+
+    _NORMAL_STYLE = ""
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                if url.toLocalFile().endswith(".apk"):
+                    event.acceptProposedAction()
+                    self.frame_apk.setStyleSheet(f"background-color: #3a3a3a; border-radius: {c.CORNER_RADIUS}px;")
+                    return
+
+    def dragLeaveEvent(self, event):
+        self.frame_apk.setStyleSheet(self._NORMAL_STYLE)
+
+    def dropEvent(self, event: QDropEvent):
+        self.frame_apk.setStyleSheet(self._NORMAL_STYLE)
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if path.endswith(".apk"):
+                self._set_apk_path(path)
+                return
+
+    def _set_apk_path(self, path):
+        self.entry_apk.setText(path)
+        base = os.path.basename(path)
+        match = re.search(r"(\d+\.\d+(\.\d+)?)", base)
+        if match:
+            self.entry_name.setText(match.group(1))
+        self.check_architecture(path)
 
     def setup_ui(self):
         """Build the UI layout for the local APK installation tab."""
@@ -374,7 +405,8 @@ class LocalApkTab(QWidget):
 
         # 1. Selección de APK
         self.frame_apk = QFrame()
-        self.frame_apk.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
+        self._NORMAL_STYLE = f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;"
+        self.frame_apk.setStyleSheet(self._NORMAL_STYLE)
         apk_layout = QVBoxLayout(self.frame_apk)
 
         lbl_apk_title = QLabel(c.t("UI_APK_FILE_LABEL"))
@@ -392,6 +424,11 @@ class LocalApkTab(QWidget):
         btn_browse.clicked.connect(self.browse_apk)
         apk_input_layout.addWidget(btn_browse)
         apk_layout.addLayout(apk_input_layout)
+
+        lbl_drop_hint = QLabel(c.t("UI_APK_DROP_HINT"))
+        lbl_drop_hint.setAlignment(Qt.AlignCenter)
+        lbl_drop_hint.setStyleSheet("color: #888888; font-size: 12px; padding: 5px;")
+        apk_layout.addWidget(lbl_drop_hint)
 
         self.layout.addWidget(self.frame_apk)
 
@@ -430,13 +467,7 @@ class LocalApkTab(QWidget):
         """Open a file picker to select an APK and analyze its architecture."""
         path = ask_open_filename_native(self, title=c.t("UI_SELECT_APK_TITLE"), filetypes=[(c.t("UI_APK_FILES_TYPE"), "*.apk")])
         if path:
-            self.entry_apk.setText(path)
-            # Guess version
-            base = os.path.basename(path)
-            match = re.search(r"(\d+\.\d+(\.\d+)?)", base)
-            if match:
-                self.entry_name.setText(match.group(1))
-            self.check_architecture(path)
+            self._set_apk_path(path)
 
     def check_architecture(self, apk_path):
         """Inspect the APK to determine x86, ARM support and compatibility."""

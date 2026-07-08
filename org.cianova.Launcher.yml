@@ -49,7 +49,8 @@ finish-args:
   - --env=QML_IMPORT_PATH=/app/lib/qml:/usr/lib/qml
   - --env=QML2_IMPORT_PATH=/app/lib/qml:/usr/lib/qml
   - --env=QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/plugins/platforms
-  - --env=QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox
+  - --env=QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --ignore-gpu-blocklist
+  - --env=QT_QUICK_BACKEND=software
 
 modules:
   - name: libevdev

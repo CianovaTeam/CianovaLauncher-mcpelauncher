@@ -2,6 +2,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QComboBox, QScrollArea, QFrame, QLineEdit, QPushButton,
                              QCheckBox, QSlider, QGridLayout, QTextEdit, QStackedWidget)
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import os
 from src import constants as c
 from src.core import language_manager
@@ -29,8 +30,11 @@ class SettingsTab(QWidget):
         "integrations": ["setup_discord_section"],
     }
 
+    _DROP_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp")
+
     def __init__(self, parent, app):
         super().__init__(parent)
+        self.setAcceptDrops(True)
         self.app = app
         self._pages = {}  # key -> (page_widget, scroll_layout)
         self._cat_buttons = {}
@@ -64,6 +68,20 @@ class SettingsTab(QWidget):
 
         # Start on General
         self._switch_category("general")
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                if any(url.toLocalFile().lower().endswith(e) for e in self._DROP_IMAGE_EXTS):
+                    event.acceptProposedAction()
+                    return
+
+    def dropEvent(self, event: QDropEvent):
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if any(path.lower().endswith(e) for e in self._DROP_IMAGE_EXTS):
+                self.entry_bg_path.setText(path)
+                return
 
     # ── Category infrastructure ──────────────────────────────────
 

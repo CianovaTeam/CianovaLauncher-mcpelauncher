@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QFrame, QTabWidget,
                              QScrollArea, QWidget, QCheckBox)
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtGui import QPixmap, QIcon, QDragEnterEvent, QDropEvent
 from src.gui import custom_dialogs as messagebox
 from src import constants as c
 from src.core import addon_manager
@@ -59,6 +59,7 @@ class AddonManagerDialog(QDialog):
         self.app = parent
         self.setWindowTitle(c.t("UI_ADDON_MANAGER_TITLE"))
         self.resize(950, 750)
+        self.setAcceptDrops(True)
 
         self.addons_data = []
         self.moddb_data = None
@@ -74,6 +75,37 @@ class AddonManagerDialog(QDialog):
 
         self.setup_ui()
         self.refresh_list()
+
+    def _drop_file_types(self):
+        """Return accepted file extensions for the current tab."""
+        current_idx = self.tab_widget.currentIndex()
+        tab_id = self.tabs.get(current_idx, (None, None, None))[2]
+        if tab_id == "mods":
+            return (".so", ".zip")
+        return (".mcpack", ".mcaddon", ".mcworld", ".mcworldtemplate", ".mctemplate")
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            exts = self._drop_file_types()
+            for url in event.mimeData().urls():
+                if any(url.toLocalFile().endswith(e) for e in exts):
+                    event.acceptProposedAction()
+                    return
+
+    def dropEvent(self, event: QDropEvent):
+        exts = self._drop_file_types()
+        paths = []
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if any(path.endswith(e) for e in exts):
+                paths.append(path)
+        if paths:
+            current_idx = self.tab_widget.currentIndex()
+            tab_id = self.tabs.get(current_idx, (None, None, None))[2]
+            if tab_id == "mods":
+                self._install_mod_task(paths)
+            else:
+                self._install_task(paths)
 
     def closeEvent(self, event):
         """Clean up background workers when the dialog closes."""

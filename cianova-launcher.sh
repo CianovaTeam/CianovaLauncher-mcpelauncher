@@ -17,6 +17,13 @@ export QML2_IMPORT_PATH="/app/lib/qml:/usr/lib/qml"
 # suele estar vacio.
 export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/plugins/platforms"
 
+# Qt6 WebEngine: disable sandbox + ignore GPU blocklist
+export QTWEBENGINE_CHROMIUM_FLAGS="--no-sandbox --ignore-gpu-blocklist"
+
+# Qt Quick: force software renderer for mcpelauncher-webview (OpenGL context
+# fails with Mesa 26.0.8 in KDE runtime 6.10)
+export QT_QUICK_BACKEND="software"
+
 # Directorio de datos del usuario
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.var/app/org.cianova.Launcher/data}/mcpelauncher"
 mkdir -p "$DATA_DIR"

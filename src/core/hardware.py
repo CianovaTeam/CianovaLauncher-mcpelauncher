@@ -6,6 +6,7 @@ import shutil
 from PySide6.QtWidgets import QFrame
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
+from src.utils.dialogs import ask_save_filename_native
 from src.utils.logger import logger
 
 
@@ -250,8 +251,9 @@ def show_hw_results(app, txt):
         if not fname:
             return
         src = os.path.join(log_dir, fname)
-        dst, _ = QFileDialog.getSaveFileName(d, c.t("UI_EXPORT_LOG_TITLE"), fname,
-                                              "Log Files (*.log);;All Files (*)")
+        dst = ask_save_filename_native(d, title=c.t("UI_EXPORT_LOG_TITLE"),
+                                        filetypes=[("Log Files", "*.log"), (c.t("UI_ALL_FILES_TYPE"), "*.*")],
+                                        default_name=fname)
         if dst:
             try:
                 shutil.copy2(src, dst)
