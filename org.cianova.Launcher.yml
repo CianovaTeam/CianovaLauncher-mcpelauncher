@@ -84,8 +84,8 @@ modules:
     build-commands:
       - cp -r protobuf-lib/* /app/lib/
     sources:
-      - type: dir
-        path: flatlibs/protobuf-libs
+      - type: archive
+        path: flatlibs/protobuf-libs.tar.gz
 
   - name: cianova-launcher
     buildsystem: simple
