@@ -82,7 +82,7 @@ modules:
   - name: protobuf
     buildsystem: simple
     build-commands:
-      - cp -r protobuf-lib/* /app/lib/
+      - cp *.so /app/lib/
     sources:
       - type: archive
         path: flatlibs/protobuf-libs.tar.gz
