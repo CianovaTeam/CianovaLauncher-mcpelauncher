@@ -82,10 +82,13 @@ modules:
   - name: protobuf
     buildsystem: simple
     build-commands:
-      - cp *.so /app/lib/
+      - install -Dm644 libprotobuf.so.32 /app/lib/libprotobuf.so.32
+      - install -Dm644 libprotobuf.so.32.0.12 /app/lib/libprotobuf.so.32.0.12
     sources:
-      - type: archive
-        path: flatlibs/protobuf-libs.tar.gz
+      - type: file
+        path: flatlibs/protobuf-libs/libprotobuf.so.32
+      - type: file
+        path: flatlibs/protobuf-libs/libprotobuf.so.32.0.12
 
   - name: cianova-launcher
     buildsystem: simple
