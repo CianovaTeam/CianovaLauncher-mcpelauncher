@@ -43,6 +43,7 @@ finish-args:
   - --filesystem=xdg-run/app/com.discordapp.Discord
   - --socket=session-bus
   - --socket=system-bus
+  - --talk-name=org.freedesktop.resolve1
   - --env=PATH=/app/bin:/usr/bin
   - --env=LD_LIBRARY_PATH=/app/lib:/app/lib/cianova:$LD_LIBRARY_PATH
   - --env=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
