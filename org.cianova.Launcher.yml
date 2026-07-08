@@ -79,6 +79,18 @@ modules:
       - ln -s libzip.so.5 /app/lib/libzip.so.4
       - ls -la /app/lib/libzip.so.5 /app/lib/libzip.so.4
 
+  - name: protobuf
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -Dprotobuf_BUILD_TESTS=OFF
+      - -Dprotobuf_BUILD_EXAMPLES=OFF
+      - -Dprotobuf_BUILD_SHARED_LIBS=ON
+    sources:
+      - type: archive
+        url: https://github.com/protocolbuffers/protobuf/releases/download/v25.6/protobuf-25.6.tar.gz
+        sha256: ecfeb9f673e63321b4871cce1e6b5adeb0ef711d08a0c5bb1945271767df65bf
+
   - name: cianova-launcher
     buildsystem: simple
     build-commands:
