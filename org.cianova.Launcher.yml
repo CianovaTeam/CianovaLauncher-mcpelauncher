@@ -80,15 +80,12 @@ modules:
       - ls -la /app/lib/libzip.so.5 /app/lib/libzip.so.4
 
   - name: protobuf
-    buildsystem: cmake-ninja
-    config-opts:
-      - -DCMAKE_BUILD_TYPE=Release
-      - -Dprotobuf_BUILD_TESTS=OFF
-      - -Dprotobuf_BUILD_EXAMPLES=OFF
-      - -Dprotobuf_BUILD_SHARED_LIBS=ON
+    buildsystem: simple
+    build-commands:
+      - cp -r protobuf-lib/* /app/lib/
     sources:
-      - type: archive
-        path: flatlibs/protobuf-25.6.tar.gz
+      - type: dir
+        path: flatlibs/protobuf-libs
 
   - name: cianova-launcher
     buildsystem: simple
