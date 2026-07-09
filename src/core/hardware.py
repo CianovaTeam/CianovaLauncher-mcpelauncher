@@ -188,8 +188,9 @@ def show_hw_results(app, txt):
     """Display hardware analysis results in a read-only dialog with log viewer."""
     from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit,
                                    QPushButton, QComboBox, QFileDialog, QLabel)
+    from PySide6.QtCore import QTimer
     d = QDialog(app)
-    d.setWindowTitle(c.t("UI_HARDWARE_ANALYSIS_TITLE"))
+    d.setWindowTitle("Hardware Analysis / Log Viewer")
     d.resize(520, 500)
     l = QVBoxLayout(d)
 
@@ -216,7 +217,7 @@ def show_hw_results(app, txt):
     log_files = []
     if os.path.isdir(log_dir):
         for f in os.listdir(log_dir):
-            if f.startswith("cianovalauncher-") and f.endswith(".log") and f != current_log:
+            if f.startswith("cianovalauncher-") and f.endswith(".log"):
                 log_files.append(f)
         log_files.sort(reverse=True)
     for f in log_files:
@@ -264,8 +265,23 @@ def show_hw_results(app, txt):
     log_combo.currentIndexChanged.connect(on_log_change)
     export_btn.clicked.connect(export_log)
 
+    # Live refresh cada 2s si el log seleccionado es el actual
+    _live_log_timer = QTimer(d)
+    _live_log_timer.setInterval(2000)
+
+    def _refresh_live_log():
+        if not d.isVisible():
+            _live_log_timer.stop()
+            return
+        sel = log_combo.currentText()
+        if sel and sel == current_log:
+            load_log(sel)
+
+    _live_log_timer.timeout.connect(_refresh_live_log)
+
     if log_files:
         load_log(log_files[0])
+        _live_log_timer.start()
 
     # ── Close button ──
     b = QPushButton(c.t("UI_BUTTON_CLOSE"))
