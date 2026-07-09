@@ -114,6 +114,11 @@ modules:
       # libharfbuzz del bundle (v8) entra en conflicto con runtime KDE (v11)
       - rm -f /app/lib/cianova/_internal/libharfbuzz.so.0
 
+      # libssl/libcrypto del bundle (v3.0.x) son muy viejos para libcurl
+      # del runtime (requiere OpenSSL 3.2.0). Se resuelven de /usr/lib/.
+      - rm -f /app/lib/cianova/_internal/libssl.so.3
+      - rm -f /app/lib/cianova/_internal/libcrypto.so.3
+
       - mkdir -p /app/share/mcpelauncher
       - cp -r libs_mc/lib /app/share/mcpelauncher/
       - cp libs_mc/gamecontrollerdb.txt /app/share/mcpelauncher/
