@@ -27,8 +27,8 @@ def _write_install_source(version_dir, source):
         meta_path = os.path.join(version_dir, ".install_source")
         with open(meta_path, "w") as f:
             json.dump(meta, f)
-    except OSError:
-        pass
+    except OSError as e:
+        logger.warning(f"Could not write install source metadata to {version_dir}: {e}")
 
 
 def read_install_source(version_dir):
@@ -84,8 +84,8 @@ def resolve_version(path):
                 v = d.get("header", {}).get("version", [])
                 if v:
                     return ".".join(map(str, v))
-    except Exception:
-        pass
+    except (OSError, ValueError, json.JSONDecodeError) as e:
+        logger.debug(f"Could not resolve version from {path}: {e}")
     return None
 
 
@@ -267,8 +267,8 @@ Keywords=minecraft;mcpe;bedrock;
                 xdg_desktop = subprocess.check_output(["xdg-user-dir", "DESKTOP"], text=True).strip()
                 if os.path.exists(xdg_desktop):
                     desktop_dir = xdg_desktop
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not resolve XDG desktop dir, using default: {e}")
 
             if os.path.exists(desktop_dir):
                 desktop_shortcut = os.path.join(desktop_dir, f"cianova-{version}.desktop")

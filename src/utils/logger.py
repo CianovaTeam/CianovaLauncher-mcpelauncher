@@ -29,7 +29,7 @@ class Logger:
         if not os.path.exists(log_dir):
             try:
                 os.makedirs(log_dir, exist_ok=True)
-            except:
+            except Exception:
                 log_dir = "." # Fallback
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -70,7 +70,8 @@ class Logger:
                     for line in f:
                         if line.startswith("PRETTY_NAME="):
                             self.info(f"Distro: {line.split('=')[1].strip().strip('\"')}")
-            except: pass
+            except Exception:
+                self.debug("Could not read distro info from /etc/os-release", exc_info=True)
 
         self.info(f"Architecture: {platform.machine()}")
         
@@ -89,7 +90,8 @@ class Logger:
                 with open("/proc/meminfo") as f:
                     m_mem = re.search(r"MemTotal:\s*(\d+)\s*kB", f.read())
                     if m_mem: ram = f"{int(m_mem.group(1))/1024/1024:.2f} GB"
-        except: pass
+        except Exception:
+            self.debug("Could not read CPU/RAM info from /proc", exc_info=True)
         
         self.info(f"CPU: {cpu}")
         self.info(f"RAM: {ram}")
@@ -107,7 +109,8 @@ class Logger:
                 with open("/sys/class/dmi/id/board_vendor") as f: board_vendor = f.read().strip()
             if os.path.exists("/sys/class/dmi/id/board_name"):
                 with open("/sys/class/dmi/id/board_name") as f: board_name = f.read().strip()
-        except: pass
+        except Exception:
+            self.debug("Could not read motherboard info from /sys/class/dmi", exc_info=True)
         self.info(f"Motherboard: {board_vendor} {board_name}")
 
         # OpenGL detection
@@ -120,7 +123,7 @@ class Logger:
             # OpenGL ES
             cmd_gles = ["sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
             gles_ver = subprocess.check_output(cmd_gles, text=True, stderr=subprocess.DEVNULL).strip()
-        except:
+        except Exception:
             # Try flatpak-spawn if we are in sandbox
             if os.path.exists("/.flatpak-info"):
                 try:
@@ -128,7 +131,8 @@ class Logger:
                     gl_ver = subprocess.check_output(cmd_gl, text=True, stderr=subprocess.DEVNULL).strip()
                     cmd_gles = ["flatpak-spawn", "--host", "sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
                     gles_ver = subprocess.check_output(cmd_gles, text=True, stderr=subprocess.DEVNULL).strip()
-                except: pass
+                except Exception:
+                    self.debug("glxinfo via flatpak-spawn failed", exc_info=True)
         
         self.info(f"GPU OpenGL: {gl_ver}")
         self.info(f"GPU OpenGL ES: {gles_ver}")

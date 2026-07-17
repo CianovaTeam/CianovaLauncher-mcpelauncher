@@ -8,6 +8,7 @@ from src import constants as c
 from src.core import language_manager
 from src.utils.dialogs import ask_open_filename_native
 from src.utils.resource_path import resource_path
+from src.utils.logger import logger
 
 class SettingsTab(QWidget):
     """Settings tab with categorized sections using a top category bar and stacked pages."""
@@ -425,7 +426,8 @@ class SettingsTab(QWidget):
                             self.lbl_binary_version.setText(lines[1].strip())
                         else:
                             self.lbl_binary_version.setText(c.BINARY_VERSION_FALLBACK)
-                except:
+                except (OSError, UnicodeDecodeError) as e:
+                    logger.debug(f"Could not read binary info.txt: {e}")
                     self.lbl_binary_version.setText(c.BINARY_VERSION_FALLBACK)
             else:
                 self.lbl_binary_version.setText(c.BINARY_VERSION_FALLBACK)

@@ -69,8 +69,8 @@ def check_google_session(app):
         cmd = [bin_path, "-nv", "-a", "com.mojang.minecraftpe", "--accept-tos"]
         res = subprocess.run(cmd, capture_output=True, timeout=3)
         return res.returncode == 0
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"gplayver session verification failed: {e}")
 
     return False
 
@@ -493,8 +493,8 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                             stderr_tail.append(line)
                             if len(stderr_tail) > 40:
                                 stderr_tail.pop(0)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"gplaydl stderr drain stopped: {e}")
 
             t_err = threading.Thread(target=drain_stderr, daemon=True)
             t_err.start()

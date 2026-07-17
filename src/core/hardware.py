@@ -22,8 +22,8 @@ def _detect_cpu_flags():
                 m_flags = re.search(r"(?:flags|Features)\s*:\s*(.*)", content)
                 if m_flags:
                     cpu_flags = m_flags.group(1).split()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Could not read CPU flags from /proc/cpuinfo: {e}")
     return arch, cpu_flags
 
 
@@ -38,8 +38,8 @@ def _detect_gl_version(app):
             try:
                 cmd = ["flatpak-spawn", "--host", "sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
                 gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=5).strip()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"glxinfo via flatpak-spawn failed: {e}")
     return gl_ver
 
 
@@ -141,8 +141,8 @@ def check_requirements_dialog(app):
                     m_mem = re.search(r"MemTotal:\s*(\d+)\s*kB", f.read())
                     if m_mem:
                         ram = f"{int(m_mem.group(1))/1024/1024:.2f} GB"
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not read CPU/RAM info from /proc: {e}")
 
         arch2, cpu_flags = _detect_cpu_flags()
         gl_ver = _detect_gl_version(app)
