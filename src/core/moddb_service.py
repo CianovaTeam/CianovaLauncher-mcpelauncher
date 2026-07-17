@@ -7,6 +7,7 @@ import urllib.error
 from PySide6.QtCore import QThread, Signal
 from src import constants as c
 from src.utils.logger import logger
+from src.utils.safe_archive import safe_extractall
 
 
 MODDB_URL = "https://github.com/minecraft-linux/mcpelauncher-moddb/raw/main/moddb.json"
@@ -145,7 +146,7 @@ class ModInstallWorker(QThread):
             self.progress.emit("Extrayendo archivos...")
             os.makedirs(self.dest_dir, exist_ok=True)
             with zipfile.ZipFile(io.BytesIO(data)) as zf:
-                zf.extractall(self.dest_dir)
+                safe_extractall(zf, self.dest_dir)
 
             for root, dirs, files in os.walk(self.dest_dir):
                 for f in files:

@@ -7,6 +7,7 @@ import time
 import re
 from src import constants as c
 from src.utils.logger import logger
+from src.utils.safe_archive import safe_extractall
 
 
 def _mods_config_path(active_path):
@@ -425,7 +426,7 @@ def install_addon_file(active_path, file_path, manual_type=None):
         temp_dir = tempfile.mkdtemp()
         try:
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                zip_ref.extractall(temp_dir)
+                safe_extractall(zip_ref, temp_dir)
             pack_dirs = []
             if os.path.exists(os.path.join(temp_dir, "manifest.json")):
                 pack_dirs.append(temp_dir)
@@ -469,12 +470,12 @@ def extract_to(zip_path, target_dir):
         folder_name = os.path.splitext(os.path.basename(zip_path))[0]
         top_level = {os.path.split(n)[0] for n in zip_ref.namelist() if n}
         if len(top_level) == 1 and list(top_level)[0] != "":
-            zip_ref.extractall(target_dir)
+            safe_extractall(zip_ref, target_dir)
             return os.path.join(target_dir, list(top_level)[0])
         else:
             dest = os.path.join(target_dir, folder_name)
             os.makedirs(dest, exist_ok=True)
-            zip_ref.extractall(dest)
+            safe_extractall(zip_ref, dest)
             return dest
 
 def validate_zip(file_path):
@@ -492,7 +493,7 @@ def install_single_pack(file_path, com_mojang, manual_type=None):
     temp_dir = tempfile.mkdtemp()
     try:
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
-            zip_ref.extractall(temp_dir)
+            safe_extractall(zip_ref, temp_dir)
         manifest_path = find_file_recursive(temp_dir, "manifest.json")
         pack_type = manual_type
         if not pack_type and manifest_path:
@@ -540,7 +541,7 @@ def install_mcaddon(file_path, com_mojang):
     results = []
     try:
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
-            zip_ref.extractall(temp_dir)
+            safe_extractall(zip_ref, temp_dir)
         for item in os.listdir(temp_dir):
             item_path = os.path.join(temp_dir, item)
             if item.endswith(".mcpack"):
@@ -645,7 +646,7 @@ def install_mod_file(active_path, file_path):
         temp_dir = tempfile.mkdtemp()
         try:
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                zip_ref.extractall(temp_dir)
+                safe_extractall(zip_ref, temp_dir)
             for root, dirs, files in os.walk(temp_dir):
                 for f in files:
                     if f.lower().endswith(".so"):
