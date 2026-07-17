@@ -944,11 +944,23 @@ def launch_game(app):
                     exe = cmd[0]
                 if not exe:
                     raise
+                # execve replaces the process on success; if it fails the
+                # launcher keeps running, so restore the original cwd rather
+                # than leaving it pointing at app.active_path.
+                prev_cwd = os.getcwd()
                 try:
                     os.chdir(app.active_path)
                 except OSError:
-                    pass
-                os.execve(exe, cmd, env)
+                    prev_cwd = None
+                try:
+                    os.execve(exe, cmd, env)
+                except OSError:
+                    if prev_cwd is not None:
+                        try:
+                            os.chdir(prev_cwd)
+                        except OSError:
+                            pass
+                    raise
 
         action = app.config.get(c.CONFIG_KEY_LAUNCH_ACTION, c.LAUNCH_ACTION_CLOSE)
         if action == c.LAUNCH_ACTION_CLOSE:
