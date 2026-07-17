@@ -3,6 +3,7 @@ import subprocess
 import shutil
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
+from src.utils.process_utils import host_command
 
 
 def verify_dependencies(app):
@@ -23,11 +24,9 @@ def verify_dependencies(app):
         t_det = QTextEdit()
         t_det.setReadOnly(True)
         try:
-            fs = shutil.which("flatpak-spawn")
-            if fs:
-                res = subprocess.check_output([fs, "--host", "flatpak", "list", "--runtime"], text=True)
-            else:
-                res = subprocess.check_output(["flatpak", "list", "--runtime"], text=True)
+            res = subprocess.check_output(
+                host_command(["flatpak", "list", "--runtime"]), text=True
+            )
             t_det.setPlainText(res)
         except Exception:
             t_det.setPlainText("Error al obtener lista de runtimes del host.")

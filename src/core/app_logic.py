@@ -14,6 +14,12 @@ from src.gui import custom_dialogs as messagebox
 from src import constants as c
 from src.utils.image_manager import ImageManager
 from src.utils.logger import logger
+from src.utils.process_utils import (
+    is_running_in_flatpak,
+    get_flatpak_app_id,
+    host_prefix,
+    open_path,
+)
 
 from .moddb_service import ModInstallWorker, detect_architecture, fetch_moddb, get_mod_info, find_asset_for_arch, cache_moddb
 
@@ -74,7 +80,7 @@ def disable_shaders(app):
 def open_data_folder(app):
     """Open the active Minecraft data folder in the file manager."""
     if app.active_path:
-        subprocess.Popen(["xdg-open", app.active_path])
+        open_path(app.active_path)
 
 
 def export_screenshots_dialog(app):
@@ -86,7 +92,7 @@ def export_screenshots_dialog(app):
     p = p1 if os.path.exists(p1) else p2
 
     if os.path.exists(p):
-        subprocess.Popen(["xdg-open", p])
+        open_path(p)
     else:
         com_mojang = os.path.dirname(p1)
         if messagebox.askyesno(
@@ -94,29 +100,10 @@ def export_screenshots_dialog(app):
             c.t("UI_OPEN_COMOJANG_FOLDER_PROMPT", msg=c.t("UI_SCREENSHOTS_NOT_FOUND_MSG"))
         ):
             if os.path.exists(com_mojang):
-                subprocess.Popen(["xdg-open", com_mojang])
+                open_path(com_mojang)
             else:
                 messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
                                      "Folder com.mojang not found.")
-
-
-def is_running_in_flatpak():
-    """Return whether the launcher is running inside a Flatpak sandbox."""
-    return os.path.exists(c.FLATPAK_INFO_FILE)
-
-
-def get_flatpak_app_id():
-    """Return the Flatpak application ID from the Flatpak info file."""
-    if not is_running_in_flatpak():
-        return None
-    try:
-        with open(c.FLATPAK_INFO_FILE, "r") as f:
-            for line in f:
-                if line.startswith("app="):
-                    return line.split("=")[1].strip()
-    except (OSError, UnicodeDecodeError) as e:
-        logger.warning("Failed to read flatpak app file: %s", e)
-    return None
 
 
 def setup_flatpak_environment(app):
@@ -676,9 +663,9 @@ def launch_game(app):
         if shutil.which("gamemoderun"):
             return ["gamemoderun"] + cmd_list
         if app.running_in_flatpak:
-            fs = shutil.which("flatpak-spawn")
-            if fs:
-                return [fs, "--host", "gamemoderun"] + cmd_list
+            prefix = host_prefix()
+            if prefix:
+                return prefix + ["gamemoderun"] + cmd_list
         return cmd_list
 
     if mode == c.MODE_BIN_CUSTOM:
@@ -691,9 +678,9 @@ def launch_game(app):
     elif mode == c.MODE_BIN_FLATPAK:
         base_cmd = ["flatpak", "run", fid, "-dg", vpath]
         if app.running_in_flatpak:
-            fs = shutil.which("flatpak-spawn")
-            if fs:
-                cmd = [fs, "--host"]
+            prefix = host_prefix()
+            if prefix:
+                cmd = list(prefix)
                 if gamemode_enabled:
                     cmd += ["gamemoderun"]
                 cmd += base_cmd

@@ -12,6 +12,7 @@ BIN-PACKS
 build-dir
 dist
 venv
+.venv
 COMMAND.txt
 TEMPLATE_RELEASE.md
 bin/*

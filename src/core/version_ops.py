@@ -10,6 +10,7 @@ from PySide6.QtCore import QTimer
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
 from src.utils.logger import logger
+from src.utils.process_utils import host_prefix
 
 
 def _write_install_source(version_dir, source):
@@ -117,8 +118,8 @@ def process_apk(app, apk_path, ver_name, target_root=None, is_target_flatpak=Non
                 app_id = flatpak_id if flatpak_id else app.config.get(c.CONFIG_KEY_FLATPAK_ID, c.MCPELAUNCHER_FLATPAK_ID)
                 base_cmd = ["flatpak", "run", "--command=mcpelauncher-extract", app_id, apk_path, target_dir]
                 if app.running_in_flatpak:
-                    fs = shutil.which("flatpak-spawn")
-                    cmd = [fs, "--host"] + base_cmd if fs else ["mcpelauncher-extract", apk_path, target_dir]
+                    prefix = host_prefix()
+                    cmd = prefix + base_cmd if prefix else ["mcpelauncher-extract", apk_path, target_dir]
                 else:
                     cmd = base_cmd
             else:
