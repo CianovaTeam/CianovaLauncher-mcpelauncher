@@ -10,6 +10,7 @@ from src.gui import custom_dialogs as messagebox
 from src.utils.dialogs import ask_directory_native
 from src.gui.progress_dialog import ProgressDialog
 from src import constants as c
+from src.utils.logger import logger
 
 
 class _ClickableFrame(QFrame):
@@ -763,7 +764,9 @@ class MigrationWizard(QDialog):
             QTimer.singleShot(0, lambda: self._on_migration_finished(migrated_count))
         except Exception as e:
             from PySide6.QtCore import QTimer
-            QTimer.singleShot(0, lambda: self._on_migration_error(str(e)))
+            err_msg = str(e)
+            logger.error(f"Profile migration failed: {e}")
+            QTimer.singleShot(0, lambda: self._on_migration_error(err_msg))
 
     def _on_migration_finished(self, count):
         self.progress_dialog.accept()

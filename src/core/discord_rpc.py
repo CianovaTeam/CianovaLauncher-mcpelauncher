@@ -109,8 +109,8 @@ class DiscordRPC:
                 return
             try:
                 self._rpc.update(**kwargs)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Discord RPC direct update failed: {e}")
 
     def _find_discord_socket(self):
         """Look for Discord's IPC socket in known locations and symlink to standard path."""

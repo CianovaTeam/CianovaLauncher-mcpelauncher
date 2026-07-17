@@ -294,7 +294,9 @@ class SetupWizard(QDialog):
                 path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "Docs/Changelog.md")
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
-        except: content = "Error loading changelog."
+        except Exception as e:
+            logger.warning(f"Could not load changelog: {e}")
+            content = "Error loading changelog."
 
         self.txt_changelog.setMarkdown(content)
         self.txt_changelog.setStyleSheet("background-color: #1e1e1e; color: #d4d4d4; padding: 5px;")

@@ -66,8 +66,8 @@ def _translate(key, **kwargs):
     if kwargs and isinstance(val, str):
         try:
             val = val.format(**kwargs)
-        except KeyError:
-            pass
+        except KeyError as e:
+            logger.debug(f"Missing format arg {e} for translation key '{key}'")
     return val
 
 

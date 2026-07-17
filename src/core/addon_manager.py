@@ -111,8 +111,8 @@ def parse_lang_file(lang_path):
                         parts = line.split("=", 1)
                         if len(parts) == 2:
                             translations[parts[0].strip()] = strip_mc_codes(parts[1].strip())
-        except (OSError, UnicodeDecodeError):
-            pass
+        except (OSError, UnicodeDecodeError) as e:
+            logger.debug(f"Could not parse lang file {lang_path}: {e}")
     return translations
 
 def scan_all_addons(app):
@@ -153,8 +153,8 @@ def scan_all_addons(app):
                             "enabled": True,
                             "path": item_path
                         })
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug(f"Could not scan addon folder {path}: {e}")
 
     # Escanear packs desactivados
     disabled_root = get_disabled_packs_path(app)
@@ -177,8 +177,8 @@ def scan_all_addons(app):
                                 "enabled": False,
                                 "path": item_path
                             })
-                except OSError:
-                    pass
+                except OSError as e:
+                    logger.debug(f"Could not scan disabled addon folder {path}: {e}")
 
     return addon_list
 
@@ -251,8 +251,8 @@ def get_addon_info(path, folder_type=None):
             try:
                 with open(levelname_path, "r", errors="replace") as f:
                     info["name"] = f.read().strip()
-            except (OSError, UnicodeDecodeError):
-                pass
+            except (OSError, UnicodeDecodeError) as e:
+                logger.debug(f"Could not read levelname.txt at {levelname_path}: {e}")
         else:
             if os.path.basename(path) == "Texture":
                 info["is_valid"] = False
@@ -603,8 +603,8 @@ def _collect_mods_recursive(search_path, app=None):
                     "path": item_path,
                     "size": size
                 })
-    except OSError:
-        pass
+    except OSError as e:
+        logger.debug(f"Could not scan mods directory: {e}")
     return mods
 
 def scan_mods(app):

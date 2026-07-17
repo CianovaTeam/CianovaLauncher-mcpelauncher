@@ -69,8 +69,8 @@ def apply_profile_symlink(app, profile):
 
             messagebox.showwarning(app, c.t("UI_SYMLINK_NOT_SUPPORTED_TITLE"), c.t("UI_SYMLINK_NOT_SUPPORTED_MSG"))
             app.profiles_supported = False
-        except Exception:
-            pass
+        except Exception as e2:
+            logger.error(f"Symlink fallback also failed: {e2}")
         return False
 
 

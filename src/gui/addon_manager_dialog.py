@@ -507,8 +507,8 @@ class AddonManagerDialog(QDialog):
                     try:
                         os.rename(src, dst)
                         self.refresh_list()
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        messagebox.showerror(self, c.t("UI_ERROR_TITLE"), str(e))
                     return
 
     def create_item_ui(self, layout, addon):

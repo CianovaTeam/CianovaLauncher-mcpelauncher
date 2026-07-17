@@ -24,7 +24,7 @@ if __name__ == "__main__":
                 with open("/.flatpak-info", "r") as f:
                     for line in f:
                         if line.startswith("app="): fid = line.split("=")[1].strip(); break
-            except: pass
+            except Exception: pass
             c_path = os.path.join(home, ".var/app", fid, "data", "cianovalauncher-config.json")
         else:
             c_path = os.path.join(home, ".local/share/mcpelauncher", "cianovalauncher-config.json")
@@ -33,7 +33,7 @@ if __name__ == "__main__":
             with open(c_path, "r") as f:
                 conf = json.load(f)
                 ui_scale = str(conf.get("ui_scale", "1.0"))
-    except: pass
+    except Exception: pass
 
     if ui_scale != "1.0":
         os.environ["QT_SCALE_FACTOR"] = ui_scale
