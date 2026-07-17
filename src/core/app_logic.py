@@ -975,6 +975,11 @@ def launch_game(app):
                 app.on_game_launched()
     except Exception as e:
         logger.error(f"Launch error: {e}")
+        # The game never actually started, so revert the Discord presence that
+        # was set to "Playing" just before the launch attempt.
+        if (app.config.get(c.CONFIG_KEY_DISCORD_RPC_ENABLED, False)
+                and getattr(app, '_discord_rpc', None)):
+            app._discord_rpc.set_idle()
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"), f"Launch error: {e}")
 
 
