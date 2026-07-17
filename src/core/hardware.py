@@ -1,6 +1,5 @@
 import os
 import re
-import subprocess
 import platform
 import shutil
 from PySide6.QtWidgets import QFrame
@@ -8,6 +7,7 @@ from src import constants as c
 from src.gui import custom_dialogs as messagebox
 from src.utils.dialogs import ask_save_filename_native
 from src.utils.logger import logger
+from src.utils.process_utils import query_glxinfo
 
 
 def _detect_cpu_flags():
@@ -29,18 +29,11 @@ def _detect_cpu_flags():
 
 def _detect_gl_version(app):
     """Retorna la línea completa de OpenGL ES profile version via glxinfo, o 'Unknown'."""
-    gl_ver = "Unknown"
-    try:
-        cmd = ["sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
-        gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=3).strip()
-    except Exception:
-        if app.running_in_flatpak:
-            try:
-                cmd = ["flatpak-spawn", "--host", "sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
-                gl_ver = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=5).strip()
-            except Exception:
-                pass
-    return gl_ver
+    return query_glxinfo(
+        "OpenGL ES profile version",
+        running_in_flatpak=app.running_in_flatpak,
+        timeout=3, host_timeout=5,
+    )
 
 
 def _parse_es_major_minor(gl_ver):

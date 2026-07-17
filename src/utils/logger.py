@@ -2,7 +2,6 @@ import os
 import sys
 import platform
 import re
-import subprocess
 import logging
 from datetime import datetime
 from src import constants as c
@@ -111,25 +110,11 @@ class Logger:
         self.info(f"Motherboard: {board_vendor} {board_name}")
 
         # OpenGL detection
-        gl_ver = "Unknown"
-        gles_ver = "Unknown"
-        try:
-            # Full OpenGL
-            cmd_gl = ["sh", "-c", "glxinfo | grep 'OpenGL version string'"]
-            gl_ver = subprocess.check_output(cmd_gl, text=True, stderr=subprocess.DEVNULL).strip()
-            # OpenGL ES
-            cmd_gles = ["sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
-            gles_ver = subprocess.check_output(cmd_gles, text=True, stderr=subprocess.DEVNULL).strip()
-        except:
-            # Try flatpak-spawn if we are in sandbox
-            if os.path.exists("/.flatpak-info"):
-                try:
-                    cmd_gl = ["flatpak-spawn", "--host", "sh", "-c", "glxinfo | grep 'OpenGL version string'"]
-                    gl_ver = subprocess.check_output(cmd_gl, text=True, stderr=subprocess.DEVNULL).strip()
-                    cmd_gles = ["flatpak-spawn", "--host", "sh", "-c", "glxinfo | grep 'OpenGL ES profile version'"]
-                    gles_ver = subprocess.check_output(cmd_gles, text=True, stderr=subprocess.DEVNULL).strip()
-                except: pass
-        
+        from src.utils.process_utils import is_running_in_flatpak, query_glxinfo
+        in_flatpak = is_running_in_flatpak()
+        gl_ver = query_glxinfo("OpenGL version string", running_in_flatpak=in_flatpak)
+        gles_ver = query_glxinfo("OpenGL ES profile version", running_in_flatpak=in_flatpak)
+
         self.info(f"GPU OpenGL: {gl_ver}")
         self.info(f"GPU OpenGL ES: {gles_ver}")
         self.info("==========================================")

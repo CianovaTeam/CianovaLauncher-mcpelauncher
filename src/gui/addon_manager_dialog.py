@@ -12,8 +12,8 @@ from src.core.moddb_service import (
 )
 from src.utils.image_manager import ImageManager
 from src.utils import dialogs
+from src.utils.process_utils import open_path
 import os
-import subprocess
 import threading
 from PySide6.QtCore import QThread, Signal
 
@@ -296,7 +296,7 @@ class AddonManagerDialog(QDialog):
             btn_open = QPushButton(c.t("UI_BUTTON_OPEN_FOLDER"))
             btn_open.setFixedHeight(28)
             btn_open.setStyleSheet("font-size: 11px; padding: 2px 10px;")
-            btn_open.clicked.connect(lambda checked=False, p=tab_folder: subprocess.Popen(["xdg-open", p]))
+            btn_open.clicked.connect(lambda checked=False, p=tab_folder: open_path(p))
             header_row.addWidget(btn_open)
             layout.addLayout(header_row)
 

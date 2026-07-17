@@ -14,6 +14,7 @@ from src import constants as c
 from src.gui import custom_dialogs as messagebox
 from src.core.version_ops import resolve_version
 from src.utils.logger import logger
+from src.utils.process_utils import host_prefix
 
 
 class InstallSignals(QObject):
@@ -574,8 +575,8 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                 app_id = flatpak_id if flatpak_id else app.config.get(c.CONFIG_KEY_FLATPAK_ID, c.MCPELAUNCHER_FLATPAK_ID)
                 base_cmd = ["flatpak", "run", "--command=mcpelauncher-extract", app_id, *apk_inputs, target_dir]
                 if app.running_in_flatpak:
-                    fs = shutil.which("flatpak-spawn")
-                    extract_cmd = [fs, "--host"] + base_cmd if fs else ["mcpelauncher-extract", *apk_inputs, target_dir]
+                    prefix = host_prefix()
+                    extract_cmd = prefix + base_cmd if prefix else ["mcpelauncher-extract", *apk_inputs, target_dir]
                 else:
                     extract_cmd = base_cmd
             else:

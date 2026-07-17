@@ -8,6 +8,7 @@ from src.gui.setup_wizard import SetupWizard
 from src import constants as c
 from src.core import language_manager
 from src.utils.logger import logger
+from src.utils.process_utils import is_running_in_flatpak, get_flatpak_app_id
 
 if __name__ == "__main__":
     # --- Pre-App Init (Scaling) ---
@@ -17,17 +18,11 @@ if __name__ == "__main__":
         import json
         # Determine config path (simplified version of CianovaLauncherApp logic)
         home = os.path.expanduser("~")
-        if os.path.exists("/.flatpak-info"):
-            # Try to get app id
-            fid = "org.cianova.Launcher"
-            try:
-                with open("/.flatpak-info", "r") as f:
-                    for line in f:
-                        if line.startswith("app="): fid = line.split("=")[1].strip(); break
-            except: pass
-            c_path = os.path.join(home, ".var/app", fid, "data", "cianovalauncher-config.json")
+        if is_running_in_flatpak():
+            fid = get_flatpak_app_id() or c.DEFAULT_FLATPAK_ID
+            c_path = os.path.join(home, c.FLATPAK_DATA_DIR, fid, "data", c.CONFIG_FILE_NAME)
         else:
-            c_path = os.path.join(home, ".local/share/mcpelauncher", "cianovalauncher-config.json")
+            c_path = os.path.join(home, c.LOCAL_SHARE_DIR, c.CONFIG_FILE_NAME)
         
         if os.path.exists(c_path):
             with open(c_path, "r") as f:
@@ -49,10 +44,11 @@ if __name__ == "__main__":
 
     # Initialize Logger
     # Determine log dir based on environment
-    if os.path.exists("/.flatpak-info"):
-        log_dir = os.path.join(os.path.expanduser("~"), ".var/app/org.cianova.Launcher/data/mcpelauncher/logs")
+    if is_running_in_flatpak():
+        fid = get_flatpak_app_id() or c.DEFAULT_FLATPAK_ID
+        log_dir = os.path.join(os.path.expanduser("~"), c.FLATPAK_DATA_DIR, fid, c.MCPELAUNCHER_DATA_SUBDIR, "logs")
     else:
-        log_dir = os.path.join(os.path.expanduser("~"), ".local/share/mcpelauncher/logs")
+        log_dir = os.path.join(os.path.expanduser("~"), c.LOCAL_SHARE_DIR, "logs")
     
     logger.init(log_dir)
     logger.info(f"Launcher started (Path: {launcher_path})")
