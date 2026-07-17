@@ -653,6 +653,32 @@ def _ensure_mc_libraries(app):
             logger.warning(f"{lib_name} not found in any expected location")
 
 
+def _host_has_gamemoderun(app):
+    """Return True if ``gamemoderun`` exists on the host.
+
+    Inside a Flatpak sandbox ``shutil.which`` only sees sandbox binaries, so we
+    probe the host through ``flatpak-spawn``. The result is cached on the app
+    instance. Callers outside Flatpak should use ``shutil.which`` directly.
+    """
+    cached = getattr(app, "_host_gamemoderun", None)
+    if cached is not None:
+        return cached
+    result = False
+    fs = shutil.which("flatpak-spawn")
+    if fs:
+        try:
+            subprocess.run(
+                [fs, "--host", "sh", "-c", "command -v gamemoderun"],
+                check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=5,
+            )
+            result = True
+        except Exception as e:
+            logger.debug(f"gamemoderun not found on host: {e}")
+    app._host_gamemoderun = result
+    return result
+
+
 def launch_game(app):
     """Launch the selected Minecraft version with the configured environment."""
     from .version_ops import read_install_source
@@ -677,8 +703,12 @@ def launch_game(app):
             return ["gamemoderun"] + cmd_list
         if app.running_in_flatpak:
             fs = shutil.which("flatpak-spawn")
-            if fs:
+            if fs and _host_has_gamemoderun(app):
                 return [fs, "--host", "gamemoderun"] + cmd_list
+        logger.warning(
+            "gamemode enabled but gamemoderun not found (sandbox or host); "
+            "launching without gamemode"
+        )
         return cmd_list
 
     if mode == c.MODE_BIN_CUSTOM:
@@ -694,8 +724,13 @@ def launch_game(app):
             fs = shutil.which("flatpak-spawn")
             if fs:
                 cmd = [fs, "--host"]
-                if gamemode_enabled:
+                if gamemode_enabled and _host_has_gamemoderun(app):
                     cmd += ["gamemoderun"]
+                elif gamemode_enabled:
+                    logger.warning(
+                        "gamemode enabled but gamemoderun not found on host; "
+                        "launching without gamemode"
+                    )
                 cmd += base_cmd
             else:
                 cl = (
@@ -775,6 +810,34 @@ def launch_game(app):
         env.setdefault("QML_IMPORT_PATH", "/app/lib/qml:/usr/lib/qml")
         env.setdefault("QML2_IMPORT_PATH", "/app/lib/qml:/usr/lib/qml")
     extra_env = {}
+
+    # GPU / driver toggles are applied independently of custom env/args below.
+    # Zink (Mesa GL-over-Vulkan) and NVIDIA PRIME offload set conflicting GL
+    # vendor/driver variables, so they are mutually exclusive; Zink wins when
+    # both are enabled.
+    zink_enabled = bool(app.config.get(c.CONFIG_KEY_ZINK_MODE))
+    prime_enabled = bool(app.config.get(c.CONFIG_KEY_NVIDIA_PRIME))
+    if zink_enabled and prime_enabled:
+        logger.warning(
+            "Zink and NVIDIA Prime are both enabled but conflict; "
+            "applying Zink and ignoring NVIDIA Prime."
+        )
+        prime_enabled = False
+    if prime_enabled:
+        extra_env.update({
+            "__NV_PRIME_RENDER_OFFLOAD": "1",
+            "__GL_VENDOR_LIBRARY_NAME": "nvidia",
+            "__VK_LAYER_NV_optimus": "NVIDIA_only",
+            "DRI_PRIME": "1",
+            "__GL_THREADED_OPTIMIZATIONS": "1",
+            "__GL_GSYNC_ALLOWED": "1",
+            "__GL_VRR_ALLOWED": "1",
+        })
+    if zink_enabled:
+        extra_env["MESA_LOADER_DRIVER_OVERRIDE"] = "zink"
+
+    # Custom user env/args are applied on top of the toggles above; explicit
+    # user-provided values override the toggle defaults.
     if app.config.get(c.CONFIG_KEY_CUSTOM_ENV_ENABLED, False):
         custom_vars = app.config.get(c.CONFIG_KEY_CUSTOM_ENV_VARS, "")
         try:
@@ -787,19 +850,6 @@ def launch_game(app):
                     cmd.append(part)
         except Exception as e:
             logger.error(f"Error parseando argumentos: {e}")
-    else:
-        if app.config.get(c.CONFIG_KEY_NVIDIA_PRIME):
-            extra_env.update({
-                "__NV_PRIME_RENDER_OFFLOAD": "1",
-                "__GL_VENDOR_LIBRARY_NAME": "nvidia",
-                "__VK_LAYER_NV_optimus": "NVIDIA_only",
-                "DRI_PRIME": "1",
-                "__GL_THREADED_OPTIMIZATIONS": "1",
-                "__GL_GSYNC_ALLOWED": "1",
-                "__GL_VRR_ALLOWED": "1",
-            })
-        if app.config.get(c.CONFIG_KEY_ZINK_MODE):
-            extra_env["MESA_LOADER_DRIVER_OVERRIDE"] = "zink"
 
     is_flatpak_run = "flatpak" in cmd and "run" in cmd
     fs_path = shutil.which("flatpak-spawn")
@@ -835,7 +885,8 @@ def launch_game(app):
         logger.info(f"Command: {' '.join(cmd)}")
         logger.debug(f"Environment variables added: {extra_env}")
 
-        if hasattr(app, '_discord_rpc') and app._discord_rpc:
+        if (app.config.get(c.CONFIG_KEY_DISCORD_RPC_ENABLED, False)
+                and getattr(app, '_discord_rpc', None)):
             app._discord_rpc.set_playing(version, time.time())
 
         debug_log = app.config.get(c.CONFIG_KEY_DEBUG_LOG, False)
@@ -852,10 +903,17 @@ def launch_game(app):
                 bcmd = (
                     f"{cmd_str}; echo; read -p {shlex.quote(c.t("UI_TERMINAL_PROMPT_CLOSE"))}"
                 )
-                subprocess.Popen(
-                    [term, "-e", f'bash -c {shlex.quote(bcmd)}'],
-                    env=env, cwd=app.active_path,
-                )
+                # Terminals disagree on how the command is passed: gnome-terminal
+                # wants it after "--", xfce4-terminal uses "-x", and konsole/xterm
+                # take "-e <prog> <args...>". Passing separate argv (not a single
+                # "bash -c ..." string) is what these expect.
+                if term == "gnome-terminal":
+                    term_argv = [term, "--", "bash", "-c", bcmd]
+                elif term == "xfce4-terminal":
+                    term_argv = [term, "-x", "bash", "-c", bcmd]
+                else:
+                    term_argv = [term, "-e", "bash", "-c", bcmd]
+                subprocess.Popen(term_argv, env=env, cwd=app.active_path)
                 launched = True
 
         if not launched:
@@ -879,7 +937,18 @@ def launch_game(app):
                     game_fh.close()
                 app._game_process = None
                 logger.warning(f"subprocess.Popen failed ({e}), trying os.execve...")
-                os.execve(cmd[0], cmd, env)
+                # os.execve does NOT search PATH, so resolve PATH-relative
+                # commands (e.g. "mcpelauncher-client", "gamemoderun", "flatpak").
+                exe = shutil.which(cmd[0])
+                if not exe and os.path.isabs(cmd[0]):
+                    exe = cmd[0]
+                if not exe:
+                    raise
+                try:
+                    os.chdir(app.active_path)
+                except OSError:
+                    pass
+                os.execve(exe, cmd, env)
 
         action = app.config.get(c.CONFIG_KEY_LAUNCH_ACTION, c.LAUNCH_ACTION_CLOSE)
         if action == c.LAUNCH_ACTION_CLOSE:

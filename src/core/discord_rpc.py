@@ -24,6 +24,16 @@ _SMALL_TEXT_PLAYING = "In-Game"
 
 
 class DiscordRPC:
+    """Discord Rich Presence controller.
+
+    Thread model: the pypresence ``Presence`` object owns an asyncio event loop
+    bound to the worker thread that created it, so it is NOT safe to touch from
+    other threads.  All ``_rpc`` access (connect/update/clear/close) therefore
+    happens exclusively inside ``_run``.  Other threads only publish the desired
+    presence via ``set_idle``/``set_playing`` (guarded by ``_lock``) and wake the
+    worker through ``_wake``.
+    """
+
     def __init__(self, app):
         self.app = app
         self._thread = None
@@ -33,6 +43,7 @@ class DiscordRPC:
         self._connected = False
         self._last_presence = None
         self._client_id = None
+        self._wake = threading.Event()
 
     @property
     def available(self):
@@ -49,24 +60,24 @@ class DiscordRPC:
             logger.debug("Discord RPC: no DISCORD_DEFAULT_CLIENT_ID configured in constants.py")
             return
         self._running = True
+        self._wake.clear()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
     def stop(self):
+        """Signal the worker to disconnect and wait for it to clean up.
+
+        Cleanup (clear/close) is performed by the worker thread itself so that
+        the pypresence object is never used from a foreign thread.
+        """
+        if not self._running:
+            return
         self._running = False
-        with self._lock:
-            if self._rpc:
-                try:
-                    self._rpc.clear()
-                except Exception:
-                    pass
-                try:
-                    self._rpc.close()
-                except Exception:
-                    pass
-                self._rpc = None
-                self._connected = False
+        self._wake.set()
+        t = self._thread
         self._thread = None
+        if t and t.is_alive() and t is not threading.current_thread():
+            t.join(timeout=5)
 
     def _build_presence_kwargs(self, details, state, start, large_image, large_text, small_image, small_text):
         kwargs = dict(details=details)
@@ -83,8 +94,7 @@ class DiscordRPC:
             details=_DETAILS_IDLE, state=_STATE_IDLE, start=None,
             large_image=None, large_text=None, small_image=None, small_text=None,
         )
-        self._queue_presence(**kwargs)
-        self._send_presence(**kwargs)
+        self._queue_presence(kwargs)
 
     def set_playing(self, version, start_time):
         kwargs = self._build_presence_kwargs(
@@ -92,25 +102,13 @@ class DiscordRPC:
             start=int(start_time), large_image=_LARGE_IMAGE, large_text=_LARGE_TEXT,
             small_image=_SMALL_IMAGE_PLAYING, small_text=_SMALL_TEXT_PLAYING,
         )
-        self._queue_presence(**kwargs)
-        self._send_presence(**kwargs)
+        self._queue_presence(kwargs)
 
-    def _queue_presence(self, **kwargs):
+    def _queue_presence(self, kwargs):
+        """Publish the desired presence for the worker thread to send."""
         with self._lock:
-            self._last_presence = (
-                kwargs.get("details"), kwargs.get("state"), kwargs.get("start"),
-                kwargs.get("large_image"), kwargs.get("large_text"),
-                kwargs.get("small_image"), kwargs.get("small_text"),
-            )
-
-    def _send_presence(self, **kwargs):
-        with self._lock:
-            if not self._rpc:
-                return
-            try:
-                self._rpc.update(**kwargs)
-            except Exception as e:
-                logger.debug(f"Discord RPC direct update failed: {e}")
+            self._last_presence = dict(kwargs)
+        self._wake.set()
 
     def _find_discord_socket(self):
         """Look for Discord's IPC socket in known locations and symlink to standard path."""
@@ -162,56 +160,53 @@ class DiscordRPC:
             return False
 
     def _run(self):
+        """Worker loop: owns the pypresence object exclusively.
+
+        Wakes on demand via ``_wake`` (when a new presence is published or on
+        stop) and otherwise re-asserts presence periodically. Only sends when
+        the desired presence actually changed to avoid redundant IPC traffic.
+        """
         retry_interval = 30
-        last_retry = 0
+        last_retry = 0.0
+        last_sent = None
 
         while self._running:
-            now = time.time()
-
             if not self._connected:
+                now = time.time()
                 if now - last_retry >= retry_interval:
                     last_retry = now
-                    self._connect()
-                time.sleep(2)
+                    if self._connect():
+                        last_sent = None  # force a resend after reconnect
+                self._wake.wait(timeout=2)
+                self._wake.clear()
                 continue
 
             with self._lock:
                 presence = self._last_presence
 
-            if presence:
-                details, state, start, large_image, large_text, small_image, small_text = presence
+            if presence and presence != last_sent:
                 try:
-                    kwargs = dict(details=details)
-                    if state is not None:
-                        kwargs["state"] = state
-                    if start is not None:
-                        kwargs["start"] = start
-                    if large_image is not None:
-                        kwargs["large_image"] = large_image
-                    if large_text is not None:
-                        kwargs["large_text"] = large_text
-                    if small_image is not None:
-                        kwargs["small_image"] = small_image
-                    if small_text is not None:
-                        kwargs["small_text"] = small_text
-                    self._rpc.update(**kwargs)
+                    self._rpc.update(**presence)
+                    last_sent = presence
                 except Exception as e:
                     logger.debug(f"Discord RPC update failed: {e}")
                     self._connected = False
+                    last_sent = None
                     try:
                         self._rpc.close()
                     except Exception:
                         pass
                     self._rpc = None
+                    continue
 
-            time.sleep(15)
+            self._wake.wait(timeout=15)
+            self._wake.clear()
 
-        with self._lock:
-            if self._rpc:
-                try:
-                    self._rpc.clear()
-                    self._rpc.close()
-                except Exception:
-                    pass
-                self._rpc = None
-                self._connected = False
+        if self._rpc:
+            try:
+                self._rpc.clear()
+                self._rpc.close()
+            except Exception:
+                pass
+            self._rpc = None
+            self._connected = False

@@ -816,6 +816,8 @@ class CianovaLauncherApp(QMainWindow):
                 self.raise_()
             if hasattr(self.play_tab, "set_game_status"):
                 self.play_tab.set_game_status(False)
+            if hasattr(self, '_discord_rpc') and self._discord_rpc:
+                self._discord_rpc.set_idle()
 
     def manage_desktop_shortcut(self):
         """Open the version manager to manage desktop shortcuts."""
