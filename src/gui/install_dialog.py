@@ -31,23 +31,12 @@ class VersionFetcher(QThread):
         try:
             url = c.VERSION_MANIFEST_URL.format(arch=self.arch)
             ctx = ssl.create_default_context()
-            try:
-                with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
-                    if response.status == 200:
-                        data = json.loads(response.read().decode())
-                        self.finished.emit(data)
-                    else:
-                        self.error.emit(f"HTTP {response.status}")
-            except urllib.error.URLError:
-                logger.warning(f"SSL connection failed for {url}, retrying without certificate verification")
-                ctx.check_hostname = False
-                ctx.verify_mode = ssl.CERT_NONE
-                with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
-                    if response.status == 200:
-                        data = json.loads(response.read().decode())
-                        self.finished.emit(data)
-                    else:
-                        self.error.emit(f"HTTP {response.status}")
+            with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode())
+                    self.finished.emit(data)
+                else:
+                    self.error.emit(f"HTTP {response.status}")
         except Exception as e:
             self.error.emit(str(e))
 
@@ -59,22 +48,12 @@ class VersionWarningsFetcher(QThread):
     def run(self):
         try:
             ctx = ssl.create_default_context()
-            try:
-                with urllib.request.urlopen(c.VERSION_WARNINGS_URL, timeout=8, context=ctx) as response:
-                    if response.status == 200:
-                        data = json.loads(response.read().decode())
-                        self.finished.emit(data.get("warnings", []))
-                    else:
-                        self.finished.emit([])
-            except urllib.error.URLError:
-                ctx.check_hostname = False
-                ctx.verify_mode = ssl.CERT_NONE
-                with urllib.request.urlopen(c.VERSION_WARNINGS_URL, timeout=8, context=ctx) as response:
-                    if response.status == 200:
-                        data = json.loads(response.read().decode())
-                        self.finished.emit(data.get("warnings", []))
-                    else:
-                        self.finished.emit([])
+            with urllib.request.urlopen(c.VERSION_WARNINGS_URL, timeout=8, context=ctx) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode())
+                    self.finished.emit(data.get("warnings", []))
+                else:
+                    self.finished.emit([])
         except Exception as e:
             logger.warning(f"Failed to fetch version warnings: {e}")
             self.finished.emit([])
