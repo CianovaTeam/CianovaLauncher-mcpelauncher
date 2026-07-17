@@ -92,7 +92,9 @@ class CianovaLauncherApp(QMainWindow):
         try:
             w, h = map(int, size_str.split('x'))
             self.resize(w, h)
-        except: self.resize(700, 550)
+        except (ValueError, AttributeError) as e:
+            logger.debug(f"Invalid window size '{size_str}', using default: {e}")
+            self.resize(700, 550)
         self.setMinimumSize(600, 450)
 
         self.setWindowIcon(ImageManager.get_icon("icon.png"))
@@ -171,7 +173,8 @@ class CianovaLauncherApp(QMainWindow):
                 if idx + 1 < len(sys.argv):
                     target_version = sys.argv[idx + 1]
                     QTimer.singleShot(500, lambda: self.logic.launch_from_args(self, target_version))
-            except: pass
+            except Exception as e:
+                logger.warning(f"Failed to handle --version argument: {e}")
 
     def resizeEvent(self, event):
         self.resize_timer.start()
@@ -243,7 +246,8 @@ class CianovaLauncherApp(QMainWindow):
                 effect.setOpacity(opacity)
 
             self.bg_label.lower()
-        except: pass
+        except Exception as e:
+            logger.debug(f"Failed to apply background opacity effect: {e}")
 
     def update_sticker(self):
         """Update the sticker (image or text) based on current configuration."""
@@ -658,7 +662,7 @@ class CianovaLauncherApp(QMainWindow):
         try:
             QApplication.instance().setStyleSheet(qss)
         except Exception as e:
-            pass
+            logger.warning(f"Failed to apply global stylesheet: {e}")
 
         # Apply drop shadow to all card-type frames
         shadow_color = QColor(0, 0, 0, 60) if mode == "Dark" else QColor(0, 0, 0, 30)

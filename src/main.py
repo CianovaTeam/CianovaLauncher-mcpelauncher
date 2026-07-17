@@ -28,7 +28,7 @@ if __name__ == "__main__":
             with open(c_path, "r") as f:
                 conf = json.load(f)
                 ui_scale = str(conf.get("ui_scale", "1.0"))
-    except: pass
+    except Exception: pass
 
     if ui_scale != "1.0":
         os.environ["QT_SCALE_FACTOR"] = ui_scale

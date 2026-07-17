@@ -1,4 +1,8 @@
+import traceback
+
 from PySide6.QtCore import QThread, Signal
+
+from src.utils.logger import logger
 
 
 class LogicWorker(QThread):
@@ -19,4 +23,5 @@ class LogicWorker(QThread):
             res = self.task(*self.args)
             self.finished.emit(res)
         except Exception as e:
+            logger.error("Background task failed: %s", traceback.format_exc())
             self.error.emit(str(e))

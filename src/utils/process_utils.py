@@ -77,6 +77,7 @@ def query_glxinfo(field, running_in_flatpak=False, timeout=None, host_timeout=No
                         prefix + ["sh", "-c", grep_cmd], text=True,
                         stderr=subprocess.DEVNULL, timeout=host_timeout,
                     ).strip()
-                except Exception:
-                    pass
+                except Exception as e:
+                    from src.utils.logger import logger
+                    logger.debug(f"glxinfo via flatpak-spawn failed: {e}")
     return "Unknown"

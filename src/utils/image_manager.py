@@ -2,6 +2,7 @@ import os
 from PIL import Image
 from PySide6.QtGui import QPixmap, QImage, QIcon
 from src.utils.resource_path import resource_path
+from src.utils.logger import logger
 
 class ImageManager:
     _cache = {}
@@ -50,7 +51,7 @@ class ImageManager:
                     cls._cache[cache_key] = pixmap
                     return pixmap
             except Exception as e:
-                print(f"Error loading image {filename}: {e}")
+                logger.warning("Error loading image %s: %s", filename, e)
 
         return None
 

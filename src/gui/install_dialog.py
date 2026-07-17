@@ -76,6 +76,7 @@ class VersionWarningsFetcher(QThread):
                     else:
                         self.finished.emit([])
         except Exception as e:
+            logger.warning(f"Failed to fetch version warnings: {e}")
             self.finished.emit([])
 
 class GooglePlayTab(QWidget):

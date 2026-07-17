@@ -33,8 +33,8 @@ def get_cached_moddb(active_path):
         try:
             with open(path, "r") as f:
                 return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning(f"Could not read moddb cache at {path}: {e}")
     return None
 
 
