@@ -6,8 +6,13 @@
 #   3. Builds the Flatpak package
 #   4. Generates the offline .flatpak bundle
 #   5. Packages the portable .tar.gz
-#   6. Creates a GitHub Release with all assets
-#   7. Deploys the Flatpak repo to gh-pages
+#   6. Builds the signed x86_64 AppImage
+#   7. Creates a GitHub Release with all assets
+#   8. Deploys the Flatpak repo to gh-pages
+#
+# Jobs run in parallel after PyInstaller:
+#   - release: Flatpak bundle, portable tar.gz, release, gh-pages deploy
+#   - appimage: AppImage creation (runs after release to upload to existing tag)
 #
 # ── Prerequisites ──
 #   - GPG_PRIVATE_KEY secret: the private GPG key for signing the Flatpak repo
@@ -192,7 +197,9 @@ jobs:
             DIR="CianovaLauncher-${{ env.VERSION }}"
             mv dist/CianovaLauncherMCPE "$DIR"
             cp -r bin "$DIR/bin"
-            cp -r libs_mc "$DIR/lib"
+            mkdir -p "$DIR/lib"
+            cp -r libs_mc/lib "$DIR/lib/"
+            cp libs_mc/gamecontrollerdb.txt "$DIR/lib/"
             cp assets/CianovaLauncher.sh "$DIR/CianovaLauncher.sh" 2>/dev/null || true
             tar -czf "$DIR.tar.gz" "$DIR"
             rm -rf "$DIR"
@@ -231,3 +238,194 @@ jobs:
           publish_dir: ./repo_dist
           destination_dir: ./repo_dist
           keep_files: true
+
+  appimage:
+    runs-on: ubuntu-24.04
+    needs: release
+    env:
+      VERSION: ${{ github.event.inputs.version || github.ref_name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            patchelf desktop-file-utils \
+            python3-pip python3-venv \
+            libfuse2 \
+            libcurl4t64 libssl3t64 \
+            libx11-6 libxext6 libxi6 libxrandr2 libxcursor1 libxfixes3 libxrender1 \
+            libasound2t64 libpulse0 libsystemd0 \
+            libgl1 libegl1 libgles2 \
+            libgl1-mesa-dri mesa-vulkan-drivers \
+            libudev1 libevdev2 \
+            libpng16-16t64 zlib1g \
+            libdbus-1-3 \
+            libxkbcommon0 libfontconfig1 libfreetype6 \
+            libgbm1 libdrm2 \
+            libzip4t64 libprotobuf32t64 \
+            libqt6core6t64 libqt6gui6t64 libqt6widgets6t64 libqt6network6t64 \
+            libqt6webenginecore6 libqt6webenginewidgets6 \
+            libqt6qml6 libqt6webchannel6 \
+            qml6-module-qtquick qml6-module-qtquick-window \
+            qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+            zenity unzip \
+            qt6-base-dev-tools
+
+      - name: Setup AppImage tooling
+        run: |
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O /tmp/appimagetool
+          chmod +x /tmp/appimagetool
+          wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install PySide6 Pillow pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          source venv/bin/activate
+          ./build.sh
+
+      - name: Resolve mcpelauncher-bins version
+        id: bins
+        run: |
+          TAG="${{ github.event.inputs.mcpelauncher_bins_version }}"
+          if [ -z "$TAG" ]; then
+            echo "Fetching latest release from PlaGaPlusDev/mcpelauncher-bins..."
+            TAG=$(curl -sL https://api.github.com/repos/PlaGaPlusDev/mcpelauncher-bins/releases/latest \
+              | jq -r '.tag_name')
+            echo "Latest: $TAG"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Download mcpelauncher binaries
+        run: |
+          TAG="${{ steps.bins.outputs.tag }}"
+          URL="https://github.com/PlaGaPlusDev/mcpelauncher-bins/releases/download/$TAG/mcpelauncher_bins-$TAG.tar.gz"
+          echo "Downloading from: $URL"
+          curl -fL -o mcpelauncher_bins.tar.gz "$URL"
+          tar -xzf mcpelauncher_bins.tar.gz
+          rm -rf bin libs_mc
+          mv mcpelauncher_bins-*/bin ./bin
+          mv mcpelauncher_bins-*/libs_mc ./libs_mc
+          rm -rf mcpelauncher_bins-* mcpelauncher_bins.tar.gz
+
+      - name: Import GPG key
+        env:
+          GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        run: |
+          if [ -n "$GPG_KEY" ]; then
+            mkdir -p ~/.gnupg
+            chmod 700 ~/.gnupg
+            echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+            echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+            echo "trust-model always" >> ~/.gnupg/gpg.conf
+            gpgconf --kill gpg-agent || true
+            echo "$GPG_KEY" | gpg --import --no-tty --batch --pinentry-mode loopback
+            GPG_PASSPHRASE="${{ secrets.GPG_KEY_PASSPHRASE }}"
+            if [ -n "$GPG_PASSPHRASE" ] && [ -n "$GPG_KEY_ID" ]; then
+              echo "Caching GPG passphrase in agent..."
+              echo "dummy" | gpg --no-tty --batch --pinentry-mode loopback \
+                --passphrase "$GPG_PASSPHRASE" \
+                --local-user "$GPG_KEY_ID" --detach-sign > /dev/null 2>&1
+            fi
+            echo "GPG key imported successfully"
+          else
+            echo "No GPG_PRIVATE_KEY secret set — skipping GPG import"
+          fi
+
+      - name: Create AppDir
+        run: |
+          APPDIR="CianovaLauncher.AppDir"
+          mkdir -p "${APPDIR}/usr/bin"
+          mkdir -p "${APPDIR}/usr/lib/cianova"
+          mkdir -p "${APPDIR}/usr/share/mcpelauncher/lib"
+          mkdir -p "${APPDIR}/usr/share/applications"
+          mkdir -p "${APPDIR}/usr/share/icons/hicolor/256x256/apps"
+
+          cp -r dist/CianovaLauncherMCPE/* "${APPDIR}/usr/lib/cianova/"
+
+          cp bin/* "${APPDIR}/usr/bin/"
+          chmod +x "${APPDIR}/usr/bin/"*
+
+          cp -r libs_mc/lib/* "${APPDIR}/usr/share/mcpelauncher/lib/"
+          cp libs_mc/gamecontrollerdb.txt "${APPDIR}/usr/share/mcpelauncher/"
+
+          cp org.cianova.Launcher.png "${APPDIR}/usr/share/icons/hicolor/256x256/apps/cianova-launcher.png"
+          cp org.cianova.Launcher.png "${APPDIR}/cianova-launcher.png"
+
+          cat > "${APPDIR}/cianova-launcher.desktop" << 'DEOF'
+          [Desktop Entry]
+          Name=Cianova Launcher
+          Comment=Launcher para Minecraft Bedrock en Linux
+          Exec=AppRun
+          Icon=cianova-launcher
+          Type=Application
+          Categories=Game;Utility;
+          Terminal=false
+          DEOF
+
+          cp "${APPDIR}/cianova-launcher.desktop" "${APPDIR}/usr/share/applications/"
+
+          cat > "${APPDIR}/AppRun" << 'ARUN'
+          #!/bin/bash
+          SELF_DIR="$(dirname "$(readlink -f "$0")")"
+          export PATH="${SELF_DIR}/usr/bin:$PATH"
+          export LD_LIBRARY_PATH="${SELF_DIR}/usr/lib:${SELF_DIR}/usr/lib/cianova/_internal:${LD_LIBRARY_PATH}"
+          export MCPELAUNCHER_DATA_DIR="${SELF_DIR}/usr/share/mcpelauncher"
+          export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+          export QT_QPA_PLATFORM_PLUGIN_PATH="${SELF_DIR}/usr/lib/qt6/plugins:${SELF_DIR}/usr/plugins"
+          export QTWEBENGINE_CHROMIUM_FLAGS="--no-sandbox --ignore-gpu-blocklist"
+          export QT_QUICK_BACKEND="software"
+          DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/mcpelauncher"
+          mkdir -p "$DATA_DIR"
+          exec "${SELF_DIR}/usr/lib/cianova/CianovaLauncherMCPE" "$@"
+          ARUN
+          chmod +x "${APPDIR}/AppRun"
+
+          rm -f "${APPDIR}/usr/lib/cianova/_internal/libharfbuzz.so.0"
+          rm -f "${APPDIR}/usr/lib/cianova/_internal/libssl.so.3"
+          rm -f "${APPDIR}/usr/lib/cianova/_internal/libcrypto.so.3"
+
+      - name: Bundle dependencies with linuxdeploy
+        run: |
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export PATH="$PWD:$PATH"
+          export QMAKE="$(which qmake6 2>/dev/null || which qmake 2>/dev/null || echo '')"
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir CianovaLauncher.AppDir \
+            --plugin qt
+
+      - name: Build final signed AppImage
+        env:
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        run: |
+          SIGN=""
+          if [ -n "$GPG_KEY_ID" ]; then
+            SIGN="--sign-key=$GPG_KEY_ID"
+          fi
+          /tmp/appimagetool --no-appstream-check $SIGN \
+            CianovaLauncher.AppDir \
+            "CianovaLauncher-${VERSION}-x86_64.AppImage"
+
+      - name: Upload AppImage to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          files: CianovaLauncher-${{ env.VERSION }}-x86_64.AppImage
+          fail_on_unmatched_files: false
+          overwrite: true
