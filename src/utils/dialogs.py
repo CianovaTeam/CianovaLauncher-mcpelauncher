@@ -52,7 +52,7 @@ def ask_open_filename_native(parent, title=None, filetypes=None):
 
     filename, _ = QFileDialog.getOpenFileName(parent, title, "", qt_filter)
     if not filename:
-        filename, _ = QFileDialog.getOpenFileName(parent, title, "", qt_filter, QFileDialog.DontUseNativeDialog)
+        filename, _ = QFileDialog.getOpenFileName(parent, title, "", qt_filter, options=QFileDialog.DontUseNativeDialog)
     return filename
 
 
@@ -74,7 +74,7 @@ def ask_save_filename_native(parent, title=None, filetypes=None, default_name=No
 
     path, _ = QFileDialog.getSaveFileName(parent, title, "", qt_filter)
     if not path:
-        path, _ = QFileDialog.getSaveFileName(parent, title, "", qt_filter, QFileDialog.DontUseNativeDialog)
+        path, _ = QFileDialog.getSaveFileName(parent, title, "", qt_filter, options=QFileDialog.DontUseNativeDialog)
     return path
 
 
@@ -92,7 +92,7 @@ def ask_directory_native(parent, title=None):
 
     path = QFileDialog.getExistingDirectory(parent, title)
     if not path:
-        path = QFileDialog.getExistingDirectory(parent, title, QFileDialog.DontUseNativeDialog)
+        path = QFileDialog.getExistingDirectory(parent, title, options=QFileDialog.DontUseNativeDialog)
     return path
 
 
@@ -114,5 +114,5 @@ def ask_open_filenames_native(parent, title=None, filetypes=None):
 
     filenames, _ = QFileDialog.getOpenFileNames(parent, title, "", qt_filter)
     if not filenames:
-        filenames, _ = QFileDialog.getOpenFileNames(parent, title, "", qt_filter, QFileDialog.DontUseNativeDialog)
+        filenames, _ = QFileDialog.getOpenFileNames(parent, title, "", qt_filter, options=QFileDialog.DontUseNativeDialog)
     return filenames

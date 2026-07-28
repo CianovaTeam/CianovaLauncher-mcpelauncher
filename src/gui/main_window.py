@@ -28,6 +28,7 @@ from src.gui.tabs.play_tab import PlayTab
 from src.gui.tabs.tools_tab import ToolsTab
 from src.gui.tabs.settings_tab import SettingsTab
 from src.gui.tabs.about_tab import AboutTab
+from src.gui.tabs.logs_tab import LogsTab
 from src.utils.logger import logger
 
 class VisualLabel(QLabel):
@@ -117,11 +118,14 @@ class CianovaLauncherApp(QMainWindow):
         self.settings_tab.setObjectName("SettingsTab")
         self.about_tab = AboutTab(self.tab_widget, self)
         self.about_tab.setObjectName("AboutTab")
+        self.logs_tab = LogsTab(self.tab_widget, self)
+        self.logs_tab.setObjectName("LogsTab")
 
         self.tab_widget.addTab(self.play_tab, c.t("UI_TAB_PLAY"))
         self.tab_widget.addTab(self.tools_tab, c.t("UI_TAB_TOOLS"))
         self.tab_widget.addTab(self.settings_tab, c.t("UI_TAB_SETTINGS"))
         self.tab_widget.addTab(self.about_tab, c.t("UI_TAB_ABOUT"))
+        self.tab_widget.addTab(self.logs_tab, c.t("UI_TAB_LOGS"))
 
         # Visuals (BG and Sticker)
         self.bg_label = VisualLabel(self.central_widget)

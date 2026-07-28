@@ -442,6 +442,8 @@ class SetupWizard(QDialog):
         self.app.config[c.CONFIG_KEY_ACCEPTED_TERMS] = True
         self.app.config[c.CONFIG_KEY_VERSION] = c.VERSION_LAUNCHER
         self.app.config_manager.save_config()
+        from src.core.install_ops import refresh_version_list
+        refresh_version_list(self.app)
 
     def apply_styles(self):
         """Apply theme-aware stylesheets to all wizard components."""

@@ -75,9 +75,6 @@ LAUNCH_ACTION_CLOSE = "close"
 LAUNCH_ACTION_HIDE = "hide"
 LAUNCH_ACTION_NONE = "none"
 
-# ── Debug ──
-CONFIG_KEY_DEBUG_LOG = "debug_log"
-
 # ── Migration ──
 CONFIG_KEY_MIGRATION_NOTIFIED = "migration_notified"
 CONFIG_KEY_FIRST_RUN_FLATPAK = "first_run_flatpak"

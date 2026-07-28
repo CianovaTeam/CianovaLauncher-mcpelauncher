@@ -77,6 +77,24 @@ def disable_shaders(app):
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"), str(e))
 
 
+def ensure_default_options(app):
+    """Write safe defaults to options.txt if it doesn't exist yet."""
+    if not app.active_path:
+        return
+    opts_dir = os.path.join(app.active_path, c.MINECRAFT_PE_DIR_ALT)
+    opts_file = os.path.join(opts_dir, c.OPTIONS_FILE)
+    if os.path.exists(opts_file):
+        return
+    os.makedirs(opts_dir, exist_ok=True)
+    lines = [
+        "graphics_mode:1\n",
+        "gfx_viewdistance:128\n",
+        "volumetric_fog_quality:0\n",
+    ]
+    with open(opts_file, "w") as f:
+        f.writelines(lines)
+
+
 def open_data_folder(app):
     """Open the active Minecraft data folder in the file manager."""
     if app.active_path:
@@ -825,48 +843,29 @@ def launch_game(app):
         if hasattr(app, '_discord_rpc') and app._discord_rpc:
             app._discord_rpc.set_playing(version, time.time())
 
-        debug_log = app.config.get(c.CONFIG_KEY_DEBUG_LOG, False)
-        launched = False
-        if debug_log and not app.running_in_flatpak:
-            terms = ["gnome-terminal", "konsole", "xfce4-terminal", "xterm"]
-            term = next((t for t in terms if shutil.which(t)), None)
-            if term:
-                cmd_str = (
-                    shlex.join(cmd)
-                    if hasattr(shlex, 'join')
-                    else " ".join(shlex.quote(x) for x in cmd)
-                )
-                bcmd = (
-                    f"{cmd_str}; echo; read -p {shlex.quote(c.t("UI_TERMINAL_PROMPT_CLOSE"))}"
-                )
-                subprocess.Popen(
-                    [term, "-e", f'bash -c {shlex.quote(bcmd)}'],
-                    env=env, cwd=app.active_path,
-                )
-                launched = True
+        ensure_default_options(app)
 
-        if not launched:
-            game_fh = logger.open_game_output("a")
+        game_fh = logger.open_game_output("a")
+        if game_fh:
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            game_fh.write(f"\n{'='*20} MCPELAUNCHER LOG ({ts}) {'='*20}\n")
+            game_fh.write(f"Command: {' '.join(cmd)}\n")
+            for k, v in extra_env.items():
+                game_fh.write(f"  {k}={v}\n")
+            game_fh.write("-" * 50 + "\n")
+            game_fh.flush()
+        try:
+            app._game_process = subprocess.Popen(
+                cmd, env=env, cwd=app.active_path,
+                stdout=game_fh, stderr=subprocess.STDOUT
+            )
+        except (OSError, PermissionError) as e:
             if game_fh:
-                ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                game_fh.write(f"\n{'='*20} MCPELAUNCHER LOG ({ts}) {'='*20}\n")
-                game_fh.write(f"Command: {' '.join(cmd)}\n")
-                for k, v in extra_env.items():
-                    game_fh.write(f"  {k}={v}\n")
-                game_fh.write("-" * 50 + "\n")
-                game_fh.flush()
-            try:
-                app._game_process = subprocess.Popen(
-                    cmd, env=env, cwd=app.active_path,
-                    stdout=game_fh, stderr=subprocess.STDOUT
-                )
-            except (OSError, PermissionError) as e:
-                if game_fh:
-                    game_fh.write(f"[launcher] Popen failed: {e}, falling back to execve\n")
-                    game_fh.close()
-                app._game_process = None
-                logger.warning(f"subprocess.Popen failed ({e}), trying os.execve...")
-                os.execve(cmd[0], cmd, env)
+                game_fh.write(f"[launcher] Popen failed: {e}, falling back to execve\n")
+                game_fh.close()
+            app._game_process = None
+            logger.warning(f"subprocess.Popen failed ({e}), trying os.execve...")
+            os.execve(cmd[0], cmd, env)
 
         action = app.config.get(c.CONFIG_KEY_LAUNCH_ACTION, c.LAUNCH_ACTION_CLOSE)
         if action == c.LAUNCH_ACTION_CLOSE:
