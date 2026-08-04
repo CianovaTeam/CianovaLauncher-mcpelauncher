@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from src.gui import custom_dialogs as messagebox
+from src.gui.custom_dialogs import _find_theme
 import os
 import shutil
 import tempfile
@@ -19,6 +20,12 @@ class SkinPackTool(QDialog):
         self.setWindowTitle(c.t("UI_SKIN_PACK_CREATOR_TITLE"))
         self.resize(700, 550)
         self.setAcceptDrops(True)
+
+        mode, self.accent = _find_theme(parent)
+        self.light = mode != "Dark"
+        self.frame_bg = "#e8e8e8" if self.light else "#333333"
+        self.item_bg = "#dcdcdc" if self.light else "#3a3a3a"
+        self.text_color = "#1a1a1a" if self.light else "#ffffff"
 
         self.skins = []
         self.setup_ui()
@@ -49,7 +56,7 @@ class SkinPackTool(QDialog):
 
         # Header
         header = QFrame()
-        header.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
+        header.setStyleSheet(f"background-color: {self.frame_bg}; border-radius: {c.CORNER_RADIUS}px;")
         h_layout = QHBoxLayout(header)
         h_layout.addWidget(QLabel(c.t("UI_PACK_NAME_LABEL")))
         self.entry_pack_name = QLineEdit()
@@ -65,7 +72,7 @@ class SkinPackTool(QDialog):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setStyleSheet("background: transparent;")
+        self.scroll_area.setStyleSheet("QScrollArea { background: transparent; }")
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
@@ -75,7 +82,7 @@ class SkinPackTool(QDialog):
 
         # Botones
         btn_frame = QFrame()
-        btn_frame.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
+        btn_frame.setStyleSheet(f"background-color: {self.frame_bg}; border-radius: {c.CORNER_RADIUS}px;")
         b_layout = QHBoxLayout(btn_frame)
 
         btn_add = QPushButton(c.t("UI_BUTTON_ADD_SKINS_PNG"))
@@ -90,7 +97,7 @@ class SkinPackTool(QDialog):
         b_layout.addWidget(btn_export)
 
         self.main_layout.addWidget(btn_frame)
-        self.setStyleSheet("background-color: #2b2b2b; color: white;")
+        self.setStyleSheet(f"background-color: {'#f4f5f7' if self.light else '#2b2b2b'}; color: {self.text_color};")
 
     def add_skins_multi(self):
         """Open a file picker to select multiple PNG files and add them to the skin list."""
@@ -108,7 +115,7 @@ class SkinPackTool(QDialog):
 
         for i, skin in enumerate(self.skins):
             f = QFrame()
-            f.setStyleSheet("background-color: #3a3a3a; border-radius: 8px;")
+            f.setStyleSheet(f"background-color: {self.item_bg}; border-radius: 8px;")
             l = QHBoxLayout(f)
 
             e = QLineEdit(skin["name"])

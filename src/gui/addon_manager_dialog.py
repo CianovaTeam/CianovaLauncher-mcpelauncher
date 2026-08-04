@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap, QIcon, QDragEnterEvent, QDropEvent
 from src.gui import custom_dialogs as messagebox
+from src.gui.custom_dialogs import _find_theme
 from src import constants as c
 from src.core import addon_manager
 from src.core.moddb_service import (
@@ -73,6 +74,16 @@ class AddonManagerDialog(QDialog):
         self.moddb_data = get_cached_moddb(self.app.active_path)
         self._moddb_worker = None
 
+        mode, self.accent = _find_theme(self)
+        self.light = mode != "Dark"
+        self.frame_bg = "#e8e8e8" if self.light else "#333333"
+        self.item_bg  = "#dcdcdc" if self.light else "#3a3a3a"
+        self.header_bg = "#dadada" if self.light else "#2a2a2a"
+        self.text_color = "#1a1a1a" if self.light else "#ffffff"
+        self.muted_color = "#555555" if self.light else "#aaaaaa"
+        self.input_bg = "#ffffff" if self.light else "#1e1e1e"
+        self.input_border = "#a0aab8" if self.light else "#555555"
+
         self.setup_ui()
         self.refresh_list()
 
@@ -130,6 +141,7 @@ class AddonManagerDialog(QDialog):
         self.entry_search = QLineEdit()
         self.entry_search.setPlaceholderText(c.t("UI_SEARCH_PLACEHOLDER"))
         self.entry_search.setMinimumWidth(300)
+        self.entry_search.setStyleSheet(f"background-color: {self.input_bg}; color: {self.text_color}; border: 1px solid {self.input_border}; border-radius: 6px; padding: 6px 10px;")
         self.entry_search.textChanged.connect(self.on_search_delay)
         row1.addWidget(self.entry_search)
 
@@ -158,7 +170,7 @@ class AddonManagerDialog(QDialog):
         row2.addWidget(lbl_profile)
 
         lbl_mode = QLabel(f"📦 {c.t('UI_LABEL_INSTALLATION')} {install_mode}")
-        lbl_mode.setStyleSheet("color: gray; font-size: 11px;")
+        lbl_mode.setStyleSheet(f"color: {self.muted_color}; font-size: 11px;")
         row2.addWidget(lbl_mode)
         row2.addStretch()
         self.header_layout.addLayout(row2)
@@ -181,7 +193,7 @@ class AddonManagerDialog(QDialog):
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QFrame.NoFrame)
-            scroll.setStyleSheet("background: transparent;")
+            scroll.setStyleSheet("QScrollArea { background: transparent; }")
 
             content = QWidget()
             content_layout = QVBoxLayout(content)
@@ -192,7 +204,7 @@ class AddonManagerDialog(QDialog):
             idx = self.tab_widget.addTab(tab, tab_display_name)
             self.tabs[idx] = (content_layout, content, tab_id)
 
-        self.setStyleSheet("background-color: #2b2b2b; color: white;")
+        self.setStyleSheet(f"background-color: {'#f4f5f7' if self.light else '#2b2b2b'}; color: {self.text_color};")
 
     def on_search_delay(self):
         """Start a debounce timer to re-render the list after the user stops typing."""
@@ -290,7 +302,7 @@ class AddonManagerDialog(QDialog):
         if tab_folder:
             header_row = QHBoxLayout()
             lbl_folder = QLabel(f"📂 {tab_folder}")
-            lbl_folder.setStyleSheet("font-size: 11px; color: #666666;")
+            lbl_folder.setStyleSheet(f"font-size: 11px; color: {self.muted_color};")
             header_row.addWidget(lbl_folder)
             header_row.addStretch()
             btn_open = QPushButton(c.t("UI_BUTTON_OPEN_FOLDER"))
@@ -324,7 +336,7 @@ class AddonManagerDialog(QDialog):
             # DRM header
             drm_status = self.app.logic.get_drm_mod_status(self.app)
             drm_header_frame = QFrame()
-            drm_header_frame.setStyleSheet("background-color: #2a2a2a; border-radius: 8px; padding: 4px;")
+            drm_header_frame.setStyleSheet(f"background-color: {self.header_bg}; border-radius: 8px; padding: 4px;")
             drm_header_layout = QVBoxLayout(drm_header_frame)
             drm_header_layout.setContentsMargins(10, 8, 10, 8)
 
@@ -360,7 +372,7 @@ class AddonManagerDialog(QDialog):
 
             lbl_desc = QLabel(c.t("UI_DRM_MOD_DESC"))
             lbl_desc.setWordWrap(True)
-            lbl_desc.setStyleSheet("font-size: 11px; color: #888888;")
+            lbl_desc.setStyleSheet(f"font-size: 11px; color: {self.muted_color};")
             drm_header_layout.addWidget(lbl_desc)
 
             if drm_status == "missing":
@@ -395,11 +407,11 @@ class AddonManagerDialog(QDialog):
                     layout.addWidget(btn_retry)
                 elif self._moddb_fetch_started:
                     lbl_moddb = QLabel("⏳ Cargando lista de mods...")
-                    lbl_moddb.setStyleSheet("font-size: 12px; color: #888; padding: 8px 0;")
+                    lbl_moddb.setStyleSheet(f"font-size: 12px; color: {self.muted_color}; padding: 8px 0;")
                     layout.addWidget(lbl_moddb)
                 else:
                     lbl_prompt = QLabel("Presiona '↻ Actualizar' para ver los mods disponibles en mcpelauncher-moddb")
-                    lbl_prompt.setStyleSheet("font-size: 12px; color: #888; padding: 12px 0;")
+                    lbl_prompt.setStyleSheet(f"font-size: 12px; color: {self.muted_color}; padding: 12px 0;")
                     lbl_prompt.setWordWrap(True)
                     layout.addWidget(lbl_prompt)
                     btn_refresh = QPushButton("↻ Actualizar lista de mods")
@@ -410,11 +422,11 @@ class AddonManagerDialog(QDialog):
             elif available_from_moddb:
                 sep_frame = QFrame()
                 sep_frame.setFrameShape(QFrame.HLine)
-                sep_frame.setStyleSheet("color: #555; margin: 10px 0;")
+                sep_frame.setStyleSheet(f"color: {self.muted_color}; margin: 10px 0;")
                 layout.addWidget(sep_frame)
 
                 avail_header = QLabel(f"📦 {c.t('UI_AVAILABLE_MODS_HEADER')}")
-                avail_header.setStyleSheet("font-size: 14px; font-weight: bold; color: #aaa; padding: 8px 0;")
+                avail_header.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {self.muted_color}; padding: 8px 0;")
                 layout.addWidget(avail_header)
 
                 for entry in available_from_moddb:
@@ -447,7 +459,7 @@ class AddonManagerDialog(QDialog):
             latest_ver = versions[-1].get("version", "")
 
         item_frame = QFrame()
-        item_frame.setStyleSheet("background-color: #333333; border-radius: 12px;")
+        item_frame.setStyleSheet(f"background-color: {self.frame_bg}; border-radius: 12px;")
         item_layout = QHBoxLayout(item_frame)
         item_layout.setContentsMargins(15, 15, 15, 15)
 
@@ -465,17 +477,17 @@ class AddonManagerDialog(QDialog):
             name_text += f" (v{latest_ver})"
 
         lbl_name = QLabel(name_text)
-        lbl_name.setStyleSheet("font-size: 16px; font-weight: bold; color: #cccccc;")
+        lbl_name.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.text_color};")
         info_layout.addWidget(lbl_name)
 
         lbl_status = QLabel(f"[Mod MCPELauncher] — {c.t('UI_MOD_NOT_INSTALLED')}")
-        lbl_status.setStyleSheet("font-size: 11px; color: gray;")
+        lbl_status.setStyleSheet(f"font-size: 11px; color: {self.muted_color};")
         info_layout.addWidget(lbl_status)
 
         if mod_desc:
             lbl_desc = QLabel(mod_desc)
             lbl_desc.setWordWrap(True)
-            lbl_desc.setStyleSheet("font-size: 12px; color: #888888;")
+            lbl_desc.setStyleSheet(f"font-size: 12px; color: {self.muted_color};")
             info_layout.addWidget(lbl_desc)
 
         item_layout.addLayout(info_layout, 1)
@@ -514,7 +526,7 @@ class AddonManagerDialog(QDialog):
     def create_item_ui(self, layout, addon):
         """Create a single addon item widget with icon, info, and action buttons."""
         item_frame = QFrame()
-        item_frame.setStyleSheet(f"background-color: #333333; border-radius: 12px;")
+        item_frame.setStyleSheet(f"background-color: {self.frame_bg}; border-radius: 12px;")
         item_layout = QHBoxLayout(item_frame)
         item_layout.setContentsMargins(15, 15, 15, 15)
 
@@ -544,14 +556,14 @@ class AddonManagerDialog(QDialog):
             name_text += f" (v{addon_version})"
 
         lbl_name = QLabel(name_text)
-        lbl_name.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {'white' if addon_enabled else '#888888'};")
+        lbl_name.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.text_color if addon_enabled else self.muted_color};")
         info_layout.addWidget(lbl_name)
 
         if addon_folder != "minecraftWorlds":
             status_text = c.t("UI_STATUS_ACTIVE") if addon_enabled else c.t("UI_STATUS_DISABLED")
             type_str = f"[{addon.get('type_label', '?')}] - {status_text}"
             lbl_type = QLabel(type_str)
-            lbl_type.setStyleSheet(f"font-size: 11px; color: {c.COLOR_PRIMARY_GREEN if addon_enabled else 'gray'};")
+            lbl_type.setStyleSheet(f"font-size: 11px; color: {c.COLOR_PRIMARY_GREEN if addon_enabled else self.muted_color};")
             info_layout.addWidget(lbl_type)
 
         if addon_folder == "mods":
@@ -563,18 +575,18 @@ class AddonManagerDialog(QDialog):
             else:
                 size_str = f"{size/(1024*1024):.1f} MB"
             lbl_size = QLabel(size_str)
-            lbl_size.setStyleSheet("font-size: 11px; color: gray;")
+            lbl_size.setStyleSheet(f"font-size: 11px; color: {self.muted_color};")
             info_layout.addWidget(lbl_size)
 
             lbl_path = QLabel(f"📁 {addon.get('path', '')}")
             lbl_path.setWordWrap(True)
-            lbl_path.setStyleSheet("font-size: 10px; color: #666666;")
+            lbl_path.setStyleSheet(f"font-size: 10px; color: {self.muted_color};")
             info_layout.addWidget(lbl_path)
 
         if addon.get("description"):
             lbl_desc = QLabel(addon.get("description", ""))
             lbl_desc.setWordWrap(True)
-            lbl_desc.setStyleSheet("font-size: 12px; color: gray;")
+            lbl_desc.setStyleSheet(f"font-size: 12px; color: {self.muted_color};")
             info_layout.addWidget(lbl_desc)
 
         item_layout.addLayout(info_layout, 1)
@@ -584,7 +596,7 @@ class AddonManagerDialog(QDialog):
         if addon_folder == "mods" and addon_enabled:
             chk_launch = QCheckBox(c.t("UI_MOD_LAUNCH_CHECK"))
             chk_launch.setChecked(addon_launch)
-            chk_launch.setStyleSheet("font-size: 11px; color: white;")
+            chk_launch.setStyleSheet(f"font-size: 11px; color: {self.text_color};")
             chk_launch.clicked.connect(lambda checked, a=addon: self._on_launch_toggle(a, checked))
             actions_layout.addWidget(chk_launch)
 

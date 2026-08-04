@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from PySide6.QtCore import Qt
 import os
 from src.gui import custom_dialogs as messagebox
+from src.gui.custom_dialogs import _find_theme
 from src import constants as c
 
 class GameConfigDialog(QDialog):
@@ -12,6 +13,9 @@ class GameConfigDialog(QDialog):
         self.parent_app = parent
         self.setWindowTitle(c.t("UI_GAME_CONFIG_TITLE"))
         self.resize(650, 700)
+
+        mode, self.accent = _find_theme(parent)
+        self.light = mode != "Dark"
 
         self.options_path = os.path.join(self.parent_app.active_path, c.MINECRAFT_PE_DIR_ALT, c.OPTIONS_FILE)
         self.options_data = {}
@@ -36,13 +40,19 @@ class GameConfigDialog(QDialog):
         self.setup_visual_tab()
         self.setup_editor_tab()
 
-        self.setStyleSheet("background-color: #2b2b2b; color: white;")
+        if self.light:
+            self.setStyleSheet("QDialog { background-color: #f4f5f7; color: #1a1a1a; } QLabel { color: #1a1a1a; }")
+        else:
+            self.setStyleSheet("QDialog { background-color: #2b2b2b; color: white; } QLabel { color: white; }")
 
     def setup_editor_tab(self):
         """Set up the raw text editor tab with a QTextEdit and save button."""
         layout = QVBoxLayout(self.tab_editor)
         self.text_editor = QTextEdit()
-        self.text_editor.setStyleSheet("font-family: 'Courier New'; font-size: 13px; background-color: #1e1e1e; color: #d4d4d4;")
+        if self.light:
+            self.text_editor.setStyleSheet("font-family: 'Courier New'; font-size: 13px; background-color: #ffffff; color: #1a1a1a; border: 1px solid #a0aab8; border-radius: 6px;")
+        else:
+            self.text_editor.setStyleSheet("font-family: 'Courier New'; font-size: 13px; background-color: #1e1e1e; color: #d4d4d4;")
         layout.addWidget(self.text_editor)
 
         btn_save = QPushButton(c.t("UI_BUTTON_SAVE_FILE"))
@@ -57,7 +67,7 @@ class GameConfigDialog(QDialog):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("background: transparent;")
+        scroll.setStyleSheet("QScrollArea { background: transparent; }")
 
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)

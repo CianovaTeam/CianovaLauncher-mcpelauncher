@@ -79,7 +79,6 @@ class PlayTab(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setStyleSheet("border: none; background-color: transparent;")
 
         self.version_list_widget = QWidget()
         self.version_list_widget.setObjectName("VersionList")
@@ -148,11 +147,36 @@ class PlayTab(QWidget):
 
     def set_game_status(self, running):
         if running:
-            self.lbl_game_status.setText(c.t("UI_GAME_STATUS_RUNNING"))
-            self.lbl_game_status.setStyleSheet("font-size: 11px; font-weight: bold; color: #4CAF50;")
+            color = "#4CAF50"
+            dot = "●"
+            self.lbl_game_status.setText(f"<span style='color:{color};'>{dot}</span> {c.t('UI_GAME_STATUS_RUNNING')}")
+            self.lbl_game_status.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {color};")
+            self.lbl_game_status.setToolTip(c.t("UI_GAME_STATUS_RUNNING"))
         else:
-            self.lbl_game_status.setText(c.t("UI_GAME_STATUS_IDLE"))
-            self.lbl_game_status.setStyleSheet("font-size: 11px; color: gray;")
+            muted = "#aaaaaa" if self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark") == "Dark" else "#555555"
+            dot = "●"
+            self.lbl_game_status.setText(f"<span style='color:{muted};'>{dot}</span> {c.t('UI_GAME_STATUS_IDLE')}")
+            self.lbl_game_status.setStyleSheet(f"font-size: 12px; color: {muted};")
+            self.lbl_game_status.setToolTip(c.t("UI_GAME_STATUS_IDLE"))
+
+    def retranslate_ui(self):
+        self.lbl_status.setText(c.t("UI_LABEL_SEARCHING"))
+        running = self.app._game_process is not None
+        self.set_game_status(running)
+        self.lbl_install.setText(c.t("UI_LABEL_INSTALLATION"))
+        self.lbl_version_title.setText(c.t("UI_LABEL_INSTALLED_VERSIONS"))
+        self.update_profile_indicator()
+        self.combo_launch_action.clear()
+        self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_CLOSE"), c.LAUNCH_ACTION_CLOSE)
+        self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_HIDE"), c.LAUNCH_ACTION_HIDE)
+        self.combo_launch_action.addItem(c.t("UI_LAUNCH_ACTION_NONE"), c.LAUNCH_ACTION_NONE)
+        current_action = self.app.config.get(c.CONFIG_KEY_LAUNCH_ACTION, c.LAUNCH_ACTION_CLOSE)
+        idx = self.combo_launch_action.findData(current_action)
+        if idx >= 0:
+            self.combo_launch_action.setCurrentIndex(idx)
+        self.check_gamemode.setText(c.t("UI_CHECKBOX_GAMEMODE"))
+        self.check_discord.setText(c.t("UI_CHECKBOX_DISCORD_RPC"))
+        self.btn_launch.setText(c.t("UI_BUTTON_PLAY_NOW"))
 
     def save_quick_opts(self):
         """Persist the launch option checkboxes to config."""

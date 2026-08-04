@@ -220,6 +220,54 @@ def rename_version(app, old_name, new_name):
         return False
 
 
+def remove_version_shortcut(app, version):
+    """Remove the .desktop shortcut(s) created for a version."""
+    removed = []
+    apps_shortcut = os.path.join(app.home, c.APPLICATIONS_DIR, f"cianova-{version}.desktop")
+    if os.path.exists(apps_shortcut):
+        try:
+            os.remove(apps_shortcut)
+            removed.append(apps_shortcut)
+        except OSError as e:
+            logger.error(f"Error removing start menu shortcut: {e}")
+
+    try:
+        xdg_desktop = subprocess.check_output(["xdg-user-dir", "DESKTOP"], text=True).strip()
+    except Exception:
+        xdg_desktop = os.path.join(app.home, "Desktop")
+    desktop_shortcut = os.path.join(xdg_desktop, f"cianova-{version}.desktop")
+    if os.path.exists(desktop_shortcut):
+        try:
+            os.remove(desktop_shortcut)
+            removed.append(desktop_shortcut)
+        except OSError as e:
+            logger.error(f"Error removing desktop shortcut: {e}")
+
+    if removed:
+        messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"), c.t("UI_SHORTCUT_REMOVED_MSG", name=version))
+    else:
+        messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"), c.t("UI_SHORTCUT_NONE_MSG", name=version))
+
+
+def restore_from_backup(app, version):
+    """Restore a version folder from the backup directory back to the active versions dir."""
+    backup_dir = os.path.join(app.home, c.BACKUP_DIR)
+    src = os.path.join(backup_dir, version)
+    dst = os.path.join(app.active_path, c.VERSIONS_DIR, version)
+    if not os.path.exists(src):
+        messagebox.showerror(app, message.t("UI_ERROR_TITLE"), message.t("UI_VERSION_NOT_IN_BACKUP", name=version))
+        return False
+    if os.path.exists(dst):
+        messagebox.showerror(app, message.t("UI_ERROR_TITLE"), message.t("UI_VERSION_ALREADY_EXISTS", name=version))
+        return False
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    shutil.move(src, dst)
+    from src.core.install_ops import refresh_version_list
+    refresh_version_list(app)
+    messagebox.showinfo(app, message.t("UI_SUCCESS_TITLE"), message.t("UI_VERSION_RESTORED_MSG", name=version))
+    return True
+
+
 def create_version_shortcut(app, version):
     """Crea un acceso directo .desktop para una versión específica."""
     try:

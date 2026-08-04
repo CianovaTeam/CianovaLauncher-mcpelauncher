@@ -12,6 +12,7 @@ import urllib.error
 import json
 import threading
 from src.gui import custom_dialogs as messagebox
+from src.gui.custom_dialogs import _find_theme
 from src.utils.dialogs import ask_open_filename_native
 from src.utils.logger import logger
 from src import constants as c
@@ -31,7 +32,7 @@ class VersionFetcher(QThread):
         try:
             url = c.VERSION_MANIFEST_URL.format(arch=self.arch)
             ctx = ssl.create_default_context()
-            with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
+            with urllib.request.urlopen(url, timeout=5, context=ctx) as response:
                 if response.status == 200:
                     data = json.loads(response.read().decode())
                     self.finished.emit(data)
@@ -48,7 +49,7 @@ class VersionWarningsFetcher(QThread):
     def run(self):
         try:
             ctx = ssl.create_default_context()
-            with urllib.request.urlopen(c.VERSION_WARNINGS_URL, timeout=8, context=ctx) as response:
+            with urllib.request.urlopen(c.VERSION_WARNINGS_URL, timeout=4, context=ctx) as response:
                 if response.status == 200:
                     data = json.loads(response.read().decode())
                     self.finished.emit(data.get("warnings", []))
@@ -206,6 +207,8 @@ class GooglePlayTab(QWidget):
 
         # Force button color update respecting disabled state
         accent = c.THEME_COLOR_MAP.get(self.app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue"), "#1f6aa5")
+        disabled_bg = "#444444" if not self.dialog.light else "#dcdce0"
+        disabled_text = "#888888" if not self.dialog.light else "#9a9aa0"
         self.btn_download.setStyleSheet(f"""
             QPushButton {{
                 background-color: {accent}; 
@@ -214,8 +217,8 @@ class GooglePlayTab(QWidget):
                 font-weight: bold;
             }}
             QPushButton:disabled {{
-                background-color: #444444;
-                color: #888888;
+                background-color: {disabled_bg};
+                color: {disabled_text};
             }}
         """)
 
@@ -355,7 +358,7 @@ class LocalApkTab(QWidget):
             for url in event.mimeData().urls():
                 if url.toLocalFile().endswith(".apk"):
                     event.acceptProposedAction()
-                    self.frame_apk.setStyleSheet(f"background-color: #3a3a3a; border-radius: {c.CORNER_RADIUS}px;")
+                    self.frame_apk.setStyleSheet(f"QFrame#FrameApk {{ background-color: {self.dialog.drop_highlight}; border-radius: {c.CORNER_RADIUS}px; }}")
                     return
 
     def dragLeaveEvent(self, event):
@@ -385,12 +388,13 @@ class LocalApkTab(QWidget):
 
         # 1. Selección de APK
         self.frame_apk = QFrame()
-        self._NORMAL_STYLE = f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;"
+        self.frame_apk.setObjectName("FrameApk")
+        self._NORMAL_STYLE = f"QFrame#FrameApk {{ background-color: {self.dialog.frame_bg}; border-radius: {c.CORNER_RADIUS}px; }}"
         self.frame_apk.setStyleSheet(self._NORMAL_STYLE)
         apk_layout = QVBoxLayout(self.frame_apk)
 
         lbl_apk_title = QLabel(c.t("UI_APK_FILE_LABEL"))
-        lbl_apk_title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        lbl_apk_title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.dialog.text_color};")
         apk_layout.addWidget(lbl_apk_title)
 
         apk_input_layout = QHBoxLayout()
@@ -407,7 +411,7 @@ class LocalApkTab(QWidget):
 
         lbl_drop_hint = QLabel(c.t("UI_APK_DROP_HINT"))
         lbl_drop_hint.setAlignment(Qt.AlignCenter)
-        lbl_drop_hint.setStyleSheet("color: #888888; font-size: 12px; padding: 5px;")
+        lbl_drop_hint.setStyleSheet(f"color: {self.dialog.muted_color}; font-size: 12px; padding: 5px;")
         apk_layout.addWidget(lbl_drop_hint)
 
         self.layout.addWidget(self.frame_apk)
@@ -421,11 +425,12 @@ class LocalApkTab(QWidget):
 
         # 2. Nombre de la Versión
         self.frame_name = QFrame()
-        self.frame_name.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
+        self.frame_name.setObjectName("FrameName")
+        self.frame_name.setStyleSheet(f"QFrame#FrameName {{ background-color: {self.dialog.frame_bg}; border-radius: {c.CORNER_RADIUS}px; }}")
         name_layout = QVBoxLayout(self.frame_name)
 
         lbl_name_title = QLabel(c.t("UI_VERSION_NAME_LABEL"))
-        lbl_name_title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        lbl_name_title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.dialog.text_color};")
         name_layout.addWidget(lbl_name_title)
 
         self.entry_name = QLineEdit()
@@ -538,6 +543,14 @@ class InstallDialog(QDialog):
         self.setWindowTitle(c.t("UI_INSTALL_NEW_VERSION_TITLE"))
         self.resize(600, 700)
 
+        mode, self.accent = _find_theme(parent)
+        self.light = mode != "Dark"
+        self.bg = "#f4f5f7" if self.light else "#242424"
+        self.frame_bg = "#e8e8e8" if self.light else "#333333"
+        self.drop_highlight = "#d6dade" if self.light else "#3a3a3a"
+        self.text_color = "#1a1a1a" if self.light else "white"
+        self.muted_color = "#666666" if self.light else "#888888"
+
         self.target_mode_val = c.MODE_INSTALL_FLATPAK if parent.running_in_flatpak else c.MODE_INSTALL_LOCAL
         self.warnings_data = []
         self._warnings_fetcher = None
@@ -561,11 +574,12 @@ class InstallDialog(QDialog):
 
         # 3. Modo de Instalación (Global para ambas pestañas)
         self.frame_mode = QFrame()
-        self.frame_mode.setStyleSheet(f"background-color: #333333; border-radius: {c.CORNER_RADIUS}px;")
+        self.frame_mode.setObjectName("FrameMode")
+        self.frame_mode.setStyleSheet(f"QFrame#FrameMode {{ background-color: {self.frame_bg}; border-radius: {c.CORNER_RADIUS}px; }}")
         mode_layout = QVBoxLayout(self.frame_mode)
 
         lbl_mode_title = QLabel(c.t("UI_INSTALL_MODE_DEST_LABEL"))
-        lbl_mode_title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        lbl_mode_title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.text_color};")
         mode_layout.addWidget(lbl_mode_title)
 
         if self.parent_app.running_in_flatpak:
@@ -600,7 +614,15 @@ class InstallDialog(QDialog):
                 mode_layout.addWidget(self.entry_flatpak_id)
 
         self.main_layout.addWidget(self.frame_mode)
-        self.setStyleSheet("background-color: #2b2b2b; color: white;")
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {self.bg};
+                color: {self.text_color};
+            }}
+            QLabel {{
+                background-color: transparent;
+            }}
+        """)
 
     def set_target_mode(self, mode_key):
         """Update the selected installation mode and toggle the Flatpak ID field."""
@@ -624,13 +646,29 @@ class InstallDialog(QDialog):
                 return entry.get("reason")
         return None
 
+    def _safe_stop_thread(self, thread):
+        """Stop a background fetch thread without freezing the UI."""
+        if thread is None:
+            return
+        if not thread.isRunning():
+            thread.deleteLater()
+            return
+        thread.requestInterruption()
+        # Brief grace period only; never block the UI on slow network I/O.
+        if thread.wait(250):
+            thread.deleteLater()
+            return
+        # Still running (blocked in a network call that cannot be aborted).
+        # Detach it so it is not destroyed while running. Qt removes all of
+        # this dialog's connections when the dialog is destroyed, and queued
+        # signal deliveries to a deleted receiver are dropped safely.
+        thread.finished.connect(thread.deleteLater)
+        thread.setParent(None)
+
     def closeEvent(self, event):
-        if self._warnings_fetcher and self._warnings_fetcher.isRunning():
-            self._warnings_fetcher.requestInterruption()
-            self._warnings_fetcher.wait(3000)
-        if hasattr(self, 'google_tab') and self.google_tab.fetcher and self.google_tab.fetcher.isRunning():
-            self.google_tab.fetcher.requestInterruption()
-            self.google_tab.fetcher.wait(3000)
+        self._safe_stop_thread(self._warnings_fetcher)
+        if hasattr(self, 'google_tab'):
+            self._safe_stop_thread(self.google_tab.fetcher)
         super().closeEvent(event)
 
     def get_target_root(self):

@@ -67,6 +67,10 @@ CONFIG_KEY_CUSTOM_ENV_ENABLED = "custom_env_enabled"
 CONFIG_KEY_CUSTOM_ENV_VARS = "custom_env_vars"
 CONFIG_KEY_GAMEMODE_ENABLED = "gamemode_enabled"
 CONFIG_KEY_NVIDIA_COMPAT_MODE = "nvidia_compat_mode"
+CONFIG_KEY_FORCE_OPENGL = "force_opengl"
+CONFIG_KEY_FORCE_GLES32 = "force_gles32"
+CONFIG_KEY_DISABLE_VSYNC = "disable_vsync"
+CONFIG_KEY_FORCE_DISCRETE_GPU = "force_discrete_gpu"
 
 # ── Launch action ──
 CONFIG_KEY_CLOSE_ON_LAUNCH = "close_on_launch"  # legacy (bool)

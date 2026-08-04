@@ -7,6 +7,7 @@ class AboutTab(QWidget):
     def __init__(self, parent, app):
         super().__init__(parent)
         self.app = app
+        self.setObjectName("AboutTab")
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(20, 10, 20, 10)
@@ -23,6 +24,7 @@ class AboutTab(QWidget):
         self.scroll_area.setObjectName("GroupFrame")
 
         self.scroll_content = QWidget()
+        self.scroll_content.setObjectName("ScrollContent")
         self.scroll_layout = QVBoxLayout(self.scroll_content)
 
         self.lbl_legal = QLabel(c.t("LEGAL_TEXT"))
@@ -42,5 +44,12 @@ class AboutTab(QWidget):
 
         self.version_label = QLabel(f"{c.t('UI_VERSION_TEXT')}{c.VERSION_LAUNCHER}")
         self.version_label.setAlignment(Qt.AlignCenter)
-        self.version_label.setStyleSheet("font-size: 11px; color: gray;")
+        muted = "#aaaaaa" if self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark") == "Dark" else "#555555"
+        self.version_label.setStyleSheet(f"font-size: 11px; color: {muted};")
         self.main_layout.addWidget(self.version_label)
+
+    def retranslate_ui(self):
+        self.title_label.setText(c.t("UI_TITLE_LEGAL"))
+        self.lbl_legal.setText(c.t("LEGAL_TEXT"))
+        self.credits_label.setText(c.t("CREDITOS"))
+        self.version_label.setText(f"{c.t('UI_VERSION_TEXT')}{c.VERSION_LAUNCHER}")

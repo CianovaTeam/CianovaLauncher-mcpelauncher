@@ -64,7 +64,11 @@ class ConfigManager:
             c.CONFIG_KEY_VERSION_ICON_ZOOM: {},
             c.CONFIG_KEY_VERSION_ICON_X: {},
             c.CONFIG_KEY_VERSION_ICON_Y: {},
-            c.CONFIG_KEY_DISCORD_RPC_ENABLED: False,
+            c.CONFIG_KEY_DISCORD_RPC_ENABLED: True,
+            c.CONFIG_KEY_FORCE_OPENGL: False,
+            c.CONFIG_KEY_FORCE_GLES32: True,
+            c.CONFIG_KEY_DISABLE_VSYNC: False,
+            c.CONFIG_KEY_FORCE_DISCRETE_GPU: False,
         }
         self.config = self.load_config()
 

@@ -33,17 +33,24 @@ class ToolsTab(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setStyleSheet("border: none;")
 
         self.scroll_content = QWidget()
+        self.scroll_content.setObjectName("ScrollContent")
         self.scroll_content.setMinimumWidth(480)
         self.scroll_layout = QVBoxLayout(self.scroll_content)
         self.scroll_layout.setAlignment(Qt.AlignTop)
+        self.scroll_layout.setSpacing(12)
 
         self.scroll_area.setWidget(self.scroll_content)
         self.main_layout.addWidget(self.scroll_area)
 
         self.lbl_shader_status = None
+        self.refresh_tools_ui()
+
+    def retranslate_ui(self):
+        self.lbl_tools_status.setText("")
+        current = self.app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT"))
+        self.lbl_current_profile.setText(f"👤 {c.t('UI_LABEL_PROFILE')} {current}")
         self.refresh_tools_ui()
 
     def get_tools_data(self):
@@ -91,6 +98,9 @@ class ToolsTab(QWidget):
         ]
         return groups
 
+    def _muted(self):
+        return "#aaaaaa" if self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark") == "Dark" else "#555555"
+
     def refresh_tools_ui(self):
         """Rebuild the tools area, honoring the current layout style (list, columns, or grid)."""
         # Clear layout safely
@@ -109,7 +119,7 @@ class ToolsTab(QWidget):
 
         # Footer Credits
         footer = QLabel(c.t("CREDITOS"))
-        footer.setStyleSheet("color: gray; font-size: 11px;")
+        footer.setStyleSheet(f"color: {self._muted()}; font-size: 11px;")
         footer.setAlignment(Qt.AlignCenter)
         self.scroll_layout.addWidget(footer)
 
@@ -121,7 +131,7 @@ class ToolsTab(QWidget):
             l.setSpacing(2)
 
             t1 = QLabel(tool["text"])
-            t1.setStyleSheet("font-weight: bold; font-size: 11px; color: gray;")
+            t1.setStyleSheet(f"font-weight: bold; font-size: 11px; color: {self._muted()};")
             t1.setAlignment(Qt.AlignCenter)
             l.addWidget(t1)
 
@@ -141,7 +151,7 @@ class ToolsTab(QWidget):
             l.setSpacing(2)
 
             t1 = QLabel(tool["text"])
-            t1.setStyleSheet("font-weight: bold; font-size: 11px; color: gray;")
+            t1.setStyleSheet(f"font-weight: bold; font-size: 11px; color: {self._muted()};")
             t1.setAlignment(Qt.AlignCenter)
             l.addWidget(t1)
 
@@ -162,13 +172,13 @@ class ToolsTab(QWidget):
 
             desc = QLabel(c.t("UI_DRM_MOD_DESC"))
             desc.setWordWrap(True)
-            desc.setStyleSheet("font-size: 11px; color: gray;")
+            desc.setStyleSheet(f"font-size: 11px; color: {self._muted()};")
             desc.setAlignment(Qt.AlignCenter)
             l.addWidget(desc)
 
             credit = QLabel(c.t("UI_DRM_MOD_CREDIT"))
             credit.setWordWrap(True)
-            credit.setStyleSheet("font-size: 10px; color: #888888; font-style: italic;")
+            credit.setStyleSheet(f"font-size: 10px; color: {self._muted()}; font-style: italic;")
             credit.setAlignment(Qt.AlignCenter)
             l.addWidget(credit)
 
@@ -176,7 +186,7 @@ class ToolsTab(QWidget):
             return
 
         btn = QPushButton(f"{tool['icon']} {tool['text']}")
-        btn.setFixedHeight(c.BTN_HEIGHT + 4)
+        btn.setFixedHeight(c.BTN_HEIGHT + 6)
 
         if tool.get("color"):
             bg = tool['color']
@@ -195,7 +205,8 @@ class ToolsTab(QWidget):
 
         if tool.get("show_status"):
             self.lbl_shader_status = QLabel(c.t("UI_LABEL_SHADERS_STATUS"))
-            self.lbl_shader_status.setStyleSheet("font-size: 11px; color: gray;")
+            muted = "#aaaaaa" if self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark") == "Dark" else "#555555"
+            self.lbl_shader_status.setStyleSheet(f"font-size: 11px; color: {muted};")
             self.lbl_shader_status.setAlignment(Qt.AlignCenter)
             parent_layout.addWidget(self.lbl_shader_status)
             self.app.logic.update_shader_status_label(self.app)
@@ -205,12 +216,13 @@ class ToolsTab(QWidget):
             frame = QFrame()
             frame.setObjectName("GroupFrame")
             layout = QVBoxLayout(frame)
-            layout.setContentsMargins(15, 15, 15, 15)
-            layout.setSpacing(10)
+            layout.setContentsMargins(15, 13, 15, 13)
+            layout.setSpacing(7)
 
             title = QLabel(f"{group['icon']} {group['title']}")
             title.setObjectName("HeaderLabel")
             title.setAlignment(Qt.AlignCenter)
+            title.setFixedHeight(32)
             layout.addWidget(title)
 
             for tool in group["tools"]:
@@ -227,16 +239,19 @@ class ToolsTab(QWidget):
             frame.setObjectName("GroupFrame")
             frame.setMinimumHeight(200)
             layout = QVBoxLayout(frame)
-            layout.setContentsMargins(15, 15, 15, 15)
-            layout.setSpacing(10)
+            layout.setContentsMargins(15, 13, 15, 13)
+            layout.setSpacing(7)
 
             title = QLabel(f"{group['icon']} {group['title']}")
             title.setObjectName("HeaderLabel")
             title.setAlignment(Qt.AlignCenter)
+            title.setFixedHeight(32)
             layout.addWidget(title)
 
             for tool in group["tools"]:
                 self._create_tool_button(layout, tool)
+
+            layout.addStretch(1)
 
             grid.addWidget(frame, i // 2, i % 2)
 

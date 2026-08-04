@@ -7,6 +7,7 @@ import os
 import shutil
 import threading
 from src.gui import custom_dialogs as messagebox
+from src.gui.custom_dialogs import _find_theme
 from src.utils.dialogs import ask_directory_native
 from src.gui.progress_dialog import ProgressDialog
 from src import constants as c
@@ -48,9 +49,20 @@ class MigrationWizard(QDialog):
         self.migrate_resources = False
         self.method = ""
 
-        self.accent = c.THEME_COLOR_MAP.get(
-            self.parent_app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue"), "#1f6aa5"
-        )
+        mode, self.accent = _find_theme(self)
+        self.light = mode != "Dark"
+        self._checked_bg = "#dce4ef" if self.light else "#2a3a4a"
+        self.frame_bg  = "#e8e8e8" if self.light else "#333333"
+        self.item_bg   = "#dcdcdc" if self.light else "#3a3a3a"
+        self.header_bg = "#d9d9d9" if self.light else "#2b2b2b"
+        self.input_bg  = "#ffffff" if self.light else "#1e1e1e"
+        self.input_readonly_bg = "#f0f0f0" if self.light else "#2a2a2a"
+        self.text_color = "#1a1a1a" if self.light else "#ffffff"
+        self.muted_color = "#555555" if self.light else "#aaaaaa"
+        self.input_border = "#a0aab8" if self.light else "#555555"
+        self.separator_color = "#cccccc" if self.light else "#444444"
+        self.disabled_bg = "#e0e0e0" if self.light else "#444444"
+        self.disabled_text = "#999999" if self.light else "#666666"
 
         self.setup_ui()
 
@@ -67,11 +79,11 @@ class MigrationWizard(QDialog):
         hl = QHBoxLayout(header)
 
         self.lbl_title = QLabel(c.t("UI_MIGRATION_TITLE"))
-        self.lbl_title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        self.lbl_title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.text_color};")
         hl.addWidget(self.lbl_title)
         hl.addStretch()
         self.lbl_step = QLabel("")
-        self.lbl_step.setStyleSheet("color: #aaaaaa; font-weight: bold; font-size: 13px;")
+        self.lbl_step.setStyleSheet(f"color: {self.muted_color}; font-weight: bold; font-size: 13px;")
         hl.addWidget(self.lbl_step)
         self.main_layout.addWidget(header)
 
@@ -114,7 +126,7 @@ class MigrationWizard(QDialog):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("background: transparent; border: none;")
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
         page = QWidget()
         l = QVBoxLayout(page)
         l.setContentsMargins(40, 30, 40, 30)
@@ -143,9 +155,9 @@ class MigrationWizard(QDialog):
 
         if icon:
             layout.addWidget(self._tl(icon, "font-size: 22px; border: none;"))
-        layout.addWidget(self._tl(title, "font-size: 14px; font-weight: bold; color: white; border: none;"))
+        layout.addWidget(self._tl(title, f"font-size: 14px; font-weight: bold; color: {self.text_color}; border: none;"))
         if description:
-            layout.addWidget(self._tl(description, "color: #aaaaaa; font-size: 10px; border: none;", word_wrap=True))
+            layout.addWidget(self._tl(description, f"color: {self.muted_color}; font-size: 10px; border: none;", word_wrap=True))
 
         self._style_card(card, card_id, False)
         return card
@@ -167,9 +179,9 @@ class MigrationWizard(QDialog):
 
         text_col = QVBoxLayout()
         text_col.setSpacing(4)
-        text_col.addWidget(self._tl(title, "font-size: 15px; font-weight: bold; color: white; border: none;"))
+        text_col.addWidget(self._tl(title, f"font-size: 15px; font-weight: bold; color: {self.text_color}; border: none;"))
         if description:
-            text_col.addWidget(self._tl(description, "color: #aaaaaa; font-size: 11px; border: none;", word_wrap=True))
+            text_col.addWidget(self._tl(description, f"color: {self.muted_color}; font-size: 11px; border: none;", word_wrap=True))
         layout.addLayout(text_col)
         layout.addStretch()
 
@@ -180,27 +192,27 @@ class MigrationWizard(QDialog):
         if checked:
             card.setStyleSheet(f"""
                 QFrame#Card_{card_id} {{
-                    background-color: #2a3a4a;
+                    background-color: {self._checked_bg};
                     border-radius: {c.CORNER_RADIUS}px;
                     border: 2px solid {self.accent};
                     padding: 8px;
                 }}
                 QFrame#Card_{card_id}:hover {{
                     border: 2px solid {self.accent};
-                    background-color: #2a3a4a;
+                    background-color: {self._checked_bg};
                 }}
             """)
         else:
             card.setStyleSheet(f"""
                 QFrame#Card_{card_id} {{
-                    background-color: #333333;
+                    background-color: {self.frame_bg};
                     border-radius: {c.CORNER_RADIUS}px;
-                    border: 2px solid #555555;
+                    border: 2px solid {self.input_border};
                     padding: 8px;
                 }}
                 QFrame#Card_{card_id}:hover {{
                     border: 2px solid #888888;
-                    background-color: #3a3a3a;
+                    background-color: {self.item_bg};
                 }}
             """)
 
@@ -208,27 +220,27 @@ class MigrationWizard(QDialog):
         if checked:
             card.setStyleSheet(f"""
                 QFrame#CardH_{card_id} {{
-                    background-color: #2a3a4a;
+                    background-color: {self._checked_bg};
                     border-radius: {c.CORNER_RADIUS}px;
                     border: 2px solid {self.accent};
                     padding: 8px;
                 }}
                 QFrame#CardH_{card_id}:hover {{
                     border: 2px solid {self.accent};
-                    background-color: #2a3a4a;
+                    background-color: {self._checked_bg};
                 }}
             """)
         else:
             card.setStyleSheet(f"""
                 QFrame#CardH_{card_id} {{
-                    background-color: #333333;
+                    background-color: {self.frame_bg};
                     border-radius: {c.CORNER_RADIUS}px;
-                    border: 2px solid #555555;
+                    border: 2px solid {self.input_border};
                     padding: 8px;
                 }}
                 QFrame#CardH_{card_id}:hover {{
                     border: 2px solid #888888;
-                    background-color: #3a3a3a;
+                    background-color: {self.item_bg};
                 }}
             """)
 
@@ -238,7 +250,7 @@ class MigrationWizard(QDialog):
         scroll, l = self._scrolled_page()
 
         title = QLabel(c.t("UI_WIZARD_STEP_SOURCE_TITLE"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.text_color};")
         l.addWidget(title)
 
         self.source_cards = {}
@@ -258,11 +270,11 @@ class MigrationWizard(QDialog):
         fid_l = QHBoxLayout(self.frame_flatpak)
         fid_l.setContentsMargins(0, 0, 0, 0)
         lbl_appid = QLabel(c.t("UI_LABEL_APP_ID"))
-        lbl_appid.setStyleSheet("color: white; font-weight: bold;")
+        lbl_appid.setStyleSheet(f"color: {self.text_color}; font-weight: bold;")
         fid_l.addWidget(lbl_appid)
         self.entry_flatpak_id = QLineEdit()
         self.entry_flatpak_id.setText(c.DEFAULT_FLATPAK_ID)
-        self.entry_flatpak_id.setStyleSheet(f"background-color: #1e1e1e; color: white; border: 2px solid {self.accent}; border-radius: 6px; padding: 8px; font-size: 13px;")
+        self.entry_flatpak_id.setStyleSheet(f"background-color: {self.input_bg}; color: {self.text_color}; border: 2px solid {self.accent}; border-radius: 6px; padding: 8px; font-size: 13px;")
         self.entry_flatpak_id.textChanged.connect(self._on_flatpak_id_changed)
         fid_l.addWidget(self.entry_flatpak_id)
         self.frame_flatpak.hide()
@@ -271,12 +283,12 @@ class MigrationWizard(QDialog):
         self.entry_src = QLineEdit()
         self.entry_src.setPlaceholderText(c.t("UI_PLACEHOLDER_SOURCE_PATH"))
         self.entry_src.setReadOnly(True)
-        self.entry_src.setStyleSheet("background-color: #2a2a2a; color: #cccccc; border: 1px solid #555555; border-radius: 6px; padding: 8px; font-size: 13px;")
+        self.entry_src.setStyleSheet(f"background-color: {self.input_readonly_bg}; color: {self.muted_color}; border: 1px solid {self.input_border}; border-radius: 6px; padding: 8px; font-size: 13px;")
         l.addWidget(self.entry_src)
 
         self.btn_browse_src = QPushButton(c.t("UI_BUTTON_BROWSE_FOLDER"))
         self.btn_browse_src.setObjectName("BrowseButton")
-        self.btn_browse_src.setStyleSheet(f"background-color: #3a3a3a; color: {self.accent}; border: 1px solid {self.accent}; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: bold;")
+        self.btn_browse_src.setStyleSheet(f"background-color: {self.item_bg}; color: {self.accent}; border: 1px solid {self.accent}; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: bold;")
         self.btn_browse_src.clicked.connect(self._browse_source)
         self.btn_browse_src.hide()
         l.addWidget(self.btn_browse_src, 0, Qt.AlignRight)
@@ -300,19 +312,19 @@ class MigrationWizard(QDialog):
             path = os.path.join(os.path.expanduser("~"), c.LOCAL_SHARE_DIR)
             self.entry_src.setText(path)
             self.entry_src.setReadOnly(True)
-            self.entry_src.setStyleSheet("background-color: #2a2a2a; color: #cccccc; border: 1px solid #555555; border-radius: 6px; padding: 8px; font-size: 13px;")
+            self.entry_src.setStyleSheet(f"background-color: {self.input_readonly_bg}; color: {self.muted_color}; border: 1px solid {self.input_border}; border-radius: 6px; padding: 8px; font-size: 13px;")
             self._validate_source(path)
         elif mode_id == "flatpak":
             app_id = self.entry_flatpak_id.text().strip() or c.DEFAULT_FLATPAK_ID
             path = os.path.join(os.path.expanduser("~"), f"{c.FLATPAK_DATA_DIR}/{app_id}/{c.MCPELAUNCHER_DATA_SUBDIR}")
             self.entry_src.setText(path)
             self.entry_src.setReadOnly(True)
-            self.entry_src.setStyleSheet("background-color: #2a2a2a; color: #cccccc; border: 1px solid #555555; border-radius: 6px; padding: 8px; font-size: 13px;")
+            self.entry_src.setStyleSheet(f"background-color: {self.input_readonly_bg}; color: {self.muted_color}; border: 1px solid {self.input_border}; border-radius: 6px; padding: 8px; font-size: 13px;")
             self._validate_source(path)
         else:
             self.entry_src.setText("")
             self.entry_src.setReadOnly(False)
-            self.entry_src.setStyleSheet(f"background-color: #1e1e1e; color: white; border: 2px solid {self.accent}; border-radius: 6px; padding: 8px; font-size: 13px;")
+            self.entry_src.setStyleSheet(f"background-color: {self.input_bg}; color: {self.text_color}; border: 2px solid {self.accent}; border-radius: 6px; padding: 8px; font-size: 13px;")
             self.entry_src.setPlaceholderText(c.t("UI_WIZARD_SOURCE_CUSTOM_PLACEHOLDER"))
             self.lbl_src_validation.setText("")
             self.source_valid = False
@@ -356,7 +368,7 @@ class MigrationWizard(QDialog):
         scroll, l = self._scrolled_page()
 
         title = QLabel(c.t("UI_WIZARD_STEP_PROFILE_TITLE"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.text_color};")
         l.addWidget(title)
 
         l.addStretch(1)
@@ -365,9 +377,9 @@ class MigrationWizard(QDialog):
         profile_card.setObjectName("ProfileCard")
         profile_card.setStyleSheet(f"""
             QFrame#ProfileCard {{
-                background-color: #333333;
+                background-color: {self.frame_bg};
                 border-radius: {c.CORNER_RADIUS}px;
-                border: 1px solid #555555;
+                border: 1px solid {self.input_border};
                 padding: 20px;
             }}
         """)
@@ -382,11 +394,11 @@ class MigrationWizard(QDialog):
         text_col = QVBoxLayout()
         text_col.setSpacing(6)
         lbl_prof = QLabel(c.t("UI_LABEL_PROFILE"))
-        lbl_prof.setStyleSheet("color: #aaaaaa; font-size: 12px; border: none;")
+        lbl_prof.setStyleSheet(f"color: {self.muted_color}; font-size: 12px; border: none;")
         text_col.addWidget(lbl_prof)
         self.combo_profile = QComboBox()
         self.combo_profile.setMinimumHeight(38)
-        self.combo_profile.setStyleSheet(f"background-color: #1e1e1e; color: white; border: 2px solid {self.accent}; border-radius: 6px; padding: 4px 10px; font-size: 14px;")
+        self.combo_profile.setStyleSheet(f"background-color: {self.input_bg}; color: {self.text_color}; border: 2px solid {self.accent}; border-radius: 6px; padding: 4px 10px; font-size: 14px;")
         profiles = self.parent_app.logic.get_profiles(self.parent_app)
         self.combo_profile.addItems(profiles)
         current = self.parent_app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, profiles[0] if profiles else "Default")
@@ -400,13 +412,13 @@ class MigrationWizard(QDialog):
 
         path_frame = QFrame()
         path_frame.setObjectName("PathFrame")
-        path_frame.setStyleSheet("""
-            QFrame#PathFrame {
-                background-color: #2a2a2a;
+        path_frame.setStyleSheet(f"""
+            QFrame#PathFrame {{
+                background-color: {self.input_readonly_bg};
                 border-radius: 6px;
-                border: 1px solid #444444;
+                border: 1px solid {self.input_border};
                 padding: 10px;
-            }
+            }}
         """)
         pf_l = QHBoxLayout(path_frame)
         pf_l.setContentsMargins(12, 10, 12, 10)
@@ -420,7 +432,7 @@ class MigrationWizard(QDialog):
 
         if len(profiles) <= 1:
             info_lbl = QLabel(c.t("UI_WIZARD_PROFILE_DEFAULT_ONLY"))
-            info_lbl.setStyleSheet("color: #aaaaaa; font-size: 12px; font-style: italic; padding: 8px 0;")
+            info_lbl.setStyleSheet(f"color: {self.muted_color}; font-size: 12px; font-style: italic; padding: 8px 0;")
             l.addWidget(info_lbl)
 
         l.addStretch(2)
@@ -440,7 +452,7 @@ class MigrationWizard(QDialog):
         scroll, l = self._scrolled_page()
 
         title = QLabel(c.t("UI_WIZARD_STEP_CONTENT_TITLE"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.text_color};")
         l.addWidget(title)
 
         l.addStretch(1)
@@ -467,7 +479,7 @@ class MigrationWizard(QDialog):
         self.frame_custom.setObjectName("CustomContentFrame")
         self.frame_custom.setStyleSheet(f"""
             QFrame#CustomContentFrame {{
-                background-color: #2a2a2a;
+                background-color: {self.item_bg};
                 border-radius: {c.CORNER_RADIUS}px;
                 border: 1px solid {self.accent};
                 padding: 16px;
@@ -510,11 +522,11 @@ class MigrationWizard(QDialog):
         scroll, l = self._scrolled_page()
 
         title = QLabel(c.t("UI_WIZARD_STEP_METHOD_TITLE"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.text_color};")
         l.addWidget(title)
 
         sub = QLabel(c.t("UI_WIZARD_METHOD_SUB"))
-        sub.setStyleSheet("color: #aaaaaa; font-size: 12px; border: none;")
+        sub.setStyleSheet(f"color: {self.muted_color}; font-size: 12px; border: none;")
         sub.setWordWrap(True)
         l.addWidget(sub)
 
@@ -546,7 +558,7 @@ class MigrationWizard(QDialog):
         scroll, l = self._scrolled_page()
 
         title = QLabel(c.t("UI_WIZARD_STEP_SUMMARY_TITLE"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.text_color};")
         l.addWidget(title)
 
         l.addStretch(1)
@@ -555,9 +567,9 @@ class MigrationWizard(QDialog):
         self.summary_frame.setObjectName("SummaryFrame")
         self.summary_frame.setStyleSheet(f"""
             QFrame#SummaryFrame {{
-                background-color: #333333;
+                background-color: {self.frame_bg};
                 border-radius: {c.CORNER_RADIUS}px;
-                border: 1px solid #555555;
+                border: 1px solid {self.input_border};
                 padding: 20px;
             }}
         """)
@@ -568,8 +580,8 @@ class MigrationWizard(QDialog):
         for key in ["source", "dest", "profile", "items", "method"]:
             row = QHBoxLayout()
             lbl_key = c.t(f"UI_WIZARD_SUMMARY_LABEL_{key.upper()}")
-            row.addWidget(self._tl(f"<b>{lbl_key}:</b>", "color: #aaaaaa; font-size: 13px;"))
-            val = self._tl("", "color: white; font-size: 13px;")
+            row.addWidget(self._tl(f"<b>{lbl_key}:</b>", f"color: {self.muted_color}; font-size: 13px;"))
+            val = self._tl("", f"color: {self.text_color}; font-size: 13px;")
             row.addWidget(val)
             row.addStretch()
             sl.addLayout(row)
@@ -781,38 +793,38 @@ class MigrationWizard(QDialog):
     # ─────────────── Styling ───────────────
 
     def apply_styles(self):
-        accent = c.THEME_COLOR_MAP.get(self.parent_app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue"), "#1f6aa5")
         self.setStyleSheet(self.styleSheet() + f"""
-            QDialog {{ background-color: #242424; }}
-            #HeaderFrame {{ background-color: #333333; border-bottom: 1px solid #444444; }}
-            #FooterFrame {{ background-color: #2b2b2b; border-top: 1px solid #444444; }}
-            QLabel {{ color: #DCE4EE; }}
+            QDialog {{ background-color: {'#f4f5f7' if self.light else '#2b2b2b'}; }}
+            #HeaderFrame {{ background-color: {'#f4f5f7' if self.light else '#2b2b2b'}; border-bottom: 1px solid {self.separator_color}; }}
+            #FooterFrame {{ background-color: {'#f4f5f7' if self.light else '#2b2b2b'}; border-top: 1px solid {self.separator_color}; }}
+            QLabel {{ color: {self.text_color}; }}
             QPushButton {{ 
-                background-color: {accent}; color: white; border: none;
+                background-color: {self.accent}; color: white; border: none;
                 border-radius: 8px; font-weight: bold; padding: 8px;
                 font-size: 13px;
             }}
-            QPushButton:hover {{ background-color: {accent}dd; }}
-            QPushButton:disabled {{ background-color: #444444; color: #666666; }}
+            QPushButton:hover {{ background-color: {self.accent}dd; }}
+            QPushButton:disabled {{ background-color: {self.disabled_bg}; color: {self.disabled_text}; }}
             QPushButton#BrowseButton {{ 
-                background-color: #3a3a3a; border: 1px solid {accent}; color: {accent};
+                background-color: {self.item_bg}; border: 1px solid {self.accent}; color: {self.accent};
                 padding: 8px 18px; font-size: 13px; border-radius: 8px;
             }}
-            QPushButton#BrowseButton:hover {{ background-color: #4a4a4a; border: 1px solid white; }}
+            QPushButton#BrowseButton:hover {{ background-color: {'#4a4a4a' if not self.light else '#c6c6c6'}; border: 1px solid {self.text_color}; }}
             QLineEdit {{ 
-                background-color: #1e1e1e; color: white; border: 1px solid #666666; 
+                background-color: {self.input_bg}; color: {self.text_color}; border: 1px solid {self.input_border}; 
                 border-radius: 6px; padding: 8px; min-height: 20px;
             }}
-            QLineEdit:focus {{ border: 1px solid {accent}; }}
-            QLineEdit:read-only {{ background-color: #2a2a2a; color: #cccccc; border: 1px solid #444444; }}
+            QLineEdit:focus {{ border: 1px solid {self.accent}; }}
+            QLineEdit:read-only {{ background-color: {self.input_readonly_bg}; color: {self.muted_color}; border: 1px solid {self.input_border}; }}
             QComboBox {{ 
-                background-color: #1e1e1e; color: white; border: 1px solid #666666; 
+                background-color: {self.input_bg}; color: {self.text_color}; border: 1px solid {self.input_border}; 
                 border-radius: 6px; padding: 6px 10px; min-height: 28px;
                 font-size: 13px;
+                background-clip: padding-box;
             }}
-            QComboBox:hover {{ border: 1px solid #aaaaaa; }}
+            QComboBox:hover {{ border: 1px solid {self.muted_color}; }}
             QComboBox::drop-down {{ 
-                border: none; width: 32px; 
+                border: none; width: 32px; background: transparent;
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
             }}
@@ -820,12 +832,12 @@ class MigrationWizard(QDialog):
                 width: 10px; height: 10px;
             }}
             QComboBox QAbstractItemView {{
-                background-color: #2a2a2a; color: white; 
-                selection-background-color: {accent}; border: 1px solid #555555;
+                background-color: {self.item_bg}; color: {self.text_color}; 
+                selection-background-color: {self.accent}; border: 1px solid {self.input_border};
                 border-radius: 4px; padding: 4px;
                 outline: none;
             }}
-            QCheckBox {{ color: #DCE4EE; spacing: 8px; font-size: 13px; }}
+            QCheckBox {{ color: {self.text_color}; spacing: 8px; font-size: 13px; }}
             QCheckBox::indicator {{ width: 18px; height: 18px; }}
             QScrollArea {{ background: transparent; border: none; }}
         """)

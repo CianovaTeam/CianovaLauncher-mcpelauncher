@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPainterPath, QAction
 import os
+import re
 import sys
 import time
 
@@ -107,7 +108,11 @@ class CianovaLauncherApp(QMainWindow):
         self.main_layout.setContentsMargins(5, 5, 5, 5)
 
         self.tab_widget = QTabWidget()
+        self.tab_widget.setObjectName("MainTabs")
         self.tab_widget.setDocumentMode(True)
+        # Native drawBase line renders as a dark horizontal line above the
+        # tab bar in light mode; the QSS already styles the tabs, so disable it.
+        self.tab_widget.tabBar().setDrawBase(False)
         self.main_layout.addWidget(self.tab_widget)
 
         self.play_tab = PlayTab(self.tab_widget, self)
@@ -190,6 +195,25 @@ class CianovaLauncherApp(QMainWindow):
         self.update_background()
         self.update_sticker()
         self.update_floating_labels()
+        self._update_tab_bar_qss()
+
+    def _update_tab_bar_qss(self):
+        """Recompute the tab bar width so it stays aligned after a resize."""
+        inset = c.SECTION_PADDING
+        width = max(120, self.tab_widget.width() - 2 * inset)
+        block = (
+            f"QTabWidget#MainTabs::tab-bar {{\n"
+            f"                top: 0px;\n"
+            f"                left: {inset}px;\n"
+            f"                width: {width}px;\n"
+            f"                border: none;\n"
+            f"            }}"
+        )
+        app = QApplication.instance()
+        ss = app.styleSheet()
+        new_ss, n = re.subn(r"QTabWidget#MainTabs::tab-bar\s*\{[^}]*\}", lambda m: block, ss, count=1)
+        if n and new_ss != ss:
+            app.setStyleSheet(new_ss)
 
     def update_sticker_visibility(self, index):
         """Show or hide the sticker based on the current tab index."""
@@ -364,13 +388,17 @@ class CianovaLauncherApp(QMainWindow):
             return
         self._last_qss_params = params
 
-        bg = "#242424" if mode == "Dark" else "#ebebeb"
-        text = "#DCE4EE" if mode == "Dark" else "#242424"
-        tab_bg = "#333333" if mode == "Dark" else "#d0d0d0"
+        bg = "#242424" if mode == "Dark" else "#eef1f5"
+        text = "#DCE4EE" if mode == "Dark" else "#1a1a1a"
+        tab_bg = "#333333" if mode == "Dark" else "#cfd6e0"
 
-        input_bg = "#333333" if mode == "Dark" else "#ffffff"
-        input_text = "white" if mode == "Dark" else "#242424"
-        input_border = "#444444" if mode == "Dark" else "#cccccc"
+        # Tab bar inset to match the content panels below (SECTION_PADDING each side)
+        tab_inset = c.SECTION_PADDING
+        tab_bar_width = max(120, self.tab_widget.width() - 2 * tab_inset)
+
+        input_bg = "#2a2a2a" if mode == "Dark" else "#ffffff"
+        input_text = "#ffffff" if mode == "Dark" else "#1a1a1a"
+        input_border = "#555555" if mode == "Dark" else "#c1c9d4"
 
         section_opacity = section_opacity_val / 100.0
         from src.utils.colors import hex_to_rgba, adjust_color
@@ -385,6 +413,18 @@ class CianovaLauncherApp(QMainWindow):
             bg_qss = f"background: transparent;"
         else:
             bg_qss = f"background-color: {bg};"
+
+        # Background image rendered inside Play/Tools scroll content so the
+        # configured background stays visible behind the version list/cards.
+        if has_bg:
+            bg_path_escaped = bg_path.replace("\\", "/").replace('"', '\\"')
+            bg_image_qss = (
+                f'background-image: url("{bg_path_escaped}");\n'
+                f"                background-repeat: no-repeat;\n"
+                f"                background-position: center;\n"
+            )
+        else:
+            bg_image_qss = ""
 
         # Generate down-arrow pixmap for QComboBox (stylesheets suppress native arrow)
         arrow_size = 12
@@ -423,7 +463,7 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {bg};
             }}
             QTabWidget::pane {{
-                border: 1px solid {input_border};
+                border: 1px solid {hex_to_rgba(input_border, 0.4)};
                 background: transparent;
                 border-radius: {c.CORNER_RADIUS}px;
                 top: -1px;
@@ -443,6 +483,7 @@ class CianovaLauncherApp(QMainWindow):
                 font-weight: bold;
                 margin: 2px;
                 border: none;
+                outline: none;
             }}
             QTabBar::tab:selected {{
                 background: {accent};
@@ -451,8 +492,10 @@ class CianovaLauncherApp(QMainWindow):
             QTabBar::tab:hover:!selected {{
                 background: {hex_to_rgba("#ffffff" if mode == "Dark" else "#000000", 0.08)};
             }}
-            QTabWidget::tab-bar {{
+            QTabWidget#MainTabs::tab-bar {{
                 top: 0px;
+                left: {tab_inset}px;
+                width: {tab_bar_width}px;
                 border: none;
             }}
             QPushButton {{
@@ -460,7 +503,7 @@ class CianovaLauncherApp(QMainWindow):
                 color: white;
                 border: 1px solid {accent};
                 border-radius: {c.RADIUS_BUTTON}px;
-                padding: 8px 15px;
+                padding: 6px 14px;
                 font-size: 13px;
                 font-weight: bold;
             }}
@@ -472,9 +515,19 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {adjust_color(accent, -15)};
                 border: 1px solid {adjust_color(accent, -15)};
             }}
+            QPushButton:disabled {{
+                background-color: {"#444444" if mode == "Dark" else "#dcdce0"};
+                color: {"#666666" if mode == "Dark" else "#9a9aa0"};
+                border: 1px solid {"#444444" if mode == "Dark" else "#c8c8cd"};
+            }}
             QPushButton:flat {{
                 background-color: {accent};
                 color: white;
+                border: none;
+            }}
+            QPushButton:flat:disabled {{
+                background-color: {"#444444" if mode == "Dark" else "#dcdce0"};
+                color: {"#666666" if mode == "Dark" else "#9a9aa0"};
                 border: none;
             }}
             QLineEdit, QComboBox, QSpinBox, QTextEdit {{
@@ -489,6 +542,7 @@ class CianovaLauncherApp(QMainWindow):
                 width: 25px; 
                 border-top-right-radius: {c.RADIUS_INPUT}px;
                 border-bottom-right-radius: {c.RADIUS_INPUT}px;
+                background: transparent;
             }}
             QComboBox::down-arrow {{
                 image: url("{arrow_path}");
@@ -513,6 +567,10 @@ class CianovaLauncherApp(QMainWindow):
             QComboBox QAbstractItemView::item:hover {{
                 background-color: {hex_to_rgba(accent, 0.3)};
             }}
+            QCheckBox, QRadioButton {{
+                color: {text};
+                spacing: 6px;
+            }}
             QCheckBox::indicator, QRadioButton::indicator {{
                 width: 18px; height: 18px; border-radius: {c.RADIUS_TINY}px;
                 border: 2px solid {accent}; background: {input_bg};
@@ -531,17 +589,26 @@ class CianovaLauncherApp(QMainWindow):
             QPushButton#PlayButton:hover, QPushButton#SaveButton:hover, QPushButton#ActionButton:hover {{
                 background-color: {adjust_color(accent, 20)};
             }}
+            QPushButton#PlayButton:disabled, QPushButton#SaveButton:disabled, QPushButton#ActionButton:disabled {{
+                background-color: {"#444444" if mode == "Dark" else "#dcdce0"};
+                color: {"#888888" if mode == "Dark" else "#9a9aa0"};
+                border: 1px solid {"#444444" if mode == "Dark" else "#c8c8cd"};
+            }}
             QPushButton#ToolButton {{
                 background-color: {accent};
                 color: white;
                 border: none;
                 border-radius: {c.RADIUS_BUTTON}px;
                 font-weight: bold;
-                min-width: 30px;
-                min-height: 30px;
+                min-width: 22px;
+                min-height: 22px;
             }}
             QPushButton#ToolButton:hover {{
                 background-color: {adjust_color(accent, 20)};
+            }}
+            QPushButton#ToolButton:disabled {{
+                background-color: {"#444444" if mode == "Dark" else "#dcdce0"};
+                color: {"#888888" if mode == "Dark" else "#9a9aa0"};
             }}
             QFrame#ToolCard, QFrame#GroupFrame, QFrame#VersionCard {{
                 border-radius: {c.CORNER_RADIUS}px;
@@ -553,6 +620,19 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {frame_bg_opaque};
             }}
 
+            #SettingsTab, #LogsTab {{
+                background-color: {bg};
+            }}
+            #PlayTab, #ToolsTab {{
+                background-color: transparent;
+            }}
+            #SettingsTab QStackedWidget, #SettingsTab QStackedWidget > QWidget {{
+                background-color: {bg};
+            }}
+            #AboutTab {{
+                background-color: {frame_bg_opaque};
+            }}
+
             #ToolsTab QFrame#GroupFrame, #ToolsTab QFrame#ToolCard,
             #SettingsTab QFrame#GroupFrame {{
                 background-color: {frame_bg_transparent};
@@ -561,6 +641,23 @@ class CianovaLauncherApp(QMainWindow):
             QScrollArea#GroupFrame {{
                 background-color: transparent;
                 border: none;
+            }}
+            QScrollArea > QWidget > QWidget#SettingsPageContent {{
+                background-color: {bg};
+            }}
+            #PlayTab QScrollArea > QWidget > QWidget#VersionList,
+            #ToolsTab QScrollArea > QWidget > QWidget#ScrollContent {{
+                background-color: {bg};
+                {bg_image_qss}
+            }}
+            #AboutTab QScrollArea {{
+                background-color: {frame_bg_opaque};
+            }}
+            #AboutTab QScrollArea > QWidget > QWidget#ScrollContent {{
+                background-color: {frame_bg_opaque};
+            }}
+            #SettingsTab QScrollArea {{
+                background-color: {bg};
             }}
             QFrame#ToolCard:hover, QFrame#VersionCard:hover, QFrame#GroupFrame:hover {{
                 border: 1px solid {accent};
@@ -576,31 +673,34 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {floating_label_bg};
                 color: {text};
                 padding: 5px 15px;
-                border-radius: 10px;
+                border-radius: 4px;
                 border: {floating_label_border};
                 qproperty-alignment: 'AlignCenter';
             }}
+            QSlider:horizontal {{
+                min-height: 24px;
+            }}
             QSlider::groove:horizontal {{
-                border: none;
-                height: 4px;
-                background: {hex_to_rgba(input_bg, 0.5)};
+                background: {"#4a4a4a" if mode == "Dark" else "#c9c9c9"};
+                height: 6px;
+                border-radius: 3px;
+                border: 1px solid {input_border};
                 margin: 2px 0;
-                border-radius: 2px;
             }}
             QSlider::handle:horizontal {{
                 background: {accent};
-                border: none;
-                width: 14px;
-                height: 14px;
-                margin: -5px 0;
-                border-radius: 7px;
+                border: 1px solid {input_border};
+                width: 16px;
+                height: 16px;
+                margin: -3px 0;
+                border-radius: 8px;
             }}
             QSlider::handle:horizontal:hover {{
                 background: {adjust_color(accent, 20)};
             }}
             QSlider::sub-page:horizontal {{
                 background: {accent};
-                border-radius: 2px;
+                border-radius: 3px;
             }}
             QComboBox::item:selected {{
                 background-color: {accent};
@@ -610,12 +710,12 @@ class CianovaLauncherApp(QMainWindow):
                 background: {tab_bg};
                 width: 12px;
                 margin: 0px;
-                border-radius: 6px;
+                border-radius: 4px;
             }}
             QScrollBar::handle:vertical {{
                 background: {accent};
                 min-height: 20px;
-                border-radius: 6px;
+                border-radius: 4px;
             }}
             QScrollBar::handle:vertical:hover {{
                 background: {adjust_color(accent, 30)};
@@ -627,35 +727,88 @@ class CianovaLauncherApp(QMainWindow):
                 background: {tab_bg};
                 height: 12px;
                 margin: 0px;
-                border-radius: 6px;
+                border-radius: 4px;
             }}
             QScrollBar::handle:horizontal {{
                 background: {accent};
                 min-width: 20px;
-                border-radius: 6px;
+                border-radius: 4px;
             }}
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
                 width: 0px;
             }}
-            #SettingsTab QPushButton#CategoryButton {{
+            /* ── Settings sidebar ── */
+            QFrame#SettingsSidebar {{
+                background-color: {hex_to_rgba(frame_bg_base, 0.5)};
+                border-right: 1px solid {hex_to_rgba(input_border, 0.4)};
+                border-top-left-radius: {c.CORNER_RADIUS}px;
+                border-bottom-left-radius: {c.CORNER_RADIUS}px;
+            }}
+            QPushButton#SidebarButton {{
                 background: transparent;
-                color: #999;
+                color: {"#333333" if mode == "Light" else "#cccccc"};
                 border: none;
-                border-radius: 8px;
-                padding: 8px 20px;
+                border-radius: 4px;
+                padding: 10px 14px;
                 font-size: 13px;
                 font-weight: bold;
-                min-width: 100px;
+                text-align: left;
+                min-width: 35px;
+                min-height: 42px;
             }}
-            #SettingsTab QPushButton#CategoryButton:hover {{
-                background: {"#444444" if mode == "Dark" else "#bbbbbb"};
-                color: white;
+            QPushButton#SidebarButton:hover {{
+                background: {"#d8d8d8" if mode == "Light" else "#333333"};
+                color: {"#000000" if mode == "Light" else "white"};
             }}
-            #SettingsTab QPushButton#CategoryButton[active="true"] {{
+            QPushButton#SidebarButton:disabled {{
                 background: transparent;
+                color: {"#9a9aa0" if mode == "Light" else "#666666"};
+            }}
+            QPushButton#SidebarButton[active="true"] {{
+                background: {"#cccccc" if mode == "Light" else "#2a2a2a"};
                 color: {accent};
-                border-bottom: 2px solid {accent};
+                border-left: 4px solid {accent};
                 border-radius: 0px;
+            }}
+            QPushButton#SidebarToggle {{
+                background: transparent;
+                color: {"#333333" if mode == "Light" else "#cccccc"};
+                border: none;
+                border-radius: 4px;
+                font-size: 16px;
+                font-weight: bold;
+                min-height: 38px;
+            }}
+            QPushButton#SidebarToggle:hover {{
+                background: {"#d8d8d8" if mode == "Light" else "#333333"};
+                color: {"#000000" if mode == "Light" else "white"};
+            }}
+            QPushButton#SidebarToggle:disabled {{
+                background: transparent;
+                color: {"#9a9aa0" if mode == "Light" else "#666666"};
+            }}
+            /* ── QGroupBox in Settings ── */
+            #SettingsTab QGroupBox {{
+                border: 1px solid {hex_to_rgba(input_border, 0.35)};
+                border-radius: 4px;
+                margin-top: 1.5ex;
+                padding: 18px 10px 10px 10px;
+                background-color: {frame_bg_transparent};
+            }}
+            #SettingsTab QGroupBox::title {{
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 8px;
+                color: {text};
+                font-weight: bold;
+            }}
+            #SettingsTab QGroupBox:hover {{
+                border: 1px solid {accent};
+            }}
+            /* ── Settings footer bar ── */
+            QFrame#SettingsFooterBar {{
+                background-color: {frame_bg_opaque};
+                border-top: 1px solid {hex_to_rgba(input_border, 0.4)};
             }}
             /* Generic scroll areas remain transparent */
             QScrollArea, QScrollArea > QWidget {{
@@ -667,6 +820,9 @@ class CianovaLauncherApp(QMainWindow):
             QApplication.instance().setStyleSheet(qss)
         except Exception as e:
             logger.warning(f"Failed to apply global stylesheet: {e}")
+
+        if hasattr(self, "settings_tab"):
+            self.settings_tab._refresh_per_widget_styles()
 
         # Apply drop shadow to all card-type frames
         shadow_color = QColor(0, 0, 0, 60) if mode == "Dark" else QColor(0, 0, 0, 30)
@@ -696,6 +852,18 @@ class CianovaLauncherApp(QMainWindow):
                     widget.show()
             else:
                 widget.show()
+
+    def retranslate_all(self):
+        self.setWindowTitle(c.t("UI_TITLE_VERSION"))
+        self.tab_widget.setTabText(0, c.t("UI_TAB_PLAY"))
+        self.tab_widget.setTabText(1, c.t("UI_TAB_TOOLS"))
+        self.tab_widget.setTabText(2, c.t("UI_TAB_SETTINGS"))
+        self.tab_widget.setTabText(3, c.t("UI_TAB_ABOUT"))
+        self.tab_widget.setTabText(4, c.t("UI_TAB_LOGS"))
+        for tab in (self.play_tab, self.tools_tab, self.settings_tab, self.about_tab, self.logs_tab):
+            if hasattr(tab, "retranslate_ui"):
+                tab.retranslate_ui()
+        self.update_floating_labels()
 
     def show_info(self, title, msg):
         """Show an information dialog with the given title and message."""

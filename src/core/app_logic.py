@@ -894,6 +894,8 @@ from .version_ops import (
     resolve_version,
     rename_version,
     create_version_shortcut,
+    remove_version_shortcut,
+    restore_from_backup,
     process_apk,
 )
 from .profiles import (

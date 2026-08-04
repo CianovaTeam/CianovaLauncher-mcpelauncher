@@ -31,17 +31,17 @@ class LogsTab(QWidget):
         self._indicator = indicator
         header.addWidget(indicator)
 
-        label = QLabel(c.t("UI_LOG_VIEWER_LABEL"))
-        label.setStyleSheet("font-weight: bold; font-size: 13px;")
-        header.addWidget(label)
+        self._title_label = QLabel(c.t("UI_LOG_VIEWER_LABEL"))
+        self._title_label.setStyleSheet("font-weight: bold; font-size: 13px;")
+        header.addWidget(self._title_label)
         header.addStretch()
 
         self._combo = QComboBox()
         header.addWidget(self._combo)
 
-        export_btn = QPushButton(c.t("UI_BUTTON_EXPORT_LOG"))
-        export_btn.clicked.connect(self._export_log)
-        header.addWidget(export_btn)
+        self._export_btn = QPushButton(c.t("UI_BUTTON_EXPORT_LOG"))
+        self._export_btn.clicked.connect(self._export_log)
+        header.addWidget(self._export_btn)
 
         layout.addLayout(header)
 
@@ -129,6 +129,10 @@ class LogsTab(QWidget):
         self._indicator.setToolTip(
             "Log activo — sesión actual" if is_live else "Log inactivo — sesión anterior"
         )
+
+    def retranslate_ui(self):
+        self._title_label.setText(c.t("UI_LOG_VIEWER_LABEL"))
+        self._export_btn.setText(c.t("UI_BUTTON_EXPORT_LOG"))
 
     def _export_log(self):
         fname = self._combo.currentText()

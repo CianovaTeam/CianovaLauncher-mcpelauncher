@@ -2,6 +2,20 @@ from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushBu
 from PySide6.QtCore import Qt
 from src import constants as c
 
+
+def _find_theme(parent):
+    """Walk up the parent chain looking for a config to read appearance/theme."""
+    obj = parent
+    while obj is not None:
+        cfg = getattr(obj, "config", None) or getattr(obj, "config_manager", None)
+        if cfg is not None:
+            mode = cfg.get(c.CONFIG_KEY_APPEARANCE, "Dark")
+            theme_color = cfg.get(c.CONFIG_KEY_COLOR_THEME, "blue")
+            return mode, c.THEME_COLOR_MAP.get(theme_color, "#1f6aa5")
+        obj = obj.parent()
+    return "Dark", c.THEME_COLOR_MAP.get("blue", "#1f6aa5")
+
+
 class CustomDialog(QDialog):
     """A themed dialog with icon, message, and customizable action buttons."""
 
@@ -9,6 +23,12 @@ class CustomDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.result_value = None
+
+        mode, self.accent = _find_theme(parent)
+        light = mode != "Dark"
+        self.dialog_bg = "#f4f5f7" if light else "#242424"
+        self.text_color = "#1a1a1a" if light else "#ffffff"
+        self.muted_color = "#555555" if light else "#a0a0a0"
 
         # Base size and layout
         self.setMinimumWidth(450)
@@ -58,12 +78,12 @@ class CustomDialog(QDialog):
             self.msg_widget.setPlainText(message)
             self.msg_widget.setReadOnly(True)
             self.msg_widget.setFrameStyle(QFrame.NoFrame)
-            self.msg_widget.setStyleSheet("background: transparent; font-size: 13px; color: white;")
+            self.msg_widget.setStyleSheet(f"background: transparent; font-size: 13px; color: {self.text_color};")
             self.msg_widget.setMinimumHeight(150)
         else:
             self.msg_widget = QLabel(message)
             self.msg_widget.setWordWrap(True)
-            self.msg_widget.setStyleSheet("font-size: 14px; color: white; background: transparent;")
+            self.msg_widget.setStyleSheet(f"font-size: 14px; color: {self.text_color}; background: transparent;")
             self.msg_widget.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
 
         msg_layout.addWidget(self.msg_widget)
@@ -85,7 +105,7 @@ class CustomDialog(QDialog):
             is_positive = any(word in opt_low for word in ["sí", "yes", "ok", "confirm", "instalar", "play", "jugar"])
             is_negative = any(word in opt_low for word in ["no", "cancel", "borrar", "delete", "eliminar"])
 
-            bg_color = c.COLOR_BLUE_BUTTON
+            bg_color = self.accent
             if is_positive:
                 bg_color = c.COLOR_PRIMARY_GREEN
             elif is_negative:
@@ -110,16 +130,16 @@ class CustomDialog(QDialog):
             btn.clicked.connect(lambda checked=False, val=opt: self.close_with_result(val))
             self.btn_layout.addWidget(btn)
 
-        # Styling the dialog itself (Dark mode by default)
+        # Styling the dialog itself (theme-aware)
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: #242424;
+                background-color: {self.dialog_bg};
             }}
             #MainFrame {{
-                background-color: #242424;
+                background-color: {self.dialog_bg};
             }}
             QLabel, QTextEdit {{
-                color: white;
+                color: {self.text_color};
                 background-color: transparent;
             }}
         """)

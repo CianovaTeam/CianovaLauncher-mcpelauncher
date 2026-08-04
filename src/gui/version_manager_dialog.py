@@ -19,6 +19,13 @@ class VersionManagerDialog(QDialog):
         self.setWindowTitle(c.t("UI_MANAGE_VERSION_TITLE"))
         self.setMinimumSize(520, 500)
 
+        mode = self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark")
+        self.light = mode != "Dark"
+        self.accent = c.THEME_COLOR_MAP.get(self.app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue"), "#1f6aa5")
+        self.input_bg = "#ffffff" if self.light else "#333"
+        self.input_text = "#1a1a1a" if self.light else "#ffffff"
+        self.input_border = "#a0aab8" if self.light else "#555"
+
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
@@ -34,7 +41,7 @@ class VersionManagerDialog(QDialog):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setStyleSheet("background: transparent; border: none;")
+        self.scroll_area.setStyleSheet("QScrollArea { background: transparent; border: none; }")
         self.scroll_area.setWidget(self.container)
         self.main_layout.addWidget(self.scroll_area)
 
@@ -71,11 +78,11 @@ class VersionManagerDialog(QDialog):
         rename_row = QHBoxLayout()
         rename_row.addWidget(QLabel(c.t("UI_BUTTON_RENAME") + ":"))
         self.entry_rename = QLineEdit()
-        self.entry_rename.setStyleSheet("background-color: #333; color: white; border: 1px solid #555; border-radius: 6px; padding: 4px 8px;")
+        self.entry_rename.setStyleSheet(f"background-color: {self.input_bg}; color: {self.input_text}; border: 1px solid {self.input_border}; border-radius: 6px; padding: 4px 8px;")
         rename_row.addWidget(self.entry_rename)
         self.btn_rename = QPushButton(c.t("UI_BUTTON_RENAME"))
         self.btn_rename.setFixedWidth(100)
-        self.btn_rename.setStyleSheet("background-color: #1f6aa5; color: white; border: none; border-radius: 8px; font-weight: bold;")
+        self.btn_rename.setStyleSheet(f"background-color: {self.accent}; color: white; border: none; border-radius: 8px; font-weight: bold;")
         self.btn_rename.clicked.connect(self.rename_version)
         rename_row.addWidget(self.btn_rename)
         self.info_layout.addLayout(rename_row)
@@ -135,7 +142,7 @@ class VersionManagerDialog(QDialog):
         # Preview Area
         preview_frame = QFrame()
         preview_frame.setFixedSize(120, 120)
-        preview_frame.setStyleSheet("background: #333; border-radius: 10px; border: 1px solid #555;")
+        preview_frame.setStyleSheet(f"background: {self.input_bg}; border-radius: 10px; border: 1px solid {self.input_border};")
         preview_layout = QVBoxLayout(preview_frame)
         preview_layout.setAlignment(Qt.AlignCenter)
         self.lbl_preview = QLabel()
@@ -148,25 +155,30 @@ class VersionManagerDialog(QDialog):
         preview_container.addStretch()
         self.info_layout.addLayout(preview_container)
 
-        # Acciones de Archivo - centered and smaller buttons
+        # Acciones de Archivo - centered action row (backup / restore / delete)
         file_actions = QHBoxLayout()
         file_actions.setContentsMargins(0, 10, 0, 5)
+        file_actions.setSpacing(8)
         file_actions.setAlignment(Qt.AlignCenter | Qt.AlignHCenter)
-        
+
         self.btn_move = QPushButton(c.t("UI_MOVE_TO_BACKUP"))
-        self.btn_move.setFixedWidth(120)
         self.btn_move.setFixedHeight(36)
         self.btn_move.setStyleSheet(f"background-color: {c.COLOR_YELLOW_BUTTON}; color: white; border-radius: 8px; font-weight: bold; border: 1px solid {c.COLOR_YELLOW_BUTTON};")
         self.btn_move.clicked.connect(self.move_to_backup)
         file_actions.addWidget(self.btn_move)
 
+        self.btn_restore = QPushButton(c.t("UI_BUTTON_RESTORE_BACKUP"))
+        self.btn_restore.setFixedHeight(36)
+        self.btn_restore.setStyleSheet(f"background-color: {c.COLOR_PRIMARY_GREEN}; color: white; border-radius: 8px; font-weight: bold; border: 1px solid {c.COLOR_PRIMARY_GREEN};")
+        self.btn_restore.clicked.connect(self.restore_from_backup)
+        file_actions.addWidget(self.btn_restore)
+
         self.btn_delete = QPushButton(c.t("UI_DELETE_PERMANENTLY"))
-        self.btn_delete.setFixedWidth(100)
         self.btn_delete.setFixedHeight(36)
         self.btn_delete.setStyleSheet(f"background-color: {c.COLOR_RED_BUTTON}; color: white; border-radius: 8px; font-weight: bold; border: 1px solid {c.COLOR_RED_BUTTON};")
         self.btn_delete.clicked.connect(self.delete_permanently)
         file_actions.addWidget(self.btn_delete)
-        
+
         self.container_layout.addLayout(file_actions)
 
         # Shortcut Section
@@ -174,11 +186,22 @@ class VersionManagerDialog(QDialog):
         lbl_shortcut.setStyleSheet("font-weight: bold; margin-top: 10px;")
         self.container_layout.addWidget(lbl_shortcut)
 
+        shortcut_actions = QHBoxLayout()
+        shortcut_actions.setSpacing(8)
+
         self.btn_create_shortcut = QPushButton(c.t("UI_BUTTON_CREATE_MAIN"))
         self.btn_create_shortcut.setStyleSheet(f"background-color: {c.COLOR_GREEN_BUTTON}; color: white; border: 1px solid {c.COLOR_GREEN_BUTTON};")
         self.btn_create_shortcut.setFixedHeight(38)
         self.btn_create_shortcut.clicked.connect(self.create_shortcut)
-        self.container_layout.addWidget(self.btn_create_shortcut)
+        shortcut_actions.addWidget(self.btn_create_shortcut, 1)
+
+        self.btn_remove_shortcut = QPushButton(c.t("UI_BUTTON_REMOVE_SHORTCUT"))
+        self.btn_remove_shortcut.setStyleSheet("background-color: #888888; color: white; border: none;")
+        self.btn_remove_shortcut.setFixedHeight(38)
+        self.btn_remove_shortcut.clicked.connect(self.remove_shortcut)
+        shortcut_actions.addWidget(self.btn_remove_shortcut, 1)
+
+        self.container_layout.addLayout(shortcut_actions)
 
         self.container_layout.addStretch()
 
@@ -204,9 +227,13 @@ class VersionManagerDialog(QDialog):
         if not version:
             self.info_frame.setEnabled(False)
             self.btn_create_shortcut.setEnabled(False)
+            self.btn_remove_shortcut.setEnabled(False)
+            self.btn_restore.setEnabled(False)
             return
         self.info_frame.setEnabled(True)
         self.btn_create_shortcut.setEnabled(True)
+        self.btn_remove_shortcut.setEnabled(True)
+        self.btn_restore.setEnabled(True)
         self.lbl_prompt.setText(c.t("UI_MANAGE_VERSION_PROMPT", version=version))
         self.entry_rename.setText(version)
 
@@ -362,3 +389,16 @@ class VersionManagerDialog(QDialog):
         version = self.combo_versions.currentText()
         if not version: return
         self.app.logic.create_version_shortcut(self.app, version)
+
+    def remove_shortcut(self):
+        """Remove the shortcut(s) for the selected version."""
+        version = self.combo_versions.currentText()
+        if not version: return
+        self.app.logic.remove_version_shortcut(self.app, version)
+
+    def restore_from_backup(self):
+        """Restore the selected version folder from the backup directory."""
+        version = self.combo_versions.currentText()
+        if not version: return
+        self.app.logic.restore_from_backup(self.app, version)
+        self.refresh_versions()
