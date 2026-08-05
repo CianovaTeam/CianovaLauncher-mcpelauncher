@@ -23,9 +23,19 @@ UI_SETUP_FINISH_SUB = """¡Muchas gracias por elegir CianovaLauncher v{VERSION_L
 
 Este proyecto ha sido desarrollado con dedicación para ofrecerte la mejor experiencia en Linux. Aquí tienes un pequeño resumen de lo que puedes hacer:
 
+<br><br>
+
 🎮 **Pestaña Jugar:** Aquí lanzas tus versiones y gestionas tus **Perfiles Independientes**. Cada perfil guarda sus propios mundos y configuraciones.
+
+<br>
+
 🛠️ **Herramientas:** Instala APKs, descarga desde Google Play, gestiona tus **Texturas, Resource Packs y Behavior Packs** o migra datos de otros launchers.
+
+<br>
+
 ⚙️ **Ajustes:** Personaliza el launcher a tu gusto. Puedes cambiar el **Fondo de pantalla**, añadir una **Marca de agua**, ajustar la transparencia y optimizar el rendimiento con Nvidia y Zink.
+
+<br><br>
 
 ¡Esperamos que disfrutes de tu aventura en Minecraft!"""
 UI_BUTTON_NEXT = "Siguiente"
@@ -106,6 +116,8 @@ UI_CATEGORY_GENERAL = "General"
 UI_CATEGORY_LAUNCH = "Lanzamiento"
 UI_CATEGORY_APPEARANCE = "Apariencia"
 UI_CATEGORY_INTEGRATIONS = "Integraciones"
+UI_CATEGORY_EXTRAS = "Extras"
+UI_SECTION_EXTRAS = "Extras"
 
 UI_SECTION_BINARIES = "Rutas de Binarios"
 
@@ -121,6 +133,14 @@ UI_DEFAULT_MODE = MODE_BIN_SYSTEM
 UI_LABEL_FLATPAK_ID = "ID de App Flatpak:"
 UI_LABEL_BIN_MODE = "Modo de Binarios:"
 UI_LABEL_BINARY_PATHS = "Rutas de Binarios"
+UI_LABEL_MC_LIBS_PATH = "Carpeta en PATH (mcpelauncher libs):"
+UI_LABEL_BIN_FOLDER = "Carpeta de Binarios (auto-resolución):"
+UI_BUTTON_AUTO_RESOLVE = "Resolver"
+UI_BIN_FOLDER_INVALID = "Selecciona una carpeta de binarios válida."
+UI_BIN_AUTO_RESOLVED = "Se detectaron {count} binarios y se asignaron a sus campos."
+UI_BIN_AUTO_NONE = "No se encontraron binarios reconocidos en la carpeta."
+UI_FOOTER_PROJECT_NAME = "Project CianovaLauncher"
+UI_FOOTER_CHANGELOG_TOOLTIP = "Pulsa aquí para ver el changelog"
 UI_BUTTON_SAVE_SETTINGS = "Guardar Configuración"
 UI_SECTION_APPEARANCE = "Apariencia"
 UI_LABEL_COLOR_THEME = "Tema de Color:"
@@ -220,6 +240,8 @@ UI_LABEL_ERROR_HANDLER_OPTIONAL = "Error Handler (Opcional):"
 UI_LABEL_MSA_DAEMON = "MSA Daemon:"
 UI_SECTION_COMPATIBILITY = "Compatibilidad"
 UI_LOG_VIEWER_LABEL = "Logs:"
+UI_LOG_LIVE_SESSION = "Sesión actual"
+UI_LOG_PREV_SESSION = "Sesión"
 UI_BUTTON_EXPORT_LOG = "Exportar"
 UI_EXPORT_LOG_TITLE = "Guardar Log"
 

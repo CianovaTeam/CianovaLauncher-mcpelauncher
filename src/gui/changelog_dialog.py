@@ -4,12 +4,14 @@ import os
 from src import constants as c
 from src.utils.resource_path import resource_path
 from src.utils.image_manager import ImageManager
+from src.gui.custom_dialogs import _find_theme
 
 class ChangelogDialog(QDialog):
     """Dialog that displays the markdown changelog for the current or specified version."""
     def __init__(self, parent, version=None):
         super().__init__(parent)
         ver_str = version if version else c.VERSION_LAUNCHER
+        self._mode, _ = _find_theme(parent)
         self.setWindowTitle(c.t("UI_WELCOME_NEW_VERSION_TITLE", ver=ver_str))
         self.resize(700, 600)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
@@ -18,6 +20,11 @@ class ChangelogDialog(QDialog):
 
     def setup_ui(self, version):
         """Build the dialog with header icon, markdown view, and close button."""
+        light = self._mode == "Light"
+        title_color = "#1a1a1a" if light else "white"
+        sep_color = "#c1c9d4" if light else "#444444"
+        view_bg = "#ffffff" if light else "#1e1e1e"
+        view_text = "#1a1a1a" if light else "#d4d4d4"
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
@@ -29,14 +36,14 @@ class ChangelogDialog(QDialog):
         header.addWidget(icon_lbl)
 
         title = QLabel(c.t("UI_WELCOME_NEW_VERSION_TITLE", ver=version))
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {title_color};")
         header.addWidget(title, 1)
         layout.addLayout(header)
 
         # Separator
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
-        line.setStyleSheet("background-color: #444444;")
+        line.setStyleSheet(f"background-color: {sep_color};")
         line.setFixedHeight(1)
         layout.addWidget(line)
 
@@ -45,7 +52,7 @@ class ChangelogDialog(QDialog):
         self.txt_view = QTextBrowser()
         self.txt_view.setReadOnly(True)
         self.txt_view.setFrameShape(QFrame.NoFrame)
-        self.txt_view.setStyleSheet("background-color: #1e1e1e; color: #d4d4d4; font-size: 13px; padding: 10px;")
+        self.txt_view.setStyleSheet(f"background-color: {view_bg}; color: {view_text}; font-size: 13px; padding: 10px;")
         
         # Loading content
         content = self.load_changelog()

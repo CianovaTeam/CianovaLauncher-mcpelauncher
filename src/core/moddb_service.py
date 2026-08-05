@@ -20,7 +20,7 @@ def _moddb_cache_path(active_path):
 
 def fetch_moddb():
     """Fetch the full mod database from GitHub."""
-    req = urllib.request.Request(MODDB_URL, headers={"User-Agent": "CianovaLauncher/3.1"})
+    req = urllib.request.Request(MODDB_URL, headers={"User-Agent": "CianovaLauncher/3.2"})
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
@@ -134,7 +134,7 @@ class ModInstallWorker(QThread):
         try:
             self.progress.emit(f"Descargando {self.mod_name}...")
             req = urllib.request.Request(
-                self.download_url, headers={"User-Agent": "CianovaLauncher/3.1"}
+                self.download_url, headers={"User-Agent": "CianovaLauncher/3.2"}
             )
             with urllib.request.urlopen(req, timeout=120) as resp:
                 data = resp.read()

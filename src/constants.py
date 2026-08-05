@@ -61,11 +61,11 @@ import os
 
 # --- Información de la Aplicación ---
 APP_NAME = "CianovaLauncher"
-VERSION_LAUNCHER = "3.1"
+VERSION_LAUNCHER = "3.2"
 BINARY_VERSION_INFO = "v1.7.4-official"  # Default for Flatpak or if not found
 BINARY_VERSION_FALLBACK = "PreCompiled Binaries from mcpelauncher Github"
 DEVELOPERS = "@PlaGaPlusDev and @Leimsoto"
-UPDATE_NAME = "Refinements & Fixes"
+UPDATE_NAME = "UI Update"
 CHANGELOG = f"{UPDATE_NAME}: {APP_NAME} {VERSION_LAUNCHER}"
 CREDITOS = f"Dev: {DEVELOPERS}\nProyecto: {APP_NAME}"
 import re

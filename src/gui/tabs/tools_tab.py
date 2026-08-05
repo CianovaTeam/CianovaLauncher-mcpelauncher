@@ -39,7 +39,7 @@ class ToolsTab(QWidget):
         self.scroll_content.setMinimumWidth(480)
         self.scroll_layout = QVBoxLayout(self.scroll_content)
         self.scroll_layout.setAlignment(Qt.AlignTop)
-        self.scroll_layout.setSpacing(12)
+        self.scroll_layout.setSpacing(16)
 
         self.scroll_area.setWidget(self.scroll_content)
         self.main_layout.addWidget(self.scroll_area)
@@ -217,7 +217,7 @@ class ToolsTab(QWidget):
             frame.setObjectName("GroupFrame")
             layout = QVBoxLayout(frame)
             layout.setContentsMargins(15, 13, 15, 13)
-            layout.setSpacing(7)
+            layout.setSpacing(11)
 
             title = QLabel(f"{group['icon']} {group['title']}")
             title.setObjectName("HeaderLabel")

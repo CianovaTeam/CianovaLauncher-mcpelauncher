@@ -761,6 +761,13 @@ def launch_game(app):
     _ensure_credential_helper(app)
 
     env = os.environ.copy()
+    # Solo en modo custom: prepend la carpeta configurada al PATH para que
+    # mcpelauncher-client encuentre sus librerías. En modo sistema/flatpak
+    # se usa el default y no se toca nada.
+    if app.config.get(c.CONFIG_KEY_MODE) == c.MODE_BIN_CUSTOM:
+        mc_dir = app.config.get(c.CONFIG_KEY_MC_LIBS_PATH, "").strip()
+        if mc_dir:
+            env["PATH"] = mc_dir + os.pathsep + env.get("PATH", "")
     if app.running_in_flatpak:
         # Prepend writable bin dir to PATH so mcpelauncher-client can find
         # the credential helper (mcpelauncher-ui-qt) written there by

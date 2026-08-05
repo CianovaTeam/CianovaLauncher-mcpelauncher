@@ -6,7 +6,9 @@ from src import constants as c
 from src.core import language_manager
 from src.utils.image_manager import ImageManager
 from src.utils.logger import logger
+from src.gui.custom_dialogs import _find_theme
 import os
+import re
 
 class SetupWizard(QDialog):
     """Multi-step wizard for first-run setup including language, legal, and appearance."""
@@ -21,8 +23,29 @@ class SetupWizard(QDialog):
         self.app = parent
         self.current_step = 0
         self.total_steps = 7 # Lang, Legal, Migration, Style, Install, Changelog, Summary
+        self._mode, _ = _find_theme(parent)
+        self._palette = self._make_palette(self._mode)
+        self._title_labels = []
         
         self.setup_ui()
+
+    def _make_palette(self, mode):
+        """Return a theme-aware color palette for the wizard."""
+        light = mode == "Light"
+        return {
+            "window": "#eef1f5" if light else "#242424",
+            "header": "#dfe4ea" if light else "#333333",
+            "footer": "#d7dce3" if light else "#2b2b2b",
+            "border": "#b9c3cf" if light else "#444444",
+            "title": "#1a1a1a" if light else "white",
+            "text": "#1a1a1a" if light else "#DCE4EE",
+            "muted": "#5a5a5a" if light else "#aaaaaa",
+            "view_bg": "#ffffff" if light else "#1e1e1e",
+            "view_text": "#1a1a1a" if light else "#d4d4d4",
+            "disabled_bg": "#e0e0e0" if light else "#444444",
+            "disabled_text": "#8a8a8a" if light else "#888888",
+            "flat_hover": "#444444" if light else "white",
+        }
 
     def setup_ui(self):
         """Build the full wizard UI with header, stacked pages, and footer buttons."""
@@ -35,15 +58,17 @@ class SetupWizard(QDialog):
         self.header_frame.setFixedHeight(80)
         self.header_frame.setObjectName("HeaderFrame")
         h_layout = QHBoxLayout(self.header_frame)
+        h_layout.setContentsMargins(25, 0, 25, 0)
         
         self.lbl_title = QLabel(c.t("UI_SETUP_WELCOME_TITLE"))
-        self.lbl_title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        self.lbl_title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self._palette['title']};")
+        self._title_labels.append(self.lbl_title)
         h_layout.addWidget(self.lbl_title)
         
         h_layout.addStretch()
         
         self.lbl_step = QLabel(c.t("UI_SETUP_STEP", current=1, total=self.total_steps))
-        self.lbl_step.setStyleSheet("color: #aaaaaa; font-weight: bold;")
+        self.lbl_step.setStyleSheet(f"color: {self._palette['muted']}; font-weight: bold;")
         h_layout.addWidget(self.lbl_step)
         
         self.main_layout.addWidget(self.header_frame)
@@ -99,7 +124,8 @@ class SetupWizard(QDialog):
         l.addWidget(icon_lbl)
 
         self.lbl_lang_title = QLabel(c.t("UI_SETUP_LANG_TITLE"))
-        self.lbl_lang_title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        self.lbl_lang_title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self._palette['title']};")
+        self._title_labels.append(self.lbl_lang_title)
         self.lbl_lang_title.setAlignment(Qt.AlignCenter)
         l.addWidget(self.lbl_lang_title)
 
@@ -132,13 +158,14 @@ class SetupWizard(QDialog):
         l.setSpacing(15)
         
         self.lbl_legal_title = QLabel(c.t("UI_SETUP_LEGAL_TITLE"))
-        self.lbl_legal_title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        self.lbl_legal_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self._palette['title']};")
+        self._title_labels.append(self.lbl_legal_title)
         l.addWidget(self.lbl_legal_title)
 
         self.txt_legal = QTextEdit()
         self.txt_legal.setPlainText(c.t("LEGAL_TEXT"))
         self.txt_legal.setReadOnly(True)
-        self.txt_legal.setStyleSheet("background-color: #1e1e1e; color: #d4d4d4; font-size: 11px;")
+        self.txt_legal.setStyleSheet(f"background-color: {self._palette['view_bg']}; color: {self._palette['view_text']}; font-size: 11px;")
         l.addWidget(self.txt_legal, 1)
 
         self.cb_accept = QCheckBox(c.t("UI_SETUP_LEGAL_CHECK"))
@@ -155,7 +182,8 @@ class SetupWizard(QDialog):
         l.setSpacing(25)
         
         self.lbl_mig_title = QLabel(c.t("UI_SETUP_MIGRATION_TITLE"))
-        self.lbl_mig_title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        self.lbl_mig_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self._palette['title']};")
+        self._title_labels.append(self.lbl_mig_title)
         self.lbl_mig_title.setAlignment(Qt.AlignCenter)
         l.addWidget(self.lbl_mig_title)
 
@@ -183,7 +211,8 @@ class SetupWizard(QDialog):
         l.setSpacing(15)
         
         self.lbl_style_title = QLabel(c.t("UI_SETUP_APPEARANCE_TITLE"))
-        self.lbl_style_title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        self.lbl_style_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self._palette['title']};")
+        self._title_labels.append(self.lbl_style_title)
         l.addWidget(self.lbl_style_title)
 
         # Mode Toggle
@@ -208,6 +237,8 @@ class SetupWizard(QDialog):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll_content = QWidget()
+        scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; border: none; }")
+        scroll_content.setAutoFillBackground(False)
         grid = QGridLayout(scroll_content)
         grid.setSpacing(12)
         
@@ -218,7 +249,8 @@ class SetupWizard(QDialog):
             btn.setCheckable(True)
             btn.setFixedSize(45, 45)
             color = c.THEME_COLOR_MAP.get(theme, "#1f6aa5")
-            btn.setStyleSheet(f"background-color: {color}; border-radius: 22px; border: 2px solid #555;")
+            border_c = "#555555" if self._mode == "Dark" else "#b9c3cf"
+            btn.setStyleSheet(f"background-color: {color}; border-radius: 22px; border: 2px solid {border_c};")
             btn.setToolTip(c.t("UI_THEME_NAMES").get(theme, theme.capitalize()))
             
             if self.app.config.get(c.CONFIG_KEY_COLOR_THEME) == theme:
@@ -251,7 +283,8 @@ class SetupWizard(QDialog):
         l.setSpacing(30)
 
         self.lbl_inst_title = QLabel(c.t("UI_SETUP_INSTALL_TITLE"))
-        self.lbl_inst_title.setStyleSheet("font-size: 24px; font-weight: bold; color: white;")
+        self.lbl_inst_title.setStyleSheet(f"font-size: 24px; font-weight: bold; color: {self._palette['title']};")
+        self._title_labels.append(self.lbl_inst_title)
         self.lbl_inst_title.setAlignment(Qt.AlignCenter)
         l.addWidget(self.lbl_inst_title)
 
@@ -280,7 +313,8 @@ class SetupWizard(QDialog):
         l.setSpacing(15)
 
         self.lbl_ch_title = QLabel(c.t("UI_SETUP_CHANGELOG_TITLE"))
-        self.lbl_ch_title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        self.lbl_ch_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self._palette['title']};")
+        self._title_labels.append(self.lbl_ch_title)
         l.addWidget(self.lbl_ch_title)
 
         from PySide6.QtWidgets import QTextBrowser
@@ -299,7 +333,7 @@ class SetupWizard(QDialog):
             content = "Error loading changelog."
 
         self.txt_changelog.setMarkdown(content)
-        self.txt_changelog.setStyleSheet("background-color: #1e1e1e; color: #d4d4d4; padding: 5px;")
+        self.txt_changelog.setStyleSheet(f"background-color: {self._palette['view_bg']}; color: {self._palette['view_text']}; padding: 5px;")
         l.addWidget(self.txt_changelog, 1)
 
         self.stack.addWidget(page)
@@ -308,30 +342,34 @@ class SetupWizard(QDialog):
         """Create the final summary wizard page with finish instructions."""
         page = QWidget()
         l = QVBoxLayout(page)
-        l.setContentsMargins(50, 40, 50, 40)
+        l.setContentsMargins(50, 30, 50, 30)
         l.setSpacing(15)
 
-        self.lbl_sum_title = QLabel(c.t("UI_SETUP_FINISH_TITLE"))
-        self.lbl_sum_title.setStyleSheet("font-size: 22px; font-weight: bold; color: white;")
-        self.lbl_sum_title.setAlignment(Qt.AlignCenter)
-        l.addWidget(self.lbl_sum_title)
-
-        self.lbl_sum_sub = QLabel()
-        self.lbl_sum_sub.setWordWrap(True)
-        self.lbl_sum_sub.setAlignment(Qt.AlignCenter)
-        # Use HTML to guarantee line breaks across all Qt versions
-        html_text = c.t("UI_SETUP_FINISH_SUB").replace("\n", "<br>")
-        self.lbl_sum_sub.setText(html_text)
-        self.lbl_sum_sub.setStyleSheet("color: #DCE4EE; font-size: 13px; line-height: 150%;")
-        l.addWidget(self.lbl_sum_sub)
-
-        l.addStretch()
+        head = QHBoxLayout()
         icon_lbl = QLabel()
-        icon_lbl.setPixmap(ImageManager.get_image("icon.png", size=(80, 80)))
-        icon_lbl.setAlignment(Qt.AlignCenter)
-        l.addWidget(icon_lbl)
+        icon_lbl.setPixmap(ImageManager.get_image("icon.png", size=(64, 64)))
+        head.addWidget(icon_lbl)
+        self.lbl_sum_title = QLabel(c.t("UI_SETUP_FINISH_TITLE"))
+        self.lbl_sum_title.setStyleSheet(f"font-size: 22px; font-weight: bold; color: {self._palette['title']};")
+        self._title_labels.append(self.lbl_sum_title)
+        head.addWidget(self.lbl_sum_title)
+        head.addStretch()
+        l.addLayout(head)
+
+        from PySide6.QtWidgets import QTextBrowser
+        self.txt_sum_sub = QTextBrowser()
+        self.txt_sum_sub.setReadOnly(True)
+        self.txt_sum_sub.setFrameShape(QFrame.NoFrame)
+        self.txt_sum_sub.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.txt_sum_sub.setMinimumHeight(190)
+        self.txt_sum_sub.setStyleSheet(
+            f"QTextBrowser {{ background: transparent; border: none; "
+            f"color: {self._palette['text']}; font-size: 13px; }}"
+        )
+        self.txt_sum_sub.setMarkdown(c.t("UI_SETUP_FINISH_SUB"))
+        l.addWidget(self.txt_sum_sub, 1)
         l.addStretch()
-        
+
         self.stack.addWidget(page)
 
     def on_lang_change(self, display_name):
@@ -347,9 +385,13 @@ class SetupWizard(QDialog):
     def on_appearance_change(self, display_name):
         """Handle appearance mode change and apply the new theme."""
         mode_key = next((k for k, v in c.t("UI_APPEARANCE_MODES").items() if v == display_name), "Dark")
+        self._mode = mode_key
+        self._palette = self._make_palette(mode_key)
         self.app.config[c.CONFIG_KEY_APPEARANCE] = mode_key
         self.app.config_manager.save_config()
         self.app.apply_theme_settings()
+        self.apply_styles()
+        self.refresh_theme_gallery_styles()
 
     def on_theme_selected(self, theme_key):
         """Handle color theme selection and update the UI accent colors."""
@@ -359,10 +401,24 @@ class SetupWizard(QDialog):
         
         for btn, key in self.theme_btns:
             color = c.THEME_COLOR_MAP.get(key, "#1f6aa5")
+            border_c = "#555555" if self._mode == "Dark" else "#b9c3cf"
             if key == theme_key:
                 btn.setStyleSheet(f"background-color: {color}; border-radius: 22px; border: 3px solid white;")
             else:
-                btn.setStyleSheet(f"background-color: {color}; border-radius: 22px; border: 2px solid #555;")
+                btn.setStyleSheet(f"background-color: {color}; border-radius: 22px; border: 2px solid {border_c};")
+
+    def refresh_theme_gallery_styles(self):
+        """Re-stylize the color theme gallery buttons for the current appearance mode."""
+        if not getattr(self, "theme_btns", None):
+            return
+        current = self.app.config.get(c.CONFIG_KEY_COLOR_THEME)
+        for btn, key in self.theme_btns:
+            color = c.THEME_COLOR_MAP.get(key, "#1f6aa5")
+            border_c = "#555555" if self._mode == "Dark" else "#b9c3cf"
+            if key == current:
+                btn.setStyleSheet(f"background-color: {color}; border-radius: 22px; border: 3px solid white;")
+            else:
+                btn.setStyleSheet(f"background-color: {color}; border-radius: 22px; border: 2px solid {border_c};")
 
     def refresh_all_strings(self):
         """Reload all UI text labels to reflect the currently selected language."""
@@ -384,7 +440,8 @@ class SetupWizard(QDialog):
         self.lbl_inst_sub.setText(c.t("UI_SETUP_INSTALL_SUB"))
         self.lbl_ch_title.setText(c.t("UI_SETUP_CHANGELOG_TITLE"))
         self.lbl_sum_title.setText(c.t("UI_SETUP_FINISH_TITLE"))
-        self.lbl_sum_sub.setText(c.t("UI_SETUP_FINISH_SUB").replace("\n", "<br>"))
+        if hasattr(self, "txt_sum_sub"):
+            self.txt_sum_sub.setMarkdown(c.t("UI_SETUP_FINISH_SUB"))
 
         # Update install button text and style (in case theme changed)
 
@@ -448,14 +505,33 @@ class SetupWizard(QDialog):
     def apply_styles(self):
         """Apply theme-aware stylesheets to all wizard components."""
         accent = c.THEME_COLOR_MAP.get(self.app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue"), "#1f6aa5")
+        p = self._palette
+        btn_text = "#1a1a1a" if self._mode == "Light" else "white"
+        for lbl in self._title_labels:
+            ss = lbl.styleSheet()
+            ss = re.sub(r"color:\s*[^;]+;", f"color: {p['title']};", ss)
+            lbl.setStyleSheet(ss)
+        if hasattr(self, "txt_legal"):
+            self.txt_legal.setStyleSheet(
+                f"background-color: {p['view_bg']}; color: {p['view_text']}; font-size: 11px;"
+            )
+        if hasattr(self, "txt_changelog"):
+            self.txt_changelog.setStyleSheet(
+                f"background-color: {p['view_bg']}; color: {p['view_text']}; padding: 5px;"
+            )
+        if hasattr(self, "txt_sum_sub"):
+            self.txt_sum_sub.setStyleSheet(
+                f"QTextBrowser {{ background: transparent; border: none; "
+                f"color: {p['text']}; font-size: 13px; }}"
+            )
         self.setStyleSheet(self.styleSheet() + f"""
-            QDialog {{ background-color: #242424; }}
-            #HeaderFrame {{ background-color: #333333; border-bottom: 1px solid #444444; }}
-            #FooterFrame {{ background-color: #2b2b2b; border-top: 1px solid #444444; }}
-            QLabel {{ color: #DCE4EE; }}
+            QDialog {{ background-color: {p['window']}; }}
+            #HeaderFrame {{ background-color: {p['header']}; border-bottom: 1px solid {p['border']}; }}
+            #FooterFrame {{ background-color: {p['footer']}; border-top: 1px solid {p['border']}; }}
+            QLabel {{ color: {p['text']}; }}
             QPushButton {{ 
                 background-color: {accent}; 
-                color: white; 
+                color: {btn_text}; 
                 border: none;
                 border-radius: 8px; 
                 font-weight: bold; 
@@ -465,11 +541,11 @@ class SetupWizard(QDialog):
                 background-color: {accent}dd;
             }}
             QPushButton:disabled {{
-                background-color: #444444;
-                color: #888888;
+                background-color: {p['disabled_bg']};
+                color: {p['disabled_text']};
             }}
             QPushButton#FlatButton {{ 
                 background-color: transparent; border: none; color: gray; text-decoration: underline; 
             }}
-            QPushButton#FlatButton:hover {{ color: white; }}
+            QPushButton#FlatButton:hover {{ color: {p['flat_hover']}; }}
         """)

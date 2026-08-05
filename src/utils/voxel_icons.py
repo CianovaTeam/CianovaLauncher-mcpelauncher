@@ -1,4 +1,4 @@
-from PySide6.QtGui import QPixmap, QPainter, QColor, QIcon, QPen, QPolygonF
+from PySide6.QtGui import QPixmap, QPainter, QColor, QIcon, QPen, QPolygonF, QPainterPath
 from PySide6.QtCore import Qt, QPointF, QRectF
 import math
 
@@ -131,6 +131,44 @@ def _adjust(hex_color, amount):
     return QColor.fromHsl(h, s, min(max(l + amount, 0), 255), a)
 
 
+def make_profile_icon(hex_color, size=24):
+    """Person silhouette (head + shoulders) used for profile identity icons."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+    s = size
+    c_main = QColor(hex_color)
+    c_lit = _adjust(hex_color, 45)
+    c_shade = _adjust(hex_color, -35)
+
+    p.setPen(Qt.NoPen)
+    p.setBrush(c_shade)
+    p.drawEllipse(int(s * 0.30), int(s * 0.06), int(s * 0.40), int(s * 0.42))
+
+    p.setBrush(c_main)
+    p.drawEllipse(int(s * 0.28), int(s * 0.04), int(s * 0.44), int(s * 0.46))
+
+    p.setBrush(c_lit)
+    p.drawEllipse(int(s * 0.40), int(s * 0.16), int(s * 0.12), int(s * 0.12))
+
+    p.setBrush(c_shade)
+    path = QPainterPath()
+    path.moveTo(s * 0.02, s * 1.0)
+    path.cubicTo(s * 0.12, s * 0.60, s * 0.32, s * 0.56, s * 0.50, s * 0.56)
+    path.cubicTo(s * 0.68, s * 0.56, s * 0.88, s * 0.60, s * 0.98, s * 1.0)
+    path.closeSubpath()
+    p.setBrush(c_main)
+    p.drawPath(path)
+
+    p.setPen(QPen(c_lit, max(1, s // 16)))
+    p.drawLine(int(s * 0.16), int(s * 0.70), int(s * 0.38), int(s * 0.66))
+
+    p.end()
+    return QIcon(pm)
+
+
 PROFILE_COLORS = [
     "#2cc96b",
     "#fca311",
@@ -152,7 +190,7 @@ PROFILE_COLORS = [
 CATEGORY_COLORS = {
     "general": "#8b8b8b",
     "launch": "#2cc96b",
-    "compat": "#fca311",
+    "extras": "#fca311",
     "appearance": "#a855f7",
     "integrations": "#3b82f6",
 }
@@ -168,7 +206,10 @@ def block_icon(color_key, size=24):
 
 
 def profile_icon(index, size=24):
-    return block_icon(PROFILE_COLORS[index % len(PROFILE_COLORS)], size)
+    key = ("profile", index % len(PROFILE_COLORS), size)
+    if key not in _icon_cache:
+        _icon_cache[key] = make_profile_icon(PROFILE_COLORS[key[1]], size)
+    return _icon_cache[key]
 
 
 def category_icon(cat_key, size=24):
@@ -177,7 +218,7 @@ def category_icon(cat_key, size=24):
         return make_gear_icon(color, size)
     elif cat_key == "launch":
         return make_rocket_icon(color, size)
-    elif cat_key == "compat":
+    elif cat_key in ("compat", "extras"):
         return make_gauge_icon(color, size)
     elif cat_key == "appearance":
         return make_palette_icon(color, size)

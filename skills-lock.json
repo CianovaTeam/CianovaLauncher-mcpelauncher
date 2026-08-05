@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "building-qt-apps": {
+      "source": "quick-brown-foxxx/coding_rules_python",
+      "sourceType": "github",
+      "skillPath": "skills/building-qt-apps/SKILL.md",
+      "computedHash": "00a39f517a05dddf42c3063d28a135209a6628e1d0da4d4075cf4a258c3e427c"
+    }
+  }
+}

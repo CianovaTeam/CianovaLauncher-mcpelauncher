@@ -149,14 +149,19 @@ class PlayTab(QWidget):
         if running:
             color = "#4CAF50"
             dot = "●"
-            self.lbl_game_status.setText(f"<span style='color:{color};'>{dot}</span> {c.t('UI_GAME_STATUS_RUNNING')}")
-            self.lbl_game_status.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {color};")
+            self.lbl_game_status.setText(f"<span style='color:white;'>{dot}</span> {c.t('UI_GAME_STATUS_RUNNING')}")
+            self.lbl_game_status.setStyleSheet(
+                f"font-size: 11px; font-weight: bold; color: white; "
+                f"background-color: {color}; border-radius: 10px; padding: 2px 10px;"
+            )
             self.lbl_game_status.setToolTip(c.t("UI_GAME_STATUS_RUNNING"))
         else:
             muted = "#aaaaaa" if self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark") == "Dark" else "#555555"
             dot = "●"
             self.lbl_game_status.setText(f"<span style='color:{muted};'>{dot}</span> {c.t('UI_GAME_STATUS_IDLE')}")
-            self.lbl_game_status.setStyleSheet(f"font-size: 12px; color: {muted};")
+            self.lbl_game_status.setStyleSheet(
+                f"font-size: 11px; color: {muted}; background-color: transparent;"
+            )
             self.lbl_game_status.setToolTip(c.t("UI_GAME_STATUS_IDLE"))
 
     def retranslate_ui(self):

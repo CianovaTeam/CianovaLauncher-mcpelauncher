@@ -2,9 +2,16 @@ import os
 import sys
 import platform
 import re
+import glob
 import logging
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from src import constants as c
+from src.utils.process_utils import is_running_in_flatpak, get_flatpak_app_id
+
+
+MAX_LOG_BYTES = 5 * 1024 * 1024  # 5 MB per log file
+MAX_LOG_FILES = 30  # keep at most this many log files
 
 class Logger:
     _instance = None
@@ -15,16 +22,24 @@ class Logger:
             cls._instance = super(Logger, cls).__new__(cls)
         return cls._instance
 
+    @staticmethod
+    def default_log_dir():
+        """Return the Flatpak-aware directory where launcher logs live."""
+        if is_running_in_flatpak():
+            fid = get_flatpak_app_id() or c.DEFAULT_FLATPAK_ID
+            return os.path.join(
+                os.path.expanduser("~"), c.FLATPAK_DATA_DIR, fid,
+                c.MCPELAUNCHER_DATA_SUBDIR, "logs",
+            )
+        return os.path.join(os.path.expanduser("~"), c.LOCAL_SHARE_DIR, "logs")
+
     def init(self, log_dir=None):
         if self._initialized:
             return
-        
+
         if log_dir is None:
-            # Try standard location
-            log_dir = os.path.join(os.path.expanduser("~"), ".local/share/mcpelauncher/logs")
-            # If we are in Flatpak, this might be trapped in sandbox or mapped. 
-            # Better to use a relative path to the app data if possible.
-        
+            log_dir = self.default_log_dir()
+
         if not os.path.exists(log_dir):
             try:
                 os.makedirs(log_dir, exist_ok=True)
@@ -33,30 +48,48 @@ class Logger:
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         log_file = os.path.join(log_dir, f"cianovalauncher-{timestamp}.log")
-        
+
         self.logger = logging.getLogger("CianovaLauncher")
         self.logger.setLevel(logging.DEBUG)
-        
-        # File handler (UTF-8 to support all chars)
+
+        # File handler (UTF-8 to support all chars) with rotation
         try:
-            fh = logging.FileHandler(log_file, encoding='utf-8')
+            fh = RotatingFileHandler(
+                log_file, mode="a", encoding="utf-8",
+                maxBytes=MAX_LOG_BYTES, backupCount=1,
+            )
             fh.setLevel(logging.DEBUG)
             formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
             fh.setFormatter(formatter)
             self.logger.addHandler(fh)
         except Exception as e:
             print(f"Error creating log file: {e}")
-        
+
         # Console handler
         ch = logging.StreamHandler()
         ch.setLevel(logging.INFO)
         formatter_ch = logging.Formatter('%(levelname)s: %(message)s')
         ch.setFormatter(formatter_ch)
         self.logger.addHandler(ch)
-        
+
+        self._log_dir = log_dir
         self._log_file = log_file
         self._initialized = True
+        self.prune_logs()
         self.log_system_info()
+
+    def prune_logs(self):
+        """Delete oldest launcher logs, keeping at most MAX_LOG_FILES."""
+        if not getattr(self, "_log_dir", None) or not os.path.isdir(self._log_dir):
+            return
+        pattern = os.path.join(self._log_dir, "cianovalauncher-*.log")
+        files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+        for old in files[MAX_LOG_FILES:]:
+            try:
+                os.remove(old)
+                self.logger.info(f"Pruned old log: {os.path.basename(old)}")
+            except OSError:
+                pass
 
     def log_system_info(self):
         self.info(f"=== CIANOVALAUNCHER v{c.VERSION_LAUNCHER} SESSION START ===")

@@ -136,6 +136,13 @@ class CianovaLauncherApp(QMainWindow):
         self.bg_label = VisualLabel(self.central_widget)
         self.bg_label.setScaledContents(True)
         self.sticker_label = VisualLabel(self.central_widget)
+        self.game_status_label = VisualLabel(self.central_widget)
+        self.game_status_label.setStyleSheet(
+            "background-color: rgba(0,0,0,0.75); color: #4CAF50; "
+            "font-size: 12px; font-weight: bold; padding: 4px 10px; "
+            "border-radius: 10px;"
+        )
+        self.game_status_label.hide()
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
 
         # Debounce timer for personalization and resizing
@@ -189,6 +196,17 @@ class CianovaLauncherApp(QMainWindow):
         self.resize_timer.start()
         super().resizeEvent(event)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        QTimer.singleShot(0, self._handle_first_show_layout)
+
+    def _handle_first_show_layout(self):
+        """Recompute the tab bar alignment once the window is laid out on first show."""
+        self._update_tab_bar_qss()
+        self.update_background()
+        self.update_sticker()
+        self.update_floating_labels()
+
     def _handle_resize_finished(self):
         size = f"{self.width()}x{self.height()}"
         self.config_manager.set(c.CONFIG_KEY_WINDOW_SIZE, size)
@@ -196,6 +214,10 @@ class CianovaLauncherApp(QMainWindow):
         self.update_sticker()
         self.update_floating_labels()
         self._update_tab_bar_qss()
+        if self.game_status_label.isVisible():
+            w = self.width() - self.game_status_label.width() - 20
+            y = self.tab_widget.tabBar().height() + 14
+            self.game_status_label.move(w, y)
 
     def _update_tab_bar_qss(self):
         """Recompute the tab bar width so it stays aligned after a resize."""
@@ -824,6 +846,12 @@ class CianovaLauncherApp(QMainWindow):
         if hasattr(self, "settings_tab"):
             self.settings_tab._refresh_per_widget_styles()
 
+        from src.core.install_ops import refresh_version_cards_theme
+        try:
+            refresh_version_cards_theme(self)
+        except Exception:
+            pass
+
         # Apply drop shadow to all card-type frames
         shadow_color = QColor(0, 0, 0, 60) if mode == "Dark" else QColor(0, 0, 0, 30)
         for frame in self.findChildren(QFrame):
@@ -970,8 +998,22 @@ class CianovaLauncherApp(QMainWindow):
 
     def on_game_launched(self):
         self._game_monitor.start()
+        self._set_persistent_game_indicator(True)
         if hasattr(self.play_tab, "set_game_status"):
             self.play_tab.set_game_status(True)
+
+    def _set_persistent_game_indicator(self, running):
+        """Show/hide a global 'game running' badge visible on every tab."""
+        if running:
+            self.game_status_label.setText(f"● {c.t('UI_GAME_STATUS_RUNNING')}")
+            self.game_status_label.adjustSize()
+            x = self.width() - self.game_status_label.width() - 20
+            y = self.tab_widget.tabBar().height() + 14
+            self.game_status_label.move(x, y)
+            self.game_status_label.raise_()
+            self.game_status_label.show()
+        else:
+            self.game_status_label.hide()
 
     def _check_game_process(self):
         if self._game_process is None:
@@ -988,6 +1030,7 @@ class CianovaLauncherApp(QMainWindow):
                 self.raise_()
             if hasattr(self.play_tab, "set_game_status"):
                 self.play_tab.set_game_status(False)
+            self._set_persistent_game_indicator(False)
 
     def manage_desktop_shortcut(self):
         """Open the version manager to manage desktop shortcuts."""

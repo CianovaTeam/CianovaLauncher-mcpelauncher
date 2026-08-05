@@ -37,6 +37,7 @@ class ConfigManager:
                 c.CONFIG_KEY_MSA_DAEMON: ""
             },
             c.CONFIG_KEY_MODE: c.MODE_BIN_SYSTEM,
+            c.CONFIG_KEY_MC_LIBS_PATH: "",
             c.CONFIG_KEY_INSTALL_MODE: c.MODE_INSTALL_LOCAL,
             c.CONFIG_KEY_LANGUAGE: "en",
             c.CONFIG_KEY_FLATPAK_ID: c.DEFAULT_FLATPAK_ID,

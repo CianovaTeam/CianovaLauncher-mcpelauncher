@@ -42,15 +42,8 @@ if __name__ == "__main__":
     force_nvidia_ui = "--force-nvidia-ui" in sys.argv
     test_mode = "--test-mode" in sys.argv
 
-    # Initialize Logger
-    # Determine log dir based on environment
-    if is_running_in_flatpak():
-        fid = get_flatpak_app_id() or c.DEFAULT_FLATPAK_ID
-        log_dir = os.path.join(os.path.expanduser("~"), c.FLATPAK_DATA_DIR, fid, c.MCPELAUNCHER_DATA_SUBDIR, "logs")
-    else:
-        log_dir = os.path.join(os.path.expanduser("~"), c.LOCAL_SHARE_DIR, "logs")
-    
-    logger.init(log_dir)
+    # Initialize Logger (Flatpak-aware log dir is resolved inside logger)
+    logger.init()
     logger.info(f"Launcher started (Path: {launcher_path})")
 
     if test_mode:

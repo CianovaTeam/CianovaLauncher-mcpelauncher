@@ -40,10 +40,91 @@ class GameConfigDialog(QDialog):
         self.setup_visual_tab()
         self.setup_editor_tab()
 
-        if self.light:
-            self.setStyleSheet("QDialog { background-color: #f4f5f7; color: #1a1a1a; } QLabel { color: #1a1a1a; }")
-        else:
-            self.setStyleSheet("QDialog { background-color: #2b2b2b; color: white; } QLabel { color: white; }")
+        self._apply_theme()
+
+    def _apply_theme(self):
+        """Apply theme-aware styling to the dialog and all its child widgets."""
+        bg = "#f4f5f7" if self.light else "#2b2b2b"
+        text = "#1a1a1a" if self.light else "#ffffff"
+        muted = "#555555" if self.light else "#aaaaaa"
+        input_bg = "#ffffff" if self.light else "#1e1e1e"
+        input_border = "#a0aab8" if self.light else "#555555"
+        panel_bg = "#ffffff" if self.light else "#333333"
+
+        self.tab_widget.setStyleSheet(f"""
+            QTabWidget::pane {{ border: 1px solid {input_border}; border-radius: 6px; background-color: {panel_bg}; }}
+            QTabBar::tab {{
+                background-color: {input_bg}; color: {muted};
+                padding: 6px 14px; border-top-left-radius: 6px; border-top-right-radius: 6px;
+                border: 1px solid {input_border}; border-bottom: none;
+            }}
+            QTabBar::tab:selected {{ background-color: {self.accent}; color: white; }}
+            QTabBar::tab:hover:!selected {{ background-color: {'#dcdcdc' if self.light else '#3a3a3a'}; }}
+        """)
+
+        self.setStyleSheet(self.styleSheet() + f"""
+            QDialog {{
+                background-color: {bg};
+                color: {text};
+            }}
+            QLabel {{ color: {text}; background: transparent; }}
+            QLabel#HeaderLabel {{
+                color: {self.accent}; font-size: 14px; font-weight: bold;
+            }}
+            QFrame {{ border: none; }}
+            QSlider {{
+                min-height: 22px;
+            }}
+            QSlider::groove:horizontal {{
+                background: {input_border}; height: 6px; border-radius: 3px;
+            }}
+            QSlider::sub-page:horizontal {{ background: {self.accent}; border-radius: 3px; }}
+            QSlider::handle:horizontal {{
+                background: {self.accent}; width: 16px; height: 16px;
+                margin: -5px 0; border-radius: 8px;
+            }}
+            QLineEdit {{
+                background-color: {input_bg}; color: {text};
+                border: 1px solid {input_border}; border-radius: 6px;
+                padding: 5px 8px;
+            }}
+            QLineEdit:focus {{ border: 1px solid {self.accent}; }}
+            QComboBox {{
+                background-color: {input_bg}; color: {text};
+                border: 1px solid {input_border}; border-radius: 6px;
+                padding: 4px 10px;
+                background-clip: padding-box;
+            }}
+            QComboBox:hover {{ border: 1px solid {self.accent}; }}
+            QComboBox::drop-down {{ border: none; width: 24px; background: transparent; }}
+            QComboBox QAbstractItemView {{
+                background-color: {input_bg}; color: {text};
+                selection-background-color: {self.accent}; selection-color: white;
+                border: 1px solid {input_border}; border-radius: 4px;
+            }}
+            QCheckBox {{ color: {text}; spacing: 8px; background: transparent; }}
+            QCheckBox::indicator {{ width: 18px; height: 18px; }}
+            QPushButton {{
+                background-color: {input_bg}; color: {text};
+                border: 1px solid {input_border}; border-radius: 6px;
+                padding: 6px 14px; font-weight: bold;
+            }}
+            QPushButton:hover {{ border: 1px solid {self.accent}; }}
+            QPushButton#ActionButton {{ background-color: {self.accent}; color: white; }}
+            QPushButton#ActionButton:hover {{ background-color: {self.accent}dd; }}
+            QTextEdit {{
+                background-color: {input_bg}; color: {text};
+                border: 1px solid {input_border}; border-radius: 6px;
+                font-family: 'Courier New'; font-size: 13px;
+            }}
+            QScrollArea {{ background: transparent; border: none; }}
+            QScrollArea > QWidget > QWidget {{ background: transparent; }}
+        """)
+
+        self.text_editor.setStyleSheet(f"""
+            font-family: 'Courier New'; font-size: 13px;
+            background-color: {input_bg}; color: {text}; border: 1px solid {input_border}; border-radius: 6px;
+        """)
 
     def setup_editor_tab(self):
         """Set up the raw text editor tab with a QTextEdit and save button."""

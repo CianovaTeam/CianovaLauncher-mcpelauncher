@@ -301,3 +301,19 @@ def select_version(app, version):
             card.setStyleSheet(f"background-color: {accent};")
         else:
             card.setStyleSheet(f"background-color: {unselected_bg};")
+
+
+def refresh_version_cards_theme(app):
+    """Reapply the selected/unselected card colors for the current theme."""
+    if not app.version_cards:
+        return
+    selected = app.play_tab.get()
+    theme_color = app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue")
+    accent = c.THEME_COLOR_MAP.get(theme_color, "#1f6aa5")
+    mode = app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark")
+    unselected_bg = "#3a3a3a" if mode == "Dark" else "#e0e0e0"
+    for v, card in app.version_cards.items():
+        card.setStyleSheet(
+            f"background-color: {accent};" if v == selected else
+            f"background-color: {unselected_bg};"
+        )

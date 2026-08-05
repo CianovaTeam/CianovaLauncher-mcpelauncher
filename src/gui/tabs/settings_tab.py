@@ -8,7 +8,7 @@ from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import os
 from src import constants as c
 from src.core import language_manager
-from src.utils.dialogs import ask_open_filename_native
+from src.utils.dialogs import ask_open_filename_native, ask_directory_native
 from src.utils.resource_path import resource_path
 from src.utils.logger import logger
 
@@ -19,14 +19,14 @@ class SettingsTab(QWidget):
     CATEGORIES = [
         ("general", "UI_CATEGORY_GENERAL"),
         ("launch", "UI_CATEGORY_LAUNCH"),
-        ("compat", "UI_CATEGORY_PERFORMANCE"),
+        ("extras", "UI_CATEGORY_EXTRAS"),
         ("appearance", "UI_CATEGORY_APPEARANCE"),
     ]
 
     CATEGORY_METHODS = {
-        "general": ["setup_profiles_section", "setup_discord_section"],
-        "launch": ["setup_binaries_section", "setup_launch_action_section"],
-        "compat": ["setup_compatibility_section"],
+        "general": ["setup_profiles_section", "setup_discord_section", "setup_launch_action_section"],
+        "launch": ["setup_binaries_section"],
+        "extras": ["setup_extras_section"],
         "appearance": [
             "setup_appearance_section", "setup_section_opacity_section",
             "setup_background_section", "setup_sticker_section",
@@ -182,7 +182,7 @@ class SettingsTab(QWidget):
     def _add_tooltip_button(self, layout, title, tooltip):
         btn_info = QPushButton("?")
         btn_info.setObjectName("ToolButton")
-        btn_info.setFixedSize(22, 22)
+        btn_info.setFixedSize(22, 18)
         btn_info.clicked.connect(lambda checked=False, t=title, m=tooltip: self.app.show_info(t, m))
         layout.addWidget(btn_info)
 
@@ -208,13 +208,25 @@ class SettingsTab(QWidget):
 
         layout.addStretch()
 
-        self.lbl_binary_version = QLabel("")
+        self.lbl_footer_version = QPushButton(
+            f"{c.t('UI_FOOTER_PROJECT_NAME')} - v{c.VERSION_LAUNCHER}"
+        )
+        self.lbl_footer_version.setObjectName("FooterVersion")
+        self.lbl_footer_version.setFlat(True)
         _mode = self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark")
         muted = "#aaaaaa" if _mode == "Dark" else "#555555"
-        self.lbl_binary_version.setStyleSheet(f"color: {muted}; font-size: 11px;")
-        layout.addWidget(self.lbl_binary_version)
+        self.lbl_footer_version.setStyleSheet(
+            f"QPushButton#FooterVersion {{ color: {muted}; font-size: 11px; "
+            f"background: transparent; border: none; text-decoration: underline; }}"
+        )
+        self.lbl_footer_version.setToolTip(c.t("UI_FOOTER_CHANGELOG_TOOLTIP"))
+        self.lbl_footer_version.clicked.connect(self._open_changelog)
+        layout.addWidget(self.lbl_footer_version)
 
         self.main_layout.addWidget(bar)
+
+    def _open_changelog(self):
+        self.app.show_update_changelog(c.VERSION_LAUNCHER)
 
     # ── General ──────────────────────────────────────────────────
 
@@ -245,6 +257,7 @@ class SettingsTab(QWidget):
                 padding: 6px 10px;
                 font-weight: bold;
                 font-size: 13px;
+                background-clip: padding-box;
             }}
             QComboBox:focus {{
                 border: 1px solid {accent};
@@ -253,6 +266,8 @@ class SettingsTab(QWidget):
                 border: none;
                 width: 28px;
                 background: transparent;
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
             }}
             QComboBox::down-arrow {{
                 width: 10px;
@@ -321,6 +336,7 @@ class SettingsTab(QWidget):
         self.combo_settings_mode.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         form.addRow(c.t("UI_LABEL_BIN_MODE"), self.combo_settings_mode)
 
+        self.lbl_flatpak_id = QLabel(c.t("UI_LABEL_FLATPAK_ID"))
         self.frame_flatpak_id = QFrame()
         fid_layout = QHBoxLayout(self.frame_flatpak_id)
         fid_layout.setContentsMargins(0, 0, 0, 0)
@@ -329,7 +345,7 @@ class SettingsTab(QWidget):
             self.app.config.get(c.CONFIG_KEY_FLATPAK_ID, c.MCPELAUNCHER_FLATPAK_ID)
         )
         fid_layout.addWidget(self.entry_flatpak_id, 1)
-        form.addRow(c.t("UI_LABEL_FLATPAK_ID"), self.frame_flatpak_id)
+        form.addRow(self.lbl_flatpak_id, self.frame_flatpak_id)
 
         layout.addLayout(form)
 
@@ -362,6 +378,49 @@ class SettingsTab(QWidget):
 
         layout.addWidget(paths_group)
 
+        self.binfolder_group = QGroupBox(c.t("UI_LABEL_BIN_FOLDER"))
+        self._groups["UI_LABEL_BIN_FOLDER"] = self.binfolder_group
+        bf_layout = QFormLayout(self.binfolder_group)
+        bf_row = QHBoxLayout()
+        self.entry_bin_folder = QLineEdit()
+        self.entry_bin_folder.setPlaceholderText(c.t("UI_LABEL_BIN_FOLDER"))
+        bf_row.addWidget(self.entry_bin_folder, 1)
+        btn_bf = QPushButton("...")
+        btn_bf.setObjectName("ToolButton")
+        btn_bf.setFixedSize(28, 28)
+        btn_bf.clicked.connect(self.browse_bin_folder)
+        bf_row.addWidget(btn_bf)
+        self.btn_resolve = QPushButton(c.t("UI_BUTTON_AUTO_RESOLVE"))
+        self.btn_resolve.setObjectName("ToolButton")
+        self.btn_resolve.setFixedHeight(28)
+        self.btn_resolve.clicked.connect(self.auto_resolve_binaries)
+        bf_row.addWidget(self.btn_resolve)
+        bf_layout.addRow(c.t("UI_LABEL_BIN_FOLDER"), bf_row)
+        layout.addWidget(self.binfolder_group)
+
+        self.libs_group = QGroupBox(c.t("UI_LABEL_MC_LIBS_PATH"))
+        self._groups["UI_LABEL_MC_LIBS_PATH"] = self.libs_group
+        libs_layout = QFormLayout(self.libs_group)
+        libs_row = QHBoxLayout()
+        self.entry_mc_libs = QLineEdit()
+        self.entry_mc_libs.setText(self.app.config.get(c.CONFIG_KEY_MC_LIBS_PATH, ""))
+        self.entry_mc_libs.setPlaceholderText(c.t("UI_LABEL_MC_LIBS_PATH"))
+        libs_row.addWidget(self.entry_mc_libs, 1)
+        btn_libs = QPushButton("...")
+        btn_libs.setObjectName("ToolButton")
+        btn_libs.setFixedSize(28, 28)
+        btn_libs.clicked.connect(self.browse_libs)
+        libs_row.addWidget(btn_libs)
+        libs_layout.addRow(c.t("UI_LABEL_MC_LIBS_PATH"), libs_row)
+        layout.addWidget(self.libs_group)
+
+        self.lbl_binary_version = QLabel("")
+        _mode = self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark")
+        _muted = "#aaaaaa" if _mode == "Dark" else "#555555"
+        self.lbl_binary_version.setStyleSheet(f"color: {_muted}; font-size: 10px;")
+        self.lbl_binary_version.setWordWrap(True)
+        layout.addWidget(self.lbl_binary_version)
+
         self.combo_settings_mode.currentTextChanged.connect(self.on_settings_mode_change)
         self.on_settings_mode_change(self.combo_settings_mode.currentText())
 
@@ -373,6 +432,7 @@ class SettingsTab(QWidget):
         self._groups["UI_LAUNCH_ACTION_LABEL"] = group
         layout = QVBoxLayout(group)
         layout.setSpacing(10)
+        layout.setContentsMargins(10, 20, 10, 10)
 
         row = QHBoxLayout()
         row.addWidget(QLabel(c.t("UI_LAUNCH_ACTION_LABEL")))
@@ -391,6 +451,18 @@ class SettingsTab(QWidget):
         row.addWidget(self.combo_launch_action, 1)
         layout.addLayout(row)
 
+        self.scroll_layout.addWidget(group)
+        self._add_spacer()
+
+    # ── Extras (Performance / Compatibility) ────────────────────
+
+    def setup_extras_section(self):
+        group = QGroupBox(c.t("UI_SECTION_EXTRAS"))
+        self._groups["UI_SECTION_EXTRAS"] = group
+        layout = QVBoxLayout(group)
+        layout.setSpacing(8)
+
+        # Enable custom args (moved from Launch, shown first).
         self.cb_custom_env = QCheckBox(c.t("UI_CUSTOM_ARGS_CHECKBOX"))
         self.cb_custom_env.setChecked(self.app.config.get(c.CONFIG_KEY_CUSTOM_ENV_ENABLED, False))
         self.cb_custom_env.stateChanged.connect(
@@ -411,16 +483,10 @@ class SettingsTab(QWidget):
         cv_layout.addWidget(self.entry_custom_vars, 1)
         layout.addWidget(self.f_custom_vars)
 
-        self.scroll_layout.addWidget(group)
-        self._add_spacer()
-
-    # ── Performance / Compatibility ──────────────────────────────
-
-    def setup_compatibility_section(self):
-        group = QGroupBox(c.t("UI_SECTION_COMPATIBILITY"))
-        self._groups["UI_SECTION_COMPATIBILITY"] = group
-        layout = QVBoxLayout(group)
-        layout.setSpacing(8)
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setStyleSheet("color: rgba(128,128,128,0.4);")
+        layout.addWidget(separator)
 
         for label, key, tooltip in [
             (c.t("UI_GAMEMODE_CHECKBOX"), c.CONFIG_KEY_GAMEMODE_ENABLED, c.t("UI_GAMEMODE_TOOLTIP")),
@@ -438,7 +504,7 @@ class SettingsTab(QWidget):
             row.addWidget(cb)
             btn_info = QPushButton("?")
             btn_info.setObjectName("ToolButton")
-            btn_info.setFixedSize(22, 22)
+            btn_info.setFixedSize(22, 18)
             btn_info.clicked.connect(lambda checked=False, t=label, m=tooltip: self.app.show_info(t, m))
             row.addWidget(btn_info)
             row.addStretch()
@@ -451,6 +517,10 @@ class SettingsTab(QWidget):
 
         self.scroll_layout.addWidget(group)
         self._add_spacer()
+
+    def setup_compatibility_section(self):
+        """Backward-compatible alias kept for imports/reference."""
+        return self.setup_extras_section()
 
     # ── Appearance ────────────────────────────────────────────────
 
@@ -878,6 +948,15 @@ class SettingsTab(QWidget):
         if hasattr(self, "modes"):
             for k, btn in self.modes.items():
                 btn.setText(c.t("UI_APPEARANCE_MODES").get(k, k))
+        if hasattr(self, "lbl_footer_version"):
+            self.lbl_footer_version.setText(
+                f"{c.t('UI_FOOTER_PROJECT_NAME')} - v{c.VERSION_LAUNCHER}"
+            )
+            self.lbl_footer_version.setToolTip(c.t("UI_FOOTER_CHANGELOG_TOOLTIP"))
+        if hasattr(self, "entry_bin_folder"):
+            self.entry_bin_folder.setPlaceholderText(c.t("UI_LABEL_BIN_FOLDER"))
+        if hasattr(self, "btn_resolve"):
+            self.btn_resolve.setText(c.t("UI_BUTTON_AUTO_RESOLVE"))
 
     # ── Helpers ──────────────────────────────────────────────────
 
@@ -888,6 +967,67 @@ class SettingsTab(QWidget):
         path = ask_open_filename_native(self.app, title=f"{c.t('UI_OPEN_FILE_TITLE')}")
         if path:
             entry.setText(path)
+
+    def browse_libs(self):
+        path = ask_directory_native(self.app, title=f"{c.t('UI_OPEN_FILE_TITLE')}")
+        if path:
+            self.entry_mc_libs.setText(path)
+
+    def browse_bin_folder(self):
+        path = ask_directory_native(self.app, title=f"{c.t('UI_LABEL_BIN_FOLDER')}")
+        if path:
+            self.entry_bin_folder.setText(path)
+            self.auto_resolve_binaries()
+
+    BINARY_SLOT_NAMES = {
+        c.CONFIG_KEY_CLIENT: ["mcpelauncher-client"],
+        c.CONFIG_KEY_EXTRACT: ["mcpelauncher-extract"],
+        c.CONFIG_KEY_SIGNIN_UI: ["playdl-signin-ui-qt", "signin-ui-qt"],
+        c.CONFIG_KEY_GPLAYDL: ["gplaydl"],
+        c.CONFIG_KEY_GPLAYVER: ["gplayver"],
+        c.CONFIG_KEY_MSA_DAEMON: ["msa-daemon"],
+        c.CONFIG_KEY_WEBVIEW: ["mcpelauncher-webview"],
+        c.CONFIG_KEY_ERROR: ["mcpelauncher-error"],
+    }
+
+    def auto_resolve_binaries(self):
+        """Scan the selected binary folder and fill each slot that has a match."""
+        folder = self.entry_bin_folder.text().strip()
+        if not folder or not os.path.isdir(folder):
+            from src.gui import custom_dialogs as messagebox
+            messagebox.showwarning(self, c.t("UI_ERROR_TITLE"), c.t("UI_BIN_FOLDER_INVALID"))
+            return
+        # Prefer a "bin" subfolder common in mcpelauncher installs.
+        candidates = [folder]
+        bin_sub = os.path.join(folder, "bin")
+        if os.path.isdir(bin_sub):
+            candidates.insert(0, bin_sub)
+
+        found = {k: False for k in self.BINARY_SLOT_NAMES}
+        for base in candidates:
+            if not os.path.isdir(base):
+                continue
+            for entry in os.listdir(base):
+                full = os.path.join(base, entry)
+                if not os.path.isfile(full):
+                    continue
+                base_key = os.path.basename(entry)
+                for slot, names in self.BINARY_SLOT_NAMES.items():
+                    if base_key in names and not found[slot]:
+                        e, b, _ = self.inputs[slot]
+                        e.setText(full)
+                        found[slot] = True
+
+        if any(found.values()):
+            from src.gui import custom_dialogs as messagebox
+            resolved = [k for k, v in found.items() if v]
+            messagebox.showinfo(
+                self, c.t("UI_SUCCESS_TITLE"),
+                c.t("UI_BIN_AUTO_RESOLVED", count=len(resolved))
+            )
+        else:
+            from src.gui import custom_dialogs as messagebox
+            messagebox.showwarning(self, c.t("UI_ERROR_TITLE"), c.t("UI_BIN_AUTO_NONE"))
 
     def update_binary_version_info(self):
         if self.lbl_binary_version is None:
@@ -916,10 +1056,16 @@ class SettingsTab(QWidget):
         is_flatpak = mode_key == c.MODE_BIN_FLATPAK
         is_custom = mode_key == c.MODE_BIN_CUSTOM
         self.frame_flatpak_id.setVisible(is_flatpak)
+        if hasattr(self, "lbl_flatpak_id"):
+            self.lbl_flatpak_id.setVisible(is_flatpak)
+        if hasattr(self, "binfolder_group"):
+            self.binfolder_group.setVisible(is_custom)
         for key, (e, b, parent) in self.inputs.items():
             e.setEnabled(is_custom)
             b.setEnabled(is_custom)
             parent.setVisible(is_custom)
+        if hasattr(self, "libs_group"):
+            self.libs_group.setVisible(is_custom)
         self.update_binary_version_info()
 
     def toggle_custom_env(self):
@@ -980,7 +1126,6 @@ class SettingsTab(QWidget):
         input_text = "#ffffff" if mode == "Dark" else "#1a1a1a"
         input_border = "#555555" if mode == "Dark" else "#c1c9d4"
         slider_groove = "#4a4a4a" if mode == "Dark" else "#c9c9c9"
-
         combo_qss = f"""
             QComboBox {{
                 background-color: {input_bg};
@@ -989,10 +1134,15 @@ class SettingsTab(QWidget):
                 border-radius: 4px;
                 padding: 5px 10px;
                 font-size: 13px;
+                background-clip: padding-box;
             }}
             QComboBox:hover {{ border: 1px solid {accent}; }}
             QComboBox:focus {{ border: 1px solid {accent}; }}
-            QComboBox::drop-down {{ border: none; width: 24px; background: transparent; }}
+            QComboBox::drop-down {{
+                border: none; width: 24px; background: transparent;
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+            }}
             QComboBox::down-arrow {{
                 width: 10px;
                 height: 10px;
@@ -1263,5 +1413,9 @@ class SettingsTab(QWidget):
                 paths = dict(self.app.config.get(c.CONFIG_KEY_BINARY_PATHS, {}))
                 paths[key] = e.text()
                 self.app.config_manager.set(c.CONFIG_KEY_BINARY_PATHS, paths)
+            if hasattr(self, "entry_mc_libs"):
+                self.app.config_manager.set(c.CONFIG_KEY_MC_LIBS_PATH, self.entry_mc_libs.text().strip())
+            if hasattr(self, "entry_bin_folder"):
+                self.app.config_manager.set(c.CONFIG_KEY_BIN_FOLDER, self.entry_bin_folder.text().strip())
         from src.gui import custom_dialogs as messagebox
         messagebox.showinfo(self, c.t("UI_SUCCESS_TITLE"), c.t("UI_SAVE_SUCCESS_MSG"))

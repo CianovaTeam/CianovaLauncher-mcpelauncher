@@ -8,6 +8,8 @@ CONFIG_KEY_ERROR = "error"
 CONFIG_KEY_WEBVIEW = "webview"
 CONFIG_KEY_MSA_DAEMON = "msa_daemon"
 CONFIG_KEY_BINARY_PATHS = "binary_paths"
+CONFIG_KEY_MC_LIBS_PATH = "mc_libs_path"
+CONFIG_KEY_BIN_FOLDER = "bin_folder"
 
 # ── Execution mode keys ──
 CONFIG_KEY_MODE = "mode"

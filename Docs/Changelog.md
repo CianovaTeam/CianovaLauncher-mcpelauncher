@@ -1,5 +1,44 @@
 # 📝 Changelog - CianovaLauncher
 
+# [3.2] - 2026-08-03 — UI Update
+
+### ⚙️ Rendimiento y compatibilidad
+- Nuevos ajustes por desmarcado simples para controlar el renderizado de Minecraft, cada uno con su botón de ayuda (`?`):
+  - **Forzar OpenGL** (`MESA_LOADER_DRIVER_OVERRIDE`) para evitar fallos con ciertos drivers gráficos.
+  - **Forzar OpenGL ES 3.2** (`MESA_GLES_VERSION_OVERRIDE=3.2`) para versiones de Mesa que lo requieran.
+  - **Desactivar Vsync** (`MESA_NO_ERROR=1`) para mejorar los FPS.
+  - **Forzar GPU Discreta** (`DRI_PRIME=1`) para usar la tarjeta gráfica dedicada en lugar de la integrada.
+- Estos ajustes se combinan automáticamente con los existentes de **Gamemode**, **NVIDIA Prime** y **Zink**.
+
+### 🎨 Interfaz y apariencia
+- Modo claro completo en el **Configurador de Juego** y el **Asistente de Migración**, con colores y bordes coherentes con el resto de la aplicación en ambos temas.
+- Iconos de **perfil** rediseñados: cada perfil se distingue ahora por una silueta de persona en su color característico en lugar de un bloque genérico.
+- Más espacio vertical entre las herramientas de la pestaña **Tools** para que estén mejor separadas visualmente.
+- El resumen final del **Asistente de Configuración** separa ahora sus secciones verticalmente para una lectura más clara de cada apartado.
+- Corregido el borde de los **desplegables (combobox)** para que ya no muestren una línea oscura arriba y abajo.
+
+### ✨ General
+- CianovaLauncher se identifica ahora como **versión 3.2** con el lanzamiento "UI Update".
+- Límite de logs: los registros rotan a 5 MB por archivo y se conservan como máximo 30 archivos, eliminando los más antiguos automáticamente.
+- Los logs se escriben y leen en la misma ubicación (aware de Flatpak), por lo que la pestaña **Logs** encuentra siempre la sesión activa.
+
+### 🗂️ Pestaña Logs
+- El log activo se lee de forma incremental sin recargar todo el contenido, evitando parpadeos y saltos de scroll forzados.
+- Nuevo indicador de sesión: un punto **verde** con el texto "Sesión actual" para el log en vivo y un punto **gris** con "Sesión DD/MM/AAAA - HH:MM:SS" para los anteriores, tanto en la pestaña como en el desplegable.
+
+### ⚙️ Ajustes reorganizados
+- La sección "Rendimiento" pasa a llamarse **Extras** y ahora comienza con la opción de **Activar Argumentos/Variables Personalizadas** (movida desde Lanzamiento).
+- La opción **Al lanzar el juego** (LaunchAction) se mueve a **General**.
+- En modo de binarios **Personalizado** se añade un selector de **carpeta de binarios** con resolución automática: escanea la carpeta (y su subcarpeta `bin`) y asigna cada binario reconocido a su campo correspondiente.
+- El texto de versión de binarios ("Precompiled binaries from mcpelauncher github" o el `info.txt`) se muestra ahora dentro de la sección Lanzamiento.
+- El pie de Ajustes muestra "Project CianovaLauncher - v3.2" como enlace oculto que abre el changelog.
+- Corregido: el campo "ID de App Flatpak" ya no se muestra cuando el modo de binarios es Sistema, Local o Personalizado.
+
+### ▶️ Pestaña Play
+- Las tarjetas de versión actualizan su color de tema automáticamente al cambiar entre modo claro/oscuro sin necesidad de hacer clic.
+- El indicador de estado del juego ahora tiene un **fondo verde** cuando hay una sesión activa para que sea más visible.
+- Se añade una insignia global "● Sesión activa" que se muestra sobre las pestañas mientras el juego está corriendo, incluso si no estás en la pestaña Play.
+
 # [3.1] - 2026-06-28 — Refinements & New Features
 
 ### 🔧 Gestor de Recursos (Addons + Mods)
