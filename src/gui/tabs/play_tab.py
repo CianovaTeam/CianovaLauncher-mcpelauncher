@@ -2,6 +2,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QComboBox, QScrollArea, QCheckBox, QPushButton, QFrame)
 from PySide6.QtCore import Qt
 from src import constants as c
+from src.core.ui_utils import FlowLayout
 
 class PlayTab(QWidget):
     """Main play tab with version list, launch options, and the play button."""
@@ -14,30 +15,27 @@ class PlayTab(QWidget):
         self.main_layout.setContentsMargins(c.SECTION_PADDING, 5, c.SECTION_PADDING, c.SECTION_PADDING)
         self.main_layout.setSpacing(5)
 
-        # 1. Cabecera (Status y Selectores)
-        self.header_layout = QHBoxLayout()
+        # 1. Cabecera (Status y Selectores) — FlowLayout wraps on narrow windows
+        self.header_layout = FlowLayout()
         self.main_layout.addLayout(self.header_layout)
 
         self.lbl_status = QLabel(c.t("UI_LABEL_SEARCHING"))
-        self.lbl_status.setObjectName("FloatingLabel")
-        self.lbl_status.setStyleSheet(f"font-size: 12px; font-weight: bold;")
+        self.lbl_status.setObjectName("IndicatorPill")
+        self.lbl_status.setStyleSheet("font-size: 12px;")
         self.header_layout.addWidget(self.lbl_status)
 
         self.lbl_game_status = QLabel(c.t("UI_GAME_STATUS_IDLE"))
-        self.lbl_game_status.setObjectName("FloatingLabel")
+        self.lbl_game_status.setObjectName("IndicatorPill")
         self.lbl_game_status.setStyleSheet("font-size: 11px;")
         self.header_layout.addWidget(self.lbl_game_status)
 
-        self.header_layout.addStretch()
-
-        # Frame para selectores
-        self.selectors_layout = QHBoxLayout()
-        self.header_layout.addLayout(self.selectors_layout)
+        # Push profile/install/mode selectors to the right side of the header
+        self.header_layout.addSpacing(0)
 
         self.lbl_profile_indicator = QLabel("")
-        self.lbl_profile_indicator.setObjectName("FloatingLabel")
+        self.lbl_profile_indicator.setObjectName("IndicatorPill")
         self.lbl_profile_indicator.setStyleSheet(f"color: {c.COLOR_PRIMARY_GREEN}; font-size: 11px;")
-        self.selectors_layout.addWidget(self.lbl_profile_indicator)
+        self.header_layout.addWidget(self.lbl_profile_indicator)
 
         self.update_profile_indicator()
 
@@ -47,9 +45,9 @@ class PlayTab(QWidget):
             self.lbl_profile_indicator.setToolTip(c.t("UI_SYMLINK_NOT_SUPPORTED_MSG"))
 
         self.lbl_install = QLabel(c.t("UI_LABEL_INSTALLATION"))
-        self.lbl_install.setObjectName("FloatingLabel")
+        self.lbl_install.setObjectName("IndicatorPill")
         self.lbl_install.setStyleSheet("color: gray; font-size: 11px;")
-        self.selectors_layout.addWidget(self.lbl_install)
+        self.header_layout.addWidget(self.lbl_install)
 
         # Selector de modo
         if self.app.running_in_flatpak:
@@ -61,17 +59,16 @@ class PlayTab(QWidget):
 
         self.combo_mode = QComboBox()
         self.combo_mode.addItems(mode_values)
-        self.combo_mode.setFixedWidth(170)
         self.combo_mode.setFixedHeight(28)
         self.combo_mode.currentTextChanged.connect(lambda mode: self.app.logic.change_mode_ui(self.app, mode))
-        self.selectors_layout.addWidget(self.combo_mode)
+        self.header_layout.addWidget(self.combo_mode)
 
         # 2. Lista de Versiones
         version_title_container = QHBoxLayout()
         version_title_container.addStretch()
         self.lbl_version_title = QLabel(c.t("UI_LABEL_INSTALLED_VERSIONS"))
-        self.lbl_version_title.setObjectName("FloatingLabel")
-        self.lbl_version_title.setStyleSheet("font-weight: bold;")
+        self.lbl_version_title.setObjectName("IndicatorPill")
+        self.lbl_version_title.setStyleSheet("font-size: 13px;")
         version_title_container.addWidget(self.lbl_version_title)
         version_title_container.addStretch()
         self.main_layout.addLayout(version_title_container)
@@ -152,16 +149,14 @@ class PlayTab(QWidget):
             self.lbl_game_status.setText(f"<span style='color:white;'>{dot}</span> {c.t('UI_GAME_STATUS_RUNNING')}")
             self.lbl_game_status.setStyleSheet(
                 f"font-size: 11px; font-weight: bold; color: white; "
-                f"background-color: {color}; border-radius: 10px; padding: 2px 10px;"
+                f"background-color: {color}; border-radius: 13px; padding: 4px 13px;"
             )
             self.lbl_game_status.setToolTip(c.t("UI_GAME_STATUS_RUNNING"))
         else:
             muted = "#aaaaaa" if self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark") == "Dark" else "#555555"
             dot = "●"
             self.lbl_game_status.setText(f"<span style='color:{muted};'>{dot}</span> {c.t('UI_GAME_STATUS_IDLE')}")
-            self.lbl_game_status.setStyleSheet(
-                f"font-size: 11px; color: {muted}; background-color: transparent;"
-            )
+            self.lbl_game_status.setStyleSheet(f"font-size: 11px; color: {muted};")
             self.lbl_game_status.setToolTip(c.t("UI_GAME_STATUS_IDLE"))
 
     def retranslate_ui(self):

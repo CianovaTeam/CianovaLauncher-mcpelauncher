@@ -431,6 +431,25 @@ class CianovaLauncherApp(QMainWindow):
         # Section opacity should only affect Settings and Tools tabs
         frame_bg_transparent = hex_to_rgba(frame_bg_base, section_opacity)
 
+        # Tool cards get a more solid background so they read as buttons even
+        # when section opacity is low, plus an accent-tinted hover "illumination"
+        # in both themes so the accent color clearly shows on mouse over.
+        tool_card_bg = hex_to_rgba(frame_bg_base, max(section_opacity, 0.92))
+        _base = QColor(frame_bg_base)
+        _acc = QColor(accent)
+        if mode == "Dark":
+            # Dark: keep most of the base but add a clear accent glow.
+            _hr = int(_base.red() * 0.82 + _acc.red() * 0.18)
+            _hg = int(_base.green() * 0.82 + _acc.green() * 0.18)
+            _hb = int(_base.blue() * 0.82 + _acc.blue() * 0.18)
+        else:
+            # Light: a softer accent tint so it reads as a warm highlight.
+            _hr = int(_base.red() * 0.85 + _acc.red() * 0.15)
+            _hg = int(_base.green() * 0.85 + _acc.green() * 0.15)
+            _hb = int(_base.blue() * 0.85 + _acc.blue() * 0.15)
+        tool_card_hover_bg = QColor(_hr, _hg, _hb).name()
+        tool_card_hover_border = hex_to_rgba(accent, 0.85)
+
         if has_bg:
             bg_qss = f"background: transparent;"
         else:
@@ -468,6 +487,12 @@ class CianovaLauncherApp(QMainWindow):
         # Fixed semi-transparent background for floating labels
         floating_label_bg = hex_to_rgba("#555555" if mode == "Dark" else "#dddddd", 0.85)
         floating_label_border = f"1px solid {hex_to_rgba('#ffffff' if mode == 'Dark' else '#000000', 0.25)}"
+
+        # Accent-tinted "pill" style for header indicators (status, profile,
+        # installation, mode, section titles). Reads clearly in both themes.
+        pill_bg = hex_to_rgba(accent, 0.16) if mode == "Dark" else hex_to_rgba(accent, 0.10)
+        pill_border = f"1px solid {hex_to_rgba(accent, 0.55)}"
+        pill_text = text if mode == "Dark" else "#1a1a1a"
 
         qss = f"""
             QMainWindow, QWidget#centralWidget {{
@@ -660,6 +685,10 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {frame_bg_transparent};
             }}
 
+            #ToolsTab QFrame#ToolCard {{
+                background-color: {tool_card_bg};
+            }}
+
             QScrollArea#GroupFrame {{
                 background-color: transparent;
                 border: none;
@@ -681,7 +710,12 @@ class CianovaLauncherApp(QMainWindow):
             #SettingsTab QScrollArea {{
                 background-color: {bg};
             }}
-            QFrame#ToolCard:hover, QFrame#VersionCard:hover, QFrame#GroupFrame:hover {{
+            #ToolsTab QFrame#ToolCard:hover, QFrame#VersionCard:hover,
+            #ToolsTab QFrame#GroupFrame:hover {{
+                border: 1px solid {tool_card_hover_border};
+            }}
+            #ToolsTab QFrame#ToolCard:hover {{
+                background-color: {tool_card_hover_bg};
                 border: 1px solid {accent};
             }}
             QLabel#HeaderLabel {{
@@ -697,6 +731,15 @@ class CianovaLauncherApp(QMainWindow):
                 padding: 5px 15px;
                 border-radius: 4px;
                 border: {floating_label_border};
+                qproperty-alignment: 'AlignCenter';
+            }}
+            QLabel#IndicatorPill {{
+                background-color: {pill_bg};
+                color: {pill_text};
+                padding: 4px 13px;
+                border-radius: 13px;
+                border: {pill_border};
+                font-weight: bold;
                 qproperty-alignment: 'AlignCenter';
             }}
             QSlider:horizontal {{
@@ -870,7 +913,7 @@ class CianovaLauncherApp(QMainWindow):
     def update_floating_labels(self):
         """Hide or show floating status labels based on their text content."""
         # In PySide6, we can iterate over widgets to hide empty FloatingLabels
-        for widget in self.findChildren(QLabel, "FloatingLabel"):
+        for widget in self.findChildren(QLabel, "FloatingLabel") + self.findChildren(QLabel, "IndicatorPill"):
             text = widget.text().strip()
             # If it's a profile or install label, it might have icons/prefixes
             if not text or text in ["●", "👤", "● Searching...", "● Buscando..."]:
@@ -1080,17 +1123,50 @@ class CianovaLauncherApp(QMainWindow):
             return
 
         self._update_checker = UpdateChecker(self)
-        self._update_checker.check(on_result=lambda ok, ver, err: self._on_remote_check(ok, ver, ignored))
+        self._update_checker.check(on_result=lambda ok, ver, hf, err: self._on_remote_check(ok, ver, hf, ignored))
 
         self.config_manager.set(c.CONFIG_KEY_UPDATE_LAST_CHECK, now)
 
-    def _on_remote_check(self, available, remote_ver, ignored):
-        """Handle the remote check result. Show dialog if update found and not ignored."""
-        if not available or remote_ver == ignored:
+    def _on_remote_check(self, available, remote_ver, hotfix, ignored):
+        """Handle the remote check result. Show the update and/or hotfix dialog.
+
+        A hotfix is a re-release of the same version (same version string) that
+        must reach users even though their version number already matches.
+        """
+        if hotfix:
+            self._handle_hotfix(hotfix)
+
+        if available and remote_ver != ignored:
+            messagebox.showinfo(self, c.t("UI_INFO_TITLE"),
+                              c.t("UI_UPDATE_AVAILABLE", version=remote_ver))
+
+    def _handle_hotfix(self, hotfix):
+        """Show the hotfix dialog unless its id was already acknowledged/ignored."""
+        if not isinstance(hotfix, dict):
+            return
+        hf_id = hotfix.get("id", "")
+        if not hf_id:
+            return
+        ignored_hf = self.config.get(c.CONFIG_KEY_UPDATE_IGNORE_HOTFIX, "")
+        if hf_id == ignored_hf:
             return
 
-        messagebox.showinfo(self, c.t("UI_INFO_TITLE"),
-                          c.t("UI_UPDATE_AVAILABLE", version=remote_ver))
+        title = hotfix.get("title") or c.t("UI_HOTFIX_TITLE")
+        body = hotfix.get("body") or ""
+        force = bool(hotfix.get("force", False))
+        msg = c.t("UI_HOTFIX_MSG", body=body) if body else c.t("UI_HOTFIX_MSG")
+
+        if force:
+            # Mandatory hotfix: only an acknowledgement button, cannot be ignored.
+            messagebox.showwarning(self, title, msg)
+            return
+
+        dialog = messagebox.CustomDialog(
+            self, title, msg, icon_type="warning",
+            options=[c.t("UI_HOTFIX_UPDATE"), c.t("UI_HOTFIX_IGNORE")])
+        dialog.exec()
+        if dialog.result_value == c.t("UI_HOTFIX_IGNORE"):
+            self.config_manager.set(c.CONFIG_KEY_UPDATE_IGNORE_HOTFIX, hf_id)
 
     def show_update_changelog(self, version):
         """Display the changelog dialog for the given version."""

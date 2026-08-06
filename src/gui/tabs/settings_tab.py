@@ -668,7 +668,7 @@ class SettingsTab(QWidget):
 
         self.slider_icon = QSlider(Qt.Horizontal)
         self.slider_icon.setRange(16, 128)
-        self.slider_icon.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_ICON_SIZE, 32))
+        self.slider_icon.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_ICON_SIZE, 96))
         self.slider_icon.valueChanged.connect(self.on_appearance_setting_change)
         self.slider_icon.sliderReleased.connect(self.on_appearance_released)
         icon_row = QHBoxLayout()
@@ -679,7 +679,7 @@ class SettingsTab(QWidget):
 
         self.slider_title = QSlider(Qt.Horizontal)
         self.slider_title.setRange(8, 32)
-        self.slider_title.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_TITLE_SIZE, 13))
+        self.slider_title.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_TITLE_SIZE, 16))
         self.slider_title.valueChanged.connect(self.on_appearance_setting_change)
         self.slider_title.sliderReleased.connect(self.on_appearance_released)
         title_row = QHBoxLayout()
@@ -690,7 +690,7 @@ class SettingsTab(QWidget):
 
         self.slider_card_width = QSlider(Qt.Horizontal)
         self.slider_card_width.setRange(80, 400)
-        self.slider_card_width.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_CARD_WIDTH, 180))
+        self.slider_card_width.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_CARD_WIDTH, 200))
         self.slider_card_width.valueChanged.connect(self.on_appearance_setting_change)
         self.slider_card_width.sliderReleased.connect(self.on_appearance_released)
         cw_row = QHBoxLayout()
@@ -701,7 +701,7 @@ class SettingsTab(QWidget):
 
         self.slider_card_height = QSlider(Qt.Horizontal)
         self.slider_card_height.setRange(60, 300)
-        self.slider_card_height.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_CARD_HEIGHT, 145))
+        self.slider_card_height.setValue(self.app.config.get(c.CONFIG_KEY_VERSION_CARD_HEIGHT, 200))
         self.slider_card_height.valueChanged.connect(self.on_appearance_setting_change)
         self.slider_card_height.sliderReleased.connect(self.on_appearance_released)
         ch_row = QHBoxLayout()
@@ -711,6 +711,24 @@ class SettingsTab(QWidget):
         style_form.addRow(c.t("UI_LABEL_CARD_HEIGHT"), ch_row)
 
         layout.addWidget(style_box)
+
+        # ── Tools layout style ──
+        tools_box = QGroupBox(c.t("UI_LABEL_TOOLS_LAYOUT").rstrip(":"))
+        self._groups["UI_LABEL_TOOLS_LAYOUT"] = tools_box
+        tools_form = QFormLayout(tools_box)
+
+        self.combo_tools_layout = QComboBox()
+        for k, v in c.t("UI_TOOLS_LAYOUTS").items():
+            self.combo_tools_layout.addItem(v, k)
+        current_tools_layout = self.app.config.get(c.CONFIG_KEY_TOOLS_LAYOUT, c.STYLE_COLUMNS)
+        tidx = self.combo_tools_layout.findData(current_tools_layout)
+        if tidx >= 0:
+            self.combo_tools_layout.setCurrentIndex(tidx)
+        self.combo_tools_layout.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        self.combo_tools_layout.currentTextChanged.connect(self.on_tools_layout_changed)
+        tools_form.addRow(c.t("UI_LABEL_STYLE"), self.combo_tools_layout)
+
+        layout.addWidget(tools_box)
 
         self.scroll_layout.addWidget(group)
         self._add_spacer()
@@ -1206,7 +1224,7 @@ class SettingsTab(QWidget):
             self.lbl_binary_version.setStyleSheet(f"color: {muted_color}; font-size: 11px;")
 
         for name in ["combo_profile", "combo_settings_mode", "combo_launch_action",
-                     "combo_lang", "combo_scale", "combo_list_style",
+                     "combo_lang", "combo_scale", "combo_list_style", "combo_tools_layout",
                      "combo_sticker_mode", "combo_sticker_corner"]:
             widget = getattr(self, name, None)
             if widget is not None:
@@ -1270,6 +1288,8 @@ class SettingsTab(QWidget):
         self.app.config_manager.set(c.CONFIG_KEY_APPEARANCE, mode_key)
         self.app.apply_theme_settings()
         self._refresh_per_widget_styles()
+        if hasattr(self.app, "tools_tab"):
+            self.app.tools_tab.refresh_tools_ui()
 
     def on_language_change(self, display_name):
         lang_code = self.combo_lang.currentData() or "en"
@@ -1361,6 +1381,12 @@ class SettingsTab(QWidget):
         style_key = self.combo_list_style.currentData() or c.STYLE_LIST
         self.app.config_manager.set(c.CONFIG_KEY_VERSION_LIST_STYLE, style_key)
         self.app.logic.refresh_version_list(self.app)
+
+    def on_tools_layout_changed(self):
+        style_key = self.combo_tools_layout.currentData() or c.STYLE_COLUMNS
+        self.app.config_manager.set(c.CONFIG_KEY_TOOLS_LAYOUT, style_key)
+        if hasattr(self.app, "tools_tab"):
+            self.app.tools_tab.refresh_tools_ui()
 
     def on_appearance_released(self):
         self.app.config_manager.set(c.CONFIG_KEY_VERSION_ICON_SIZE, self.slider_icon.value())

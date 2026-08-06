@@ -111,6 +111,7 @@ class GooglePlayTab(QWidget):
         # Version Selection
         layout.addWidget(QLabel(c.t("UI_LABEL_SELECT_VERSION")))
         self.combo_versions = QComboBox()
+        self.combo_versions.currentIndexChanged.connect(self._on_version_selected)
         layout.addWidget(self.combo_versions)
 
         layout.addStretch()
@@ -250,6 +251,28 @@ class GooglePlayTab(QWidget):
         self.combo_versions.clear()
         self.combo_versions.addItem(f"❌ Error al cargar (Verificar Internet)")
         self.combo_versions.setEnabled(True)
+
+    def _on_version_selected(self, index):
+        """Warn the user as soon as a flagged version is picked from the combo,
+        not only when the download button is pressed."""
+        if index < 0:
+            return
+        version_data = self.combo_versions.itemData(index)
+        if not version_data:
+            return
+        version_name = version_data[1]
+        if version_name == "latest":
+            return
+        warning = self.dialog.get_warning_for_version(version_name)
+        if not warning:
+            return
+        messagebox.showwarning(
+            self,
+            "Aviso de compatibilidad",
+            f"Se ha reportado que la versión {version_name} "
+            f"presenta problemas conocidos:\n\n{warning}\n\n"
+            f"Puedes continuar con la instalación si lo deseas."
+        )
 
     def apply_filter(self, _text=None):
         """Filter the version list by stable/beta/all and populate the combo box."""

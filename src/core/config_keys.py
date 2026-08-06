@@ -101,3 +101,4 @@ CONFIG_KEY_WINDOW_SIZE = "window_size"
 # ── Update checker ──
 CONFIG_KEY_UPDATE_LAST_CHECK = "update_last_check"
 CONFIG_KEY_UPDATE_IGNORE = "update_ignore_version"
+CONFIG_KEY_UPDATE_IGNORE_HOTFIX = "update_ignore_hotfix_id"

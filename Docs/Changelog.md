@@ -13,14 +13,38 @@
 ### 🎨 Interfaz y apariencia
 - Modo claro completo en el **Configurador de Juego** y el **Asistente de Migración**, con colores y bordes coherentes con el resto de la aplicación en ambos temas.
 - Iconos de **perfil** rediseñados: cada perfil se distingue ahora por una silueta de persona en su color característico en lugar de un bloque genérico.
-- Más espacio vertical entre las herramientas de la pestaña **Tools** para que estén mejor separadas visualmente.
 - El resumen final del **Asistente de Configuración** separa ahora sus secciones verticalmente para una lectura más clara de cada apartado.
 - Corregido el borde de los **desplegables (combobox)** para que ya no muestren una línea oscura arriba y abajo.
+
+### 🧰 Pestaña Herramientas rediseñada
+- Las herramientas pasan a **tarjetas** con icono vectorial propio, título, breve descripción y cursor de clic, en lugar de botones de texto plano.
+- Nuevo orden por uso: **Instalación**, **Contenido**, **Configuración** y **Sistema**.
+- Iconos vectoriales dibujados en tiempo de ejecución (descarga, migración, lista, cubo, camiseta, cámara, sliders, chispa, carpeta, lupa, escudo, enchufe) con el color de acento del tema.
+- **Badges de estado** integrados en las tarjetas: verde/amarillo/rojo para el estado de los Shaders, del Mod DRM y del rango de versiones compatibles.
+- Nuevo selector de **Diseño de Herramientas** en Ajustes > Apariencia: **Dos Columnas** o **Tarjetas (Cuadrícula)**.
+- Las tarjetas tienen ahora **fondo sólido** reconocible (independiente de la opacidad de sección) y un **efecto hover** que ilumina la tarjeta con el **color de acento** y resalta su borde en ambos temas (oscuro y claro).
+- Corregido el **hover de las tarjetas** de Herramientas: ahora la regla QSS con especificidad suficiente (`#ToolsTab QFrame#ToolCard:hover`) hace que el fondo de acento y el borde se apliquen realmente al pasar el ratón.
+- Mejorado el **contraste del texto secundario** (descripciones de tarjetas) en **modo claro**: color más oscuro (`#404040`) para una lectura cómoda sobre el fondo claro.
+
+### ▶️ Pestaña Play — indicadores y tarjetas
+- Los indicadores de la cabecera (**Estado**, **Estado del juego**, **Perfil**, **Instalación**, **Versiones Instaladas** y el **Modo** de ToolsTab) pasan a ser **píldoras** con fondo y borde teñidos del color de acento, coherentes en ambos temas.
+- La cabecera usa un **FlowLayout**: al estrechar la ventana horizontalmente, las píldoras saltan a la línea siguiente en lugar de cortarse o desbordarse.
+- Los indicadores de **Perfil**, **Instalación** y el selector de **Modo** quedan alineados a la **derecha** de la cabecera (con un spacer expansivo), mientras Estado y Estado del juego permanecen a la izquierda; el FlowLayout mantiene el wrap en ventanas estrechas.
+- Nuevo **tamaño por defecto** de las tarjetas de versión: **200×200** con icono **96 px** y título **16 px** (antes 180×145, icono 32, título 13), para que luzcan grandes y resaltantes de serie; los deslizadores de Ajustes reflejan los nuevos valores.
+
+### ⚠️ Avisos de versiones en Google Play
+- El aviso de compatibilidad de una versión marcada aparece ahora **al seleccionarla** en el desplegable de Google Play, no solo al pulsar el botón de descarga.
 
 ### ✨ General
 - CianovaLauncher se identifica ahora como **versión 3.2** con el lanzamiento "UI Update".
 - Límite de logs: los registros rotan a 5 MB por archivo y se conservan como máximo 30 archivos, eliminando los más antiguos automáticamente.
 - Los logs se escriben y leen en la misma ubicación (aware de Flatpak), por lo que la pestaña **Logs** encuentra siempre la sesión activa.
+
+### 🚨 Avisos de hotfix
+- Nuevo sistema de **hotfix**: una re-publicación de la misma versión (p. ej. `3.1.0` re-publicada con un fix urgente) ahora avisa a los usuarios aunque el número de versión no cambie.
+- El `version.json` acepta un campo `hotfix` con `id`, `title`, `body` y `force`; el launcher lo detecta y muestra un diálogo de **Actualización crítica**.
+- Los hotfix **obligatorios** (`force: true`) no se pueden ignorar; los no obligatorios ofrecen "Ignorar" y no vuelven a aparecer para ese `id`.
+- El workflow de Release pide ahora **¿Es un hotfix?**, **Razón del hotfix** y **Aviso obligatorio** y publica el `version.json` en la raíz de `gh-pages` vía API (sin clonar el repositorio Flatpak de 500 MB).
 
 ### 🗂️ Pestaña Logs
 - El log activo se lee de forma incremental sin recargar todo el contenido, evitando parpadeos y saltos de scroll forzados.

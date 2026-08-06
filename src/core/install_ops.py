@@ -166,10 +166,10 @@ def refresh_version_list(app):
         return
 
     style = app.config.get(c.CONFIG_KEY_VERSION_LIST_STYLE, c.STYLE_LIST)
-    isize = app.config.get(c.CONFIG_KEY_VERSION_ICON_SIZE, 32)
-    tsize = app.config.get(c.CONFIG_KEY_VERSION_TITLE_SIZE, 13)
-    cwidth = app.config.get(c.CONFIG_KEY_VERSION_CARD_WIDTH, 180)
-    cheight = app.config.get(c.CONFIG_KEY_VERSION_CARD_HEIGHT, 145)
+    isize = app.config.get(c.CONFIG_KEY_VERSION_ICON_SIZE, 96)
+    tsize = app.config.get(c.CONFIG_KEY_VERSION_TITLE_SIZE, 16)
+    cwidth = app.config.get(c.CONFIG_KEY_VERSION_CARD_WIDTH, 200)
+    cheight = app.config.get(c.CONFIG_KEY_VERSION_CARD_HEIGHT, 200)
     default_pix = ImageManager.get_image("icon.png", size=(isize, isize))
 
     zooms = app.config.get(c.CONFIG_KEY_VERSION_ICON_ZOOM, {})

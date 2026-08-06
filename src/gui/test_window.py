@@ -146,9 +146,11 @@ class TestWindow(QWidget):
         """Test the remote update checker against the real URL."""
         local = c.VERSION_LAUNCHER
         checker = UpdateChecker(self)
-        def on_result(available, remote_ver, error):
+        def on_result(available, remote_ver, hotfix, error):
             if error:
                 msg = f"Local version: {local}\n\n❌ {error}"
+            elif hotfix:
+                msg = f"Local version: {local}\nRemote version: {remote_ver}\n\n🚨 Hotfix: {hotfix.get('title', '')}"
             elif available:
                 msg = f"Local version: {local}\nRemote version: {remote_ver}\n\n✅ Update available!"
             else:

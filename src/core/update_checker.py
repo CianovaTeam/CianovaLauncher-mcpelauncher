@@ -17,7 +17,7 @@ class UpdateChecker(QNetworkAccessManager):
         """Fetch version.json from GitHub Pages and compare versions.
 
         Args:
-            on_result: callable(available: bool, latest_version: str, error: str)
+            on_result: callable(available: bool, latest_version: str, hotfix: dict|None, error: str)
             custom_url: optional override URL (used by test window)
         """
         self._check_callback = on_result
@@ -32,7 +32,7 @@ class UpdateChecker(QNetworkAccessManager):
             if reply.error() != QNetworkReply.NetworkError.NoError:
                 err = reply.errorString()
                 logger.warning(f"Update check network error: {err}")
-                self._call_callback(False, "", f"Network error: {err}")
+                self._call_callback(False, "", None, f"Network error: {err}")
                 return
 
             data = reply.readAll().data().decode("utf-8")
@@ -40,13 +40,14 @@ class UpdateChecker(QNetworkAccessManager):
 
             remote_ver = info.get("latest_version", "")
             is_prerelease = info.get("prerelease", False)
+            hotfix = info.get("hotfix")
 
             if not remote_ver:
-                self._call_callback(False, "", "Response missing 'latest_version' field")
+                self._call_callback(False, "", hotfix, "Response missing 'latest_version' field")
                 return
 
             if is_prerelease:
-                self._call_callback(False, remote_ver, f"Version {remote_ver} is a pre-release, skipped")
+                self._call_callback(False, remote_ver, hotfix, f"Version {remote_ver} is a pre-release, skipped")
                 return
 
             def to_tuple(v):
@@ -57,13 +58,13 @@ class UpdateChecker(QNetworkAccessManager):
             local_tuple = to_tuple(c.VERSION_LAUNCHER)
 
             if remote_tuple > local_tuple:
-                self._call_callback(True, remote_ver, "")
+                self._call_callback(True, remote_ver, hotfix, "")
             else:
-                self._call_callback(False, remote_ver, "")
+                self._call_callback(False, remote_ver, hotfix, "")
 
         except Exception as e:
             logger.error(f"Update check failed: {e}")
-            self._call_callback(False, "", f"Parse error: {e}")
+            self._call_callback(False, "", None, f"Parse error: {e}")
 
     def _call_callback(self, *args):
         if self._check_callback:

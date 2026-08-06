@@ -55,9 +55,10 @@ def qapp():
 def _run(checker, reply):
     results = {}
 
-    def cb(available, latest, error):
+    def cb(available, latest, hotfix, error):
         results["available"] = available
         results["latest"] = latest
+        results["hotfix"] = hotfix
         results["error"] = error
 
     checker._check_callback = cb
@@ -117,4 +118,10 @@ class TestCallback:
     def test_no_callback_is_noop(self, checker):
         checker._check_callback = None
         # Should not raise
-        checker._call_callback(True, "1.0", "")
+        checker._call_callback(True, "1.0", None, "")
+
+    def test_hotfix_passthrough(self, checker):
+        hotfix = {"id": "hf-1", "title": "Urgent fix", "force": True}
+        res = _run(checker, FakeReply(payload=json.dumps({
+            "latest_version": c.VERSION_LAUNCHER, "hotfix": hotfix})))
+        assert res["hotfix"] == hotfix

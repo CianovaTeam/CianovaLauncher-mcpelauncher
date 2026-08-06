@@ -225,3 +225,297 @@ def category_icon(cat_key, size=24):
     elif cat_key == "integrations":
         return make_plug_icon(color, size)
     return block_icon(color, size)
+
+
+# ── Tool icons (Tools tab) ──────────────────────────────────────────
+
+def _pen(width):
+    return QPen(Qt.NoPen)
+
+
+def make_download_icon(hex_color, size=24):
+    """Arrow pointing down into a tray (install)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c = QColor(hex_color)
+    pw = max(1, s // 10)
+    p.setPen(QPen(c, pw, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    p.setBrush(Qt.NoBrush)
+    p.drawLine(int(s * 0.5), int(s * 0.10), int(s * 0.5), int(s * 0.55))
+    p.setPen(Qt.NoPen)
+    p.setBrush(c)
+    p.drawPolygon(QPolygonF([
+        QPointF(s * 0.30, s * 0.45), QPointF(s * 0.70, s * 0.45), QPointF(s * 0.5, s * 0.70),
+    ]))
+    p.setPen(QPen(c, pw, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    p.setBrush(Qt.NoBrush)
+    p.drawLine(int(s * 0.18), int(s * 0.80), int(s * 0.82), int(s * 0.80))
+    p.end()
+    return QIcon(pm)
+
+
+def make_swap_icon(hex_color, size=24):
+    """Two horizontal arrows pointing opposite ways (migrate)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c = QColor(hex_color)
+    lit = _adjust(hex_color, 45)
+    pw = max(1, s // 10)
+    p.setPen(QPen(lit, pw, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    p.setBrush(Qt.NoBrush)
+    p.drawLine(int(s * 0.14), int(s * 0.40), int(s * 0.86), int(s * 0.40))
+    p.setPen(Qt.NoPen)
+    p.setBrush(lit)
+    p.drawPolygon(QPolygonF([
+        QPointF(s * 0.70, s * 0.25), QPointF(s * 0.86, s * 0.40), QPointF(s * 0.70, s * 0.55),
+    ]))
+    p.setPen(QPen(c, pw, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    p.setBrush(Qt.NoBrush)
+    p.drawLine(int(s * 0.86), int(s * 0.60), int(s * 0.14), int(s * 0.60))
+    p.setPen(Qt.NoPen)
+    p.setBrush(c)
+    p.drawPolygon(QPolygonF([
+        QPointF(s * 0.30, s * 0.45), QPointF(s * 0.14, s * 0.60), QPointF(s * 0.30, s * 0.75),
+    ]))
+    p.end()
+    return QIcon(pm)
+
+
+def make_list_icon(hex_color, size=24):
+    """Three bullet lines (version manager)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c = QColor(hex_color)
+    lit = _adjust(hex_color, 45)
+    pw = max(2, s // 9)
+    for i, (col, x) in enumerate([(lit, 0.18), (c, 0.30), (lit, 0.42)]):
+        p.setPen(Qt.NoPen)
+        p.setBrush(col)
+        p.drawEllipse(int(s * 0.12), int(s * x - pw / 2), pw * 2, pw * 2)
+        p.setPen(QPen(col, pw, Qt.SolidLine, Qt.RoundCap))
+        p.setBrush(Qt.NoBrush)
+        p.drawLine(int(s * 0.30), int(s * x), int(s * 0.88), int(s * x))
+    p.end()
+    return QIcon(pm)
+
+
+def make_cube_icon(hex_color, size=24):
+    """Isometric 3D box (addons/resource packs)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c_main = QColor(hex_color)
+    c_lit = _adjust(hex_color, 55)
+    c_shade = _adjust(hex_color, -40)
+    p.setPen(Qt.NoPen)
+    p.setBrush(c_lit)
+    p.drawPolygon(QPolygonF([
+        QPointF(s * 0.50, s * 0.10), QPointF(s * 0.88, s * 0.30), QPointF(s * 0.50, s * 0.50), QPointF(s * 0.12, s * 0.30),
+    ]))
+    p.setBrush(c_main)
+    p.drawPolygon(QPolygonF([
+        QPointF(s * 0.12, s * 0.30), QPointF(s * 0.50, s * 0.50), QPointF(s * 0.50, s * 0.88), QPointF(s * 0.12, s * 0.68),
+    ]))
+    p.setBrush(c_shade)
+    p.drawPolygon(QPolygonF([
+        QPointF(s * 0.50, s * 0.50), QPointF(s * 0.88, s * 0.30), QPointF(s * 0.88, s * 0.68), QPointF(s * 0.50, s * 0.88),
+    ]))
+    p.end()
+    return QIcon(pm)
+
+
+def make_shirt_icon(hex_color, size=24):
+    """T-shirt silhouette (skin packs)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c_main = QColor(hex_color)
+    c_lit = _adjust(hex_color, 45)
+    p.setPen(Qt.NoPen)
+    p.setBrush(c_lit)
+    p.drawEllipse(int(s * 0.40), int(s * 0.08), int(s * 0.20), int(s * 0.20))
+    p.setBrush(c_main)
+    body = QPolygonF([
+        QPointF(s * 0.30, s * 0.14), QPointF(s * 0.42, s * 0.06),
+        QPointF(s * 0.58, s * 0.06), QPointF(s * 0.70, s * 0.14),
+        QPointF(s * 0.86, s * 0.30), QPointF(s * 0.74, s * 0.44),
+        QPointF(s * 0.66, s * 0.40), QPointF(s * 0.66, s * 0.92),
+        QPointF(s * 0.34, s * 0.92), QPointF(s * 0.34, s * 0.40),
+        QPointF(s * 0.26, s * 0.44), QPointF(s * 0.14, s * 0.30),
+    ])
+    p.drawPolygon(body)
+    p.end()
+    return QIcon(pm)
+
+
+def make_camera_icon(hex_color, size=24):
+    """Camera body with lens (screenshots)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c_main = QColor(hex_color)
+    c_lit = _adjust(hex_color, 50)
+    p.setPen(Qt.NoPen)
+    p.setBrush(c_lit)
+    p.drawRoundedRect(int(s * 0.30), int(s * 0.12), int(s * 0.40), int(s * 0.16), 2, 2)
+    p.setBrush(c_main)
+    p.drawRoundedRect(int(s * 0.10), int(s * 0.24), int(s * 0.80), int(s * 0.56), int(s * 0.08), int(s * 0.08))
+    p.setBrush(c_lit)
+    p.drawEllipse(int(s * 0.34), int(s * 0.36), int(s * 0.32), int(s * 0.32))
+    p.setBrush(c_main)
+    p.drawEllipse(int(s * 0.41), int(s * 0.43), int(s * 0.18), int(s * 0.18))
+    p.end()
+    return QIcon(pm)
+
+
+def make_sliders_icon(hex_color, size=24):
+    """Three vertical sliders (game configuration)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c = QColor(hex_color)
+    lit = _adjust(hex_color, 45)
+    sh = _adjust(hex_color, -30)
+    pw = max(1, s // 11)
+    for i, (x, knob) in enumerate([(0.22, 0.30), (0.50, 0.66), (0.78, 0.44)]):
+        col = lit if i == 1 else c
+        p.setPen(QPen(col, pw, Qt.SolidLine, Qt.RoundCap))
+        p.setBrush(Qt.NoBrush)
+        p.drawLine(int(s * x), int(s * 0.12), int(s * x), int(s * 0.88))
+        p.setPen(Qt.NoPen)
+        p.setBrush(sh)
+        p.drawEllipse(int(s * x - pw), int(s * knob - pw), pw * 2, pw * 2)
+        p.setBrush(col)
+        p.drawEllipse(int(s * x - pw * 0.7), int(s * knob - pw * 0.7), int(pw * 1.4), int(pw * 1.4))
+    p.end()
+    return QIcon(pm)
+
+
+def make_sparkle_icon(hex_color, size=24):
+    """Four-point star sparkle (shaders)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c = QColor(hex_color)
+    lit = _adjust(hex_color, 50)
+    p.setPen(Qt.NoPen)
+    p.setBrush(c)
+    p.drawPolygon(QPolygonF([
+        QPointF(s * 0.50, s * 0.06), QPointF(s * 0.60, s * 0.40), QPointF(s * 0.94, s * 0.50),
+        QPointF(s * 0.60, s * 0.60), QPointF(s * 0.50, s * 0.94), QPointF(s * 0.40, s * 0.60),
+        QPointF(s * 0.06, s * 0.50), QPointF(s * 0.40, s * 0.40),
+    ]))
+    p.setBrush(lit)
+    p.drawEllipse(int(s * 0.22), int(s * 0.16), int(s * 0.14), int(s * 0.14))
+    p.drawEllipse(int(s * 0.66), int(s * 0.70), int(s * 0.12), int(s * 0.12))
+    p.end()
+    return QIcon(pm)
+
+
+def make_folder_icon(hex_color, size=24):
+    """Folder with tab (open data folder)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c_main = QColor(hex_color)
+    c_lit = _adjust(hex_color, 50)
+    p.setPen(Qt.NoPen)
+    p.setBrush(c_lit)
+    p.drawRoundedRect(int(s * 0.10), int(s * 0.30), int(s * 0.80), int(s * 0.52), 3, 3)
+    p.setBrush(c_main)
+    p.drawPolygon(QPolygonF([
+        QPointF(s * 0.10, s * 0.30), QPointF(s * 0.34, s * 0.30),
+        QPointF(s * 0.44, s * 0.40), QPointF(s * 0.90, s * 0.40),
+        QPointF(s * 0.90, s * 0.82), QPointF(s * 0.10, s * 0.82),
+    ]))
+    p.end()
+    return QIcon(pm)
+
+
+def make_search_icon(hex_color, size=24):
+    """Magnifying glass (verify hardware)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c = QColor(hex_color)
+    pw = max(2, s // 8)
+    p.setPen(QPen(c, pw, Qt.SolidLine, Qt.RoundCap))
+    p.setBrush(Qt.NoBrush)
+    p.drawEllipse(int(s * 0.20), int(s * 0.20), int(s * 0.40), int(s * 0.40))
+    p.setPen(QPen(c, pw, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    p.drawLine(int(s * 0.55), int(s * 0.55), int(s * 0.86), int(s * 0.86))
+    p.end()
+    return QIcon(pm)
+
+
+def make_shield_icon(hex_color, size=24):
+    """Shield with a check (compatible range)."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c_main = QColor(hex_color)
+    c_lit = _adjust(hex_color, 50)
+    p.setPen(Qt.NoPen)
+    p.setBrush(c_main)
+    p.drawPolygon(QPolygonF([
+        QPointF(s * 0.50, s * 0.06), QPointF(s * 0.90, s * 0.18),
+        QPointF(s * 0.84, s * 0.62), QPointF(s * 0.50, s * 0.94),
+        QPointF(s * 0.16, s * 0.62), QPointF(s * 0.10, s * 0.18),
+    ]))
+    p.setPen(QPen(c_lit, max(2, s // 9), Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    p.setBrush(Qt.NoBrush)
+    p.drawPolyline(QPolygonF([
+        QPointF(s * 0.36, s * 0.50), QPointF(s * 0.46, s * 0.60), QPointF(s * 0.66, s * 0.38),
+    ]))
+    p.end()
+    return QIcon(pm)
+
+
+TOOL_ICON_KINDS = {
+    "download": make_download_icon,
+    "swap": make_swap_icon,
+    "list": make_list_icon,
+    "cube": make_cube_icon,
+    "shirt": make_shirt_icon,
+    "camera": make_camera_icon,
+    "sliders": make_sliders_icon,
+    "sparkle": make_sparkle_icon,
+    "folder": make_folder_icon,
+    "search": make_search_icon,
+    "shield": make_shield_icon,
+    "plug": make_plug_icon,
+}
+
+
+def tool_icon(kind, hex_color="#888888", size=24):
+    """Return a vector icon for a Tools tab tool by kind name."""
+    maker = TOOL_ICON_KINDS.get(kind, make_block_icon)
+    cache_key = ("tool", kind, hex_color, size)
+    if cache_key not in _icon_cache:
+        _icon_cache[cache_key] = maker(hex_color, size)
+    return _icon_cache[cache_key]

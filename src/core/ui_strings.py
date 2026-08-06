@@ -87,28 +87,36 @@ UI_INSTALL_MODES = {
 }
 
 # Pestaña Herramientas
-UI_SECTION_MANAGEMENT = "Gestión"
+UI_SECTION_INSTALL = "Instalación"
+UI_SECTION_CONTENT = "Contenido"
+UI_SECTION_CONFIGURATION = "Configuración"
+UI_SECTION_SYSTEM = "Sistema"
 UI_BUTTON_INSTALL_APK = "Instalar Versión"
 UI_BUTTON_MOVE_DELETE_VERSION = "Gestor de Versiones"
 UI_BUTTON_VERSION_MANAGER = "Gestor de Versiones"
 UI_BUTTON_MIGRATE_DATA = "Migración de Datos"
-UI_SECTION_ADDONS = "Complementos"
 UI_BUTTON_ADDON_MANAGER = "Gestor de recursos"
-UI_SECTION_CUSTOMIZATION = "Personalización"
 UI_BUTTON_SKIN_PACK_CREATOR = "Creador de Skin Packs"
 UI_BUTTON_GAME_CONFIG = "Configurador de Juego"
-UI_LABEL_SHADERS_STATUS = "Shaders: ..."
-UI_BUTTON_DISABLE_SHADERS = "Disable Shaders"
-UI_SECTION_FILES = "Archivos"
+UI_BUTTON_DISABLE_SHADERS = "Desactivar Shaders"
 UI_BUTTON_OPEN_DATA_FOLDER = "Abrir Carpeta de Datos"
-UI_SECTION_SYSTEM = "Sistema"
+UI_BUTTON_OPEN_SCREENSHOTS = "Abrir Capturas"
 UI_BUTTON_VERIFY_DEPS = "Verificar Dependencias"
 UI_BUTTON_VERIFY_HW = "Verificar Requisitos (Hardware)"
-UI_SECTION_SHORTCUT = "Menú de Inicio"
-UI_BUTTON_MANAGE_SHORTCUT = "Gestor de Versiones"
-UI_SECTION_EXPORT = "Exportación"
-UI_BUTTON_EXPORT_WORLDS = "Exportar Mundos"
-UI_BUTTON_OPEN_SCREENSHOTS = "Abrir Capturas"
+UI_LABEL_SHADERS_STATUS = "Shaders: ..."
+UI_LABEL_COMPATIBLE_RANGE = "Versiones Compatibles:"
+UI_TOOL_DESC_INSTALL_APK = "Instala o añade una versión de Minecraft."
+UI_TOOL_DESC_MIGRATE_DATA = "Transfiere datos y mundos desde otro launcher."
+UI_TOOL_DESC_VERSION_MANAGER = "Renombra, elimina y crea accesos directos."
+UI_TOOL_DESC_ADDON_MANAGER = "Gestiona addons, mods, texturas y packs."
+UI_TOOL_DESC_SKIN_PACK_CREATOR = "Crea paquetes de skins personalizados."
+UI_TOOL_DESC_OPEN_SCREENSHOTS = "Abre la carpeta de capturas del juego."
+UI_TOOL_DESC_GAME_CONFIG = "Edita las opciones y configuración del juego."
+UI_TOOL_DESC_DISABLE_SHADERS = "Restablece el modo gráfico del juego."
+UI_TOOL_DESC_OPEN_DATA_FOLDER = "Abre la carpeta de datos de los perfiles."
+UI_TOOL_DESC_VERIFY_DEPS = "Comprueba las dependencias del sistema."
+UI_TOOL_DESC_VERIFY_HW = "Analiza los requisitos de tu hardware."
+UI_TOOL_DESC_COMPATIBLE_RANGE = "Rango de versiones soportadas."
 
 # Pestaña Ajustes
 # --- Categorías de Ajustes ---
@@ -195,7 +203,6 @@ UI_LIST_STYLES = {
 }
 
 UI_TOOLS_LAYOUTS = {
-    STYLE_LIST: "Una Columna",
     STYLE_COLUMNS: "Dos Columnas",
     STYLE_GRID: "Tarjetas (Cuadrícula)"
 }
@@ -695,4 +702,8 @@ UI_BUTTON_INSTALL_MOD = "Instalar"
 
 # ── Update checker ──
 UI_UPDATE_AVAILABLE = "Versión {version} disponible. Actualiza CianovaLauncher para obtener las novedades."
+UI_HOTFIX_TITLE = "Actualización crítica disponible"
+UI_HOTFIX_MSG = "Hay una corrección urgente disponible para tu versión:\n\n{body}\n\nActualiza CianovaLauncher para aplicarla."
+UI_HOTFIX_UPDATE = "Actualizar"
+UI_HOTFIX_IGNORE = "Ignorar"
 
