@@ -455,17 +455,13 @@ class CianovaLauncherApp(QMainWindow):
         else:
             bg_qss = f"background-color: {bg};"
 
-        # Background image rendered inside Play/Tools scroll content so the
-        # configured background stays visible behind the version list/cards.
+        # The configured background is rendered once by `bg_label` (behind
+        # every widget). Play/Tools scroll content must stay transparent so
+        # that single image shows through, without re-painting a duplicate.
         if has_bg:
-            bg_path_escaped = bg_path.replace("\\", "/").replace('"', '\\"')
-            bg_image_qss = (
-                f'background-image: url("{bg_path_escaped}");\n'
-                f"                background-repeat: no-repeat;\n"
-                f"                background-position: center;\n"
-            )
+            scroll_content_bg = "background: transparent;"
         else:
-            bg_image_qss = ""
+            scroll_content_bg = f"background-color: {bg};"
 
         # Generate down-arrow pixmap for QComboBox (stylesheets suppress native arrow)
         arrow_size = 12
@@ -698,8 +694,7 @@ class CianovaLauncherApp(QMainWindow):
             }}
             #PlayTab QScrollArea > QWidget > QWidget#VersionList,
             #ToolsTab QScrollArea > QWidget > QWidget#ScrollContent {{
-                background-color: {bg};
-                {bg_image_qss}
+                {scroll_content_bg}
             }}
             #AboutTab QScrollArea {{
                 background-color: {frame_bg_opaque};
