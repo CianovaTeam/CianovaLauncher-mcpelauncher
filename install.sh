@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # CianovaLauncher - Instalación automática para Flatpak (Método 1)
-# Repositorio: https://github.com/plagaplusdev/CianovaLauncher-mcpelauncher
+# Repositorio: https://github.com/CianovaTeam/CianovaLauncher-mcpelauncher
 
 REPO_NAME="CianovaLauncher"
-REPO_URL="https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo"
+REPO_URL="https://cianovalauncher.org/CianovaLauncher.flatpakrepo"
 APP_ID="org.cianova.Launcher"
 RUNTIMES=("org.kde.Platform//6.10" "io.qt.qtwebengine.BaseApp//6.10")
 
