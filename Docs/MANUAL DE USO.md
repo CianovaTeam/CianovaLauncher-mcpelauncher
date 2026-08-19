@@ -1,7 +1,7 @@
 # 📘 MANUAL DE USO - CianovaLauncher v3.1
 
 **Versión:** 3.1
-**Desarrollador:** @PlaGaDev
+**Desarrollador:** @PlaGaPlusDev, @Leimsoto y @DarkAnubis0100
 
 ---
 
@@ -10,7 +10,7 @@
 
 Migrado a **PySide6 (Qt6)** desde la versión 3.0, ofrece una interfaz fluida con soporte HiDPI, temas, fondos personalizados y traducción a 7 idiomas.
 
-> 🌐 Página web: [plagaplusdev.github.io/CianovaLauncher-mcpelauncher](https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/)
+> 🌐 Página web: [cianovalauncher.org](https://cianovalauncher.org/)
 
 ---
 
@@ -20,12 +20,12 @@ Migrado a **PySide6 (Qt6)** desde la versión 3.0, ofrece una interfaz fluida co
 
 **Express:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/gh-pages/install.sh | bash
+curl -fsSL https://cianovalauncher.org/install.sh | bash
 ```
 
 **Repositorio (actualizaciones automáticas):**
 ```bash
-flatpak remote-add --user --if-not-exists CianovaLauncher https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo
+flatpak remote-add --user --if-not-exists CianovaLauncher https://cianovalauncher.org/CianovaLauncher.flatpakrepo
 flatpak install --user CianovaLauncher org.cianova.Launcher
 ```
 

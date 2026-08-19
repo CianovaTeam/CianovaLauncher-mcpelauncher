@@ -40,7 +40,7 @@ def load_language(lang_code):
     global_vars = {
         "APP_NAME": getattr(c, "APP_NAME", "CianovaLauncher"),
         "VERSION_LAUNCHER": getattr(c, "VERSION_LAUNCHER", "1.0.0"),
-        "DEVELOPERS": getattr(c, "DEVELOPERS", "@PlaGaDev"),
+        "DEVELOPERS": getattr(c, "DEVELOPERS", "@PlaGaPlusDev, @Leimsoto and @DarkAnubis0100"),
         "UPDATE_NAME": getattr(c, "UPDATE_NAME", "New Update"),
     }
 
