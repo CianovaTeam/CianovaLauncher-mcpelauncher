@@ -10,7 +10,7 @@
 
 Migrado a **PySide6 (Qt6)** desde la versión 3.0, ofrece una interfaz fluida con soporte HiDPI, temas, fondos personalizados y traducción a 7 idiomas.
 
-> 🌐 Página web: [cianovateam.github.io/CianovaLauncher-mcpelauncher](https://cianovateam.github.io/CianovaLauncher-mcpelauncher/)
+> 🌐 Página web: [cianovalauncher.org](https://cianovalauncher.org/)
 
 ---
 
@@ -20,12 +20,12 @@ Migrado a **PySide6 (Qt6)** desde la versión 3.0, ofrece una interfaz fluida co
 
 **Express:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/CianovaTeam/CianovaLauncher-mcpelauncher/gh-pages/install.sh | bash
+curl -fsSL https://cianovalauncher.org/install.sh | bash
 ```
 
 **Repositorio (actualizaciones automáticas):**
 ```bash
-flatpak remote-add --user --if-not-exists CianovaLauncher https://cianovateam.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo
+flatpak remote-add --user --if-not-exists CianovaLauncher https://cianovalauncher.org/CianovaLauncher.flatpakrepo
 flatpak install --user CianovaLauncher org.cianova.Launcher
 ```
 

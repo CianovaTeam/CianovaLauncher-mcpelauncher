@@ -182,7 +182,7 @@ THEME_COLOR_MAP = {
 VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/PlaGaPlusDev/mcpelauncher-versiondb/master/versions.{arch}.json.min"
 
 # ── Update checker ──
-UPDATE_CHECK_URL = "https://cianovateam.github.io/CianovaLauncher-mcpelauncher/version.json"
+UPDATE_CHECK_URL = "https://cianovalauncher.org/version.json"
 UPDATE_CHECK_INTERVAL = 86400  # 24h between automatic checks
 VERSION_WARNINGS_URL = "https://raw.githubusercontent.com/PlaGaPlusDev/mcpelauncher-versiondb/master/version-warnings.json"
 
