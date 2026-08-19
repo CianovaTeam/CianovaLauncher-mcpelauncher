@@ -11,7 +11,7 @@
 
 🌐 Visita nuestra página web del proyecto con toda la info organizada, detalles y métodos de descarga: 
 
-### [plagaplusdev.github.io/CianovaLauncher-mcpelauncher](https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/)
+### [cianovateam.github.io/CianovaLauncher-mcpelauncher](https://cianovateam.github.io/CianovaLauncher-mcpelauncher/)
 
 ---
 
@@ -44,10 +44,10 @@ Link para configurar Flatpak la primera vez según tu distro: [FLATPAK SETUP](ht
 Si ya tienes Flatpak instalado, este script lo hace todo por ti: añade el repositorio, instala los runtimes de Qt6 y deja el launcher listo para arrancar.
  
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/gh-pages/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/CianovaTeam/CianovaLauncher-mcpelauncher/gh-pages/install.sh | bash
 ```
  
-> Puedes [revisar el script en GitHub](https://github.com/PlaGaPlusDev/CianovaLauncher-mcpelauncher/blob/gh-pages/install.sh) antes de ejecutarlo si quieres ver qué hace paso a paso. Si Flatpak no está instalado, el script te indica cómo hacerlo según tu distro.
+> Puedes [revisar el script en GitHub](https://github.com/CianovaTeam/CianovaLauncher-mcpelauncher/blob/gh-pages/install.sh) antes de ejecutarlo si quieres ver qué hace paso a paso. Si Flatpak no está instalado, el script te indica cómo hacerlo según tu distro.
 
 
 #### Metodo 1 (Recomendado) - Actualizaciones
@@ -57,7 +57,7 @@ Descarga el archivo `CianovaLauncher.flatpakrepo` en **RELEASES** o **EXTRA** pa
 O añade manualmente con:
 - Añade el repositorio
 ```bash
-flatpak remote-add --user --if-not-exists CianovaLauncher https://plagaplusdev.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo
+flatpak remote-add --user --if-not-exists CianovaLauncher https://cianovateam.github.io/CianovaLauncher-mcpelauncher/CianovaLauncher.flatpakrepo
 ```
 
 - Asegurate de instalar los runtimes necesarios que puedes instalarlos manualmente con:

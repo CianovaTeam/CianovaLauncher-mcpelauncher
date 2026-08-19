@@ -33,7 +33,7 @@ El proyecto **CCMC Launcher** por CrowRei34, en el cual se basaba la versión an
 Este proyecto se distribuye bajo la licencia **GNU GPL v3.0**. Es de código abierto y se entrega con la intención de ser gratuito para siempre. Se agradece a la comunidad no monetizar esta herramienta para mantener el espíritu de colaboración.
 
 ## 4. Exención de Responsabilidad
-De acuerdo con la licencia **GPL v3.0** el software se proporciona "tal cual", sin garantía de ningún tipo. Los desarrolladores (@PlaGaDev, @leimipsum y @ShaggyLinux) y el equipo de soporte técnico no se hacen responsables de:
+De acuerdo con la licencia **GPL v3.0** el software se proporciona "tal cual", sin garantía de ningún tipo. Los desarrolladores (@PlaGaPlusDev, @Leimsoto y @DarkAnubis0100) y el equipo de soporte técnico no se hacen responsables de:
 * Pérdida de datos (mundos, capturas, etc.).
 * Baneos de cuentas por uso indebido.
 * Fallos en el sistema derivados del uso de la herramienta.
