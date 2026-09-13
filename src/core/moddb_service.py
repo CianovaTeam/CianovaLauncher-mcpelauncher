@@ -168,8 +168,8 @@ class ModDBFetchWorker(QThread):
     finished = Signal(list)
     error = Signal(str)
 
-    def __init__(self, active_path):
-        super().__init__()
+    def __init__(self, active_path, parent=None):
+        super().__init__(parent)
         self.active_path = active_path
 
     def run(self):

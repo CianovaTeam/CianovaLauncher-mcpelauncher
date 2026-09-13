@@ -49,7 +49,7 @@ def read_install_source(version_dir):
 
 
 def get_installed_versions(app):
-    """Return a sorted list of installed version folder names."""
+    """Return an ordered list of installed version folder names conforming to saved order."""
     if not app.active_path:
         from src.core.install_ops import detect_installation
         detect_installation(app)
@@ -60,34 +60,101 @@ def get_installed_versions(app):
         logger.debug(f"Versions folder not found in: {app.active_path}")
         return []
     try:
-        vers = sorted(
-            [d for d in os.listdir(versions_dir) if os.path.isdir(os.path.join(versions_dir, d))],
-            reverse=True,
-        )
-        logger.debug(f"Installed versions found: {len(vers)}")
-        return vers
+        found_vers = [d for d in os.listdir(versions_dir) if os.path.isdir(os.path.join(versions_dir, d))]
+        saved_order = app.config_manager.get("versions_order", []) if hasattr(app, "config_manager") else app.config.get("versions_order", [])
+
+        ordered = [v for v in saved_order if v in found_vers]
+        remaining = sorted([v for v in found_vers if v not in ordered], reverse=True)
+        result = ordered + remaining
+        logger.debug(f"Installed versions found: {len(result)}")
+        return result
     except Exception as e:
         logger.error(f"Error listing versions: {e}")
         return []
 
 
 def resolve_version(path):
-    """Extract the version string from version_name.txt or manifest.json."""
+    """Extract the real Minecraft version string from directory name, version_name.txt, or resource/behavior packs."""
     try:
-        vt = os.path.join(path, "version_name.txt")
-        if os.path.exists(vt):
-            with open(vt, "r") as f:
-                return f.read().strip()
-        m = os.path.join(path, "assets/packs/vanilla/manifest.json")
-        if os.path.exists(m):
-            with open(m, "r") as f:
-                d = json.load(f)
-                v = d.get("header", {}).get("version", [])
-                if v:
-                    return ".".join(map(str, v))
-    except (OSError, ValueError, json.JSONDecodeError) as e:
-        logger.debug(f"Could not resolve version from {path}: {e}")
-    return None
+        # 1. version_name.txt or version.txt
+        for vfname in ["version_name.txt", "version.txt"]:
+            vt = os.path.join(path, vfname)
+            if os.path.exists(vt):
+                with open(vt, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read().strip()
+                    if content:
+                        return content
+
+        # 2. If directory basename itself is a valid version (e.g. 1.16.0.2 or 1.21.20.03)
+        base = os.path.basename(path.rstrip("/"))
+        if base and all(part.isdigit() for part in base.split(".")) and len(base.split(".")) >= 2:
+            return base
+
+        # 3. Search all resource_packs and behavior_packs for the highest vanilla_X.Y.Z
+        rp_dirs = [
+            os.path.join(path, "assets/assets/resource_packs"),
+            os.path.join(path, "assets/resource_packs"),
+            os.path.join(path, "resource_packs"),
+            os.path.join(path, "assets/assets/behavior_packs"),
+            os.path.join(path, "assets/behavior_packs"),
+            os.path.join(path, "behavior_packs"),
+        ]
+        found_versions = []
+        for rp in rp_dirs:
+            if os.path.isdir(rp):
+                for d in os.listdir(rp):
+                    if d.startswith("vanilla_") and not d.endswith(("_base", "_music", "_vr", "_experimental")):
+                        v_str = d.replace("vanilla_", "")
+                        # Try to read manifest for exact engine version
+                        m_path = os.path.join(rp, d, "manifest.json")
+                        if os.path.exists(m_path):
+                            try:
+                                with open(m_path, "r", encoding="utf-8", errors="ignore") as f:
+                                    m_data = json.load(f)
+                                    hdr = m_data.get("header", {})
+                                    v = hdr.get("min_engine_version") or hdr.get("version", [])
+                                    if v and (v[0] != 0 or len(v) > 2):
+                                        found_versions.append(".".join(map(str, v)))
+                                        continue
+                            except Exception:
+                                pass
+                        found_versions.append(v_str)
+
+        if found_versions:
+            def _ver_key(s):
+                res = []
+                for p in s.split("."):
+                    try:
+                        res.append(int(p))
+                    except ValueError:
+                        res.append(0)
+                return res
+            found_versions.sort(key=_ver_key)
+            return found_versions[-1]
+
+        # 4. Direct vanilla manifest fallback (only if no versioned packs found)
+        for rel_m in [
+            "assets/packs/vanilla/manifest.json",
+            "packs/vanilla/manifest.json",
+            "assets/resource_packs/vanilla/manifest.json",
+            "assets/assets/resource_packs/vanilla/manifest.json"
+        ]:
+            m = os.path.join(path, rel_m)
+            if os.path.exists(m):
+                try:
+                    with open(m, "r", encoding="utf-8", errors="ignore") as f:
+                        d = json.load(f)
+                        header = d.get("header", {})
+                        v = header.get("min_engine_version") or header.get("version", [])
+                        if v and (v[0] != 0 or len(v) > 2):
+                            return ".".join(map(str, v))
+                except Exception:
+                    pass
+
+        return None
+    except Exception as e:
+        logger.warning(f"Error resolving version for {path}: {e}")
+        return None
 
 
 def process_apk(app, apk_path, ver_name, target_root=None, is_target_flatpak=None, flatpak_id=None):
@@ -127,9 +194,13 @@ def process_apk(app, apk_path, ver_name, target_root=None, is_target_flatpak=Non
 
             process = subprocess.run(cmd, capture_output=True, text=True)
 
+            # Fallback extraction: ensure libmaesdk.so and all native libs are unpacked
+            from src.utils.safe_archive import extract_all_apk_native_libs
+            extract_all_apk_native_libs(apk_path, target_dir)
+
             def finish():
                 progress_dialog.accept()
-                if process.returncode == 0:
+                if process.returncode == 0 or os.path.isdir(os.path.join(target_dir, "lib")):
                     _write_install_source(target_dir, "apk")
                     messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"), c.t("UI_EXTRACTION_SUCCESS_MSG", ver_name=ver_name))
                     if current_root == app.active_path:
@@ -255,21 +326,21 @@ def restore_from_backup(app, version):
     src = os.path.join(backup_dir, version)
     dst = os.path.join(app.active_path, c.VERSIONS_DIR, version)
     if not os.path.exists(src):
-        messagebox.showerror(app, message.t("UI_ERROR_TITLE"), message.t("UI_VERSION_NOT_IN_BACKUP", name=version))
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_VERSION_NOT_IN_BACKUP", name=version))
         return False
     if os.path.exists(dst):
-        messagebox.showerror(app, message.t("UI_ERROR_TITLE"), message.t("UI_VERSION_ALREADY_EXISTS", name=version))
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_VERSION_ALREADY_EXISTS", name=version))
         return False
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     shutil.move(src, dst)
     from src.core.install_ops import refresh_version_list
     refresh_version_list(app)
-    messagebox.showinfo(app, message.t("UI_SUCCESS_TITLE"), message.t("UI_VERSION_RESTORED_MSG", name=version))
+    messagebox.showinfo(app, c.t("UI_SUCCESS_TITLE"), c.t("UI_VERSION_RESTORED_MSG", name=version))
     return True
 
 
 def create_version_shortcut(app, version):
-    """Crea un acceso directo .desktop para una versión específica."""
+    """Creates a .desktop shortcut for a specific version."""
     try:
         apps_dir = os.path.join(app.home, c.APPLICATIONS_DIR)
         os.makedirs(apps_dir, exist_ok=True)

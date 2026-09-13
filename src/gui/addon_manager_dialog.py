@@ -182,7 +182,6 @@ class AddonManagerDialog(QDialog):
 
         self.tabs = {}
         tab_configs = [
-            (c.t("UI_TAB_WORLDS"), "worlds"),
             (c.t("UI_TAB_RP"), "rp"),
             (c.t("UI_TAB_BP"), "bp"),
             (c.t("UI_TAB_MCPE_MODS"), "mods")

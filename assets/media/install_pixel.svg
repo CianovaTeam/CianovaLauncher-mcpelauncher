@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges">
+  <!-- Down Arrow Stem -->
+  <rect x="7" y="2" width="2" height="6" fill="#ffffff"/>
+  <!-- Down Arrow Head -->
+  <rect x="5" y="6" width="6" height="1" fill="#ffffff"/>
+  <rect x="6" y="7" width="4" height="1" fill="#ffffff"/>
+  <rect x="7" y="8" width="2" height="1" fill="#ffffff"/>
+  <!-- Tray / Box Base -->
+  <rect x="2" y="9" width="2" height="5" fill="#ffffff"/>
+  <rect x="12" y="9" width="2" height="5" fill="#ffffff"/>
+  <rect x="2" y="13" width="12" height="2" fill="#ffffff"/>
+</svg>

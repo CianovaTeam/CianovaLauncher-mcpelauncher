@@ -76,15 +76,80 @@ def check_google_session(app):
     return False
 
 
+def get_google_session_email(app):
+    """
+    Extracts the user's Google email from playdl.conf or token_cache.conf if available.
+    """
+    workdir = get_signin_workdir(app)
+    search_paths = [
+        workdir,
+        os.getcwd(),
+        os.path.join(app.home, ".config", "mcpelauncher"),
+    ]
+
+    seen = set()
+    for p in search_paths:
+        if not p or p in seen:
+            continue
+        seen.add(p)
+        for fname in ("playdl.conf", "token_cache.conf"):
+            full = os.path.join(p, fname)
+            if os.path.exists(full) and os.path.getsize(full) > 0:
+                try:
+                    with open(full, "r", encoding="utf-8", errors="ignore") as f:
+                        for line in f:
+                            line = line.strip()
+                            if line.startswith("user_email ="):
+                                email = line.split("=", 1)[1].strip()
+                                if email:
+                                    return email
+                            elif line.startswith("user_email:"):
+                                email = line.split(":", 1)[1].strip()
+                                if email:
+                                    return email
+                except Exception as e:
+                    logger.debug(f"Error reading session email from {full}: {e}")
+    return ""
+
+
+def remove_google_session(app):
+    """
+    Removes/clears the Google Play session files from all search paths.
+    """
+    workdir = get_signin_workdir(app)
+    search_paths = [
+        workdir,
+        os.getcwd(),
+        os.path.join(app.home, ".config", "mcpelauncher"),
+    ]
+
+    cleared = False
+    seen = set()
+    for p in search_paths:
+        if not p or p in seen:
+            continue
+        seen.add(p)
+        for fname in ("playdl.conf", "token_cache.conf"):
+            full = os.path.join(p, fname)
+            if os.path.exists(full):
+                try:
+                    os.remove(full)
+                    cleared = True
+                    logger.info(f"Removed Google session file: {full}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove session file {full}: {e}")
+    return cleared
+
+
 GOOGLE_AUTH_URL = "https://android.clients.google.com/auth"
 
 
 def _exchange_access_token(email, access_token):
     """
-    Convierte el access_token (oauth_token de un solo uso) entregado por
-    playdl-signin-ui-qt en un master Token reutilizable via /auth con
-    ACCESS_TOKEN=1. Equivale a playapi::login_api::perform_with_access_token.
-    Devuelve dict parseado de la respuesta (al menos 'Token') o None.
+    Exchanges the single-use access_token (oauth_token) provided by
+    playdl-signin-ui-qt into a reusable master Token via /auth with
+    ACCESS_TOKEN=1. Equivalent to playapi::login_api::perform_with_access_token.
+    Returns parsed response dict (containing at least 'Token') or None.
     """
     body = {
         "accountType": "HOSTED_OR_GOOGLE",
@@ -148,9 +213,9 @@ def _exchange_access_token(email, access_token):
 
 def _parse_signin_output(text):
     """
-    Extrae user_email / user_id / user_token de la salida stdout del binario
-    playdl-signin-ui-qt. El binario imprime líneas con formato 'clave = valor'.
-    Devuelve dict con las claves encontradas (token, id, email).
+    Extracts user_email / user_id / user_token from stdout of
+    playdl-signin-ui-qt. The binary prints lines in 'key = value' format.
+    Returns a dict with discovered keys (token, id, email).
     """
     fields = {}
     for line in text.splitlines():
@@ -163,9 +228,9 @@ def _parse_signin_output(text):
 
 def _write_playdl_conf(workdir, fields):
     """
-    Escribe playdl.conf en workdir con los campos obtenidos.
-    Formato compatible con playapi::file_login_cache (clave = valor).
-    Devuelve True si se escribió un token no vacío.
+    Writes playdl.conf in workdir with parsed fields.
+    Compatible format with playapi::file_login_cache (key = value).
+    Returns True if a non-empty token was written.
     """
     token = fields.get("user_token", "").strip()
     if not token:
@@ -182,31 +247,40 @@ def _write_playdl_conf(workdir, fields):
         os.chmod(conf_path, 0o600)
         return True
     except Exception as e:
-        logger.error(f"Error escribiendo playdl.conf: {e}")
+        logger.error(f"Error writing playdl.conf: {e}")
         return False
 
 
 def launch_google_login(app, on_finished=None):
     """
-    Lanza playdl-signin-ui-qt como QProcess capturando stdout.
-    - Fija cwd al workdir compartido.
-    - Al terminar, parsea stdout (user_email/user_id/user_token) y escribe
-      playdl.conf en el workdir para que gplaydl lo consuma.
-    - Invoca on_finished(exit_code) si se proporciona.
-    Devuelve el QProcess (None si falla el lanzamiento).
+    Launches playdl-signin-ui-qt as a QProcess capturing stdout.
+    - Sets CWD to shared workdir.
+    - On finish, parses stdout (user_email/user_id/user_token) and writes
+      playdl.conf to workdir for gplaydl to consume.
+    - Calls on_finished(exit_code) if provided.
+    Returns the QProcess (None if launch fails).
     """
-    bin_path = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_SIGNIN_UI, "playdl-signin-ui-qt")
-    if not bin_path:
-        logger.error("launch_google_login: signin_ui binary path is empty")
-        if on_finished:
-            on_finished(-1)
-        return None
+    bin_path = app.config.get(c.CONFIG_KEY_BINARY_PATHS, {}).get(c.CONFIG_KEY_SIGNIN_UI, "")
+    if not bin_path or not (os.path.isfile(bin_path) or shutil.which(bin_path)):
+        # Try fallbacks in case PATH or alternative name is present
+        for alt in [
+            "playdl-signin-ui-qt",
+            "signin-ui-qt",
+            "/app/bin/playdl-signin-ui-qt",
+            "/usr/bin/playdl-signin-ui-qt",
+            "/usr/local/bin/playdl-signin-ui-qt",
+            os.path.expanduser("~/.local/bin/playdl-signin-ui-qt"),
+            os.path.expanduser("~/.local/bin/signin-ui-qt"),
+        ]:
+            if os.path.isfile(alt) or shutil.which(alt):
+                bin_path = alt
+                break
 
-    if not os.path.isfile(bin_path) and not shutil.which(bin_path):
-        logger.error("launch_google_login: binary not found: %s", bin_path)
+    if not bin_path or (not os.path.isfile(bin_path) and not shutil.which(bin_path)):
+        logger.error("launch_google_login: binary not found: %s", bin_path or "playdl-signin-ui-qt")
         try:
             messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                                 c.t("UI_GOOGLE_SIGNIN_LAUNCH_FAILED", bin_path=bin_path))
+                                 c.t("UI_GOOGLE_SIGNIN_LAUNCH_FAILED", bin_path=bin_path or "playdl-signin-ui-qt"))
         except Exception:
             pass
         if on_finished:
@@ -336,7 +410,7 @@ ABI_PROFILES = {
 
 
 def _detect_country_locale():
-    """Detecta country/locale del entorno. Cae a us/en_US si no se puede."""
+    """Detects country/locale from the environment. Falls back to us/en_US if unavailable."""
     import locale as _l
     try:
         loc, _enc = _l.getdefaultlocale()
@@ -351,11 +425,10 @@ def _detect_country_locale():
 
 def _write_device_conf(workdir, arch):
     """
-    Genera un device.conf que sobrescribe los campos críticos del device_info
-    interno de gplaydl. El default trae un typo ('armeabi-x7a'), solo x86 y
-    country=us, locale=en_US → Google rechaza descargas de apps pagadas
-    cuando la cuenta es de otra región. Aquí declaramos las ABIs reales y
-    derivamos country/locale del entorno del usuario.
+    Generates a device.conf overriding critical device_info fields in gplaydl.
+    Default upstream has a typo ('armeabi-x7a'), only x86, and country=us, locale=en_US,
+    causing Google to reject paid app downloads when the user's account is in another region.
+    Here we declare real ABIs and derive country/locale from user environment.
     """
     abis = ABI_PROFILES.get(arch, ["x86_64", "x86"])
     array_lines = ",\n".join(f'    "{a}"' for a in abis)
@@ -406,13 +479,28 @@ def _map_gplaydl_error(returncode, tail_text):
     )
 
 
+def cancel_google_install(app):
+    """Cancel any active Google Play download or extraction process."""
+    app._install_cancelled = True
+    proc = getattr(app, "_current_install_proc", None)
+    if proc:
+        try:
+            proc.terminate()
+            proc.kill()
+        except Exception:
+            pass
+
+
 def download_and_install_google(app, vcode, vname, arch, target_root, is_target_flatpak, flatpak_id,
-                                progress_callback, status_callback, finished_callback):
+                                progress_callback, status_callback, finished_callback, instance_name=None):
     """
-    Inicia el proceso de descarga con gplaydl y luego extrae usando el método actual.
+    Starts the download process via gplaydl and extracts the APK.
     """
-    logger.debug("download_and_install_google: vcode=%s vname=%s arch=%s target_root=%s flatpak=%s id=%s",
-        vcode, vname, arch, target_root, is_target_flatpak, flatpak_id)
+    logger.debug("download_and_install_google: vcode=%s vname=%s arch=%s target_root=%s flatpak=%s id=%s instance_name=%s",
+        vcode, vname, arch, target_root, is_target_flatpak, flatpak_id, instance_name)
+
+    app._install_cancelled = False
+    app._current_install_proc = None
 
     signals = InstallSignals()
     signals.progress.connect(progress_callback)
@@ -466,18 +554,13 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                 cmd += ["-v", str(vcode_int)]
             cmd += ["-o", temp_apk]
 
-            # gplaydl runs inside the sandbox — it has network access via
-            # --share=network and writes to signin_cwd in the home directory
-            # (accessible from any flatpak sandbox via --filesystem=home).
             logger.debug("gplaydl cwd=%s", signin_cwd)
             logger.debug("gplaydl cmd=%s", " ".join(cmd))
-            logger.debug("device.conf=%s exists=%s", dev_conf, os.path.exists(dev_conf) if dev_conf else False)
-            logger.debug("playdl.conf exists=%s token_len=%d email=%s",
-                os.path.exists(os.path.join(signin_cwd, "playdl.conf")), len(token), user_email)
 
             process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        bufsize=0, cwd=signin_cwd)
+            app._current_install_proc = process
             logger.debug("gplaydl pid=%s", process.pid)
 
             stdout_tail = []
@@ -503,6 +586,14 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             buf = ""
             last_pct = -1
             while True:
+                if getattr(app, "_install_cancelled", False):
+                    try:
+                        process.terminate()
+                        process.kill()
+                    except Exception:
+                        pass
+                    break
+
                 raw = process.stdout.read(4096)
                 if not raw:
                     break
@@ -532,13 +623,13 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
 
             process.wait()
             t_err.join(timeout=2)
-            logger.debug("gplaydl exit=%s temp_apk_exists=%s",
-                process.returncode, os.path.exists(temp_apk))
-            if stderr_tail:
-                logger.debug("gplaydl stderr tail:\n%s", "".join(stderr_tail).strip())
-            if stdout_tail:
-                logger.debug("gplaydl stdout last 5 lines:\n%s",
-                    "".join(stdout_tail[-5:]).strip())
+
+            if getattr(app, "_install_cancelled", False):
+                if os.path.exists(temp_apk):
+                    try: os.remove(temp_apk)
+                    except OSError: pass
+                signals.finished.emit(False, "Descarga cancelada por el usuario.")
+                return
 
             if process.returncode != 0 or not os.path.exists(temp_apk):
                 combined = "".join(stderr_tail) + "\n" + "".join(stdout_tail)
@@ -550,7 +641,8 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             # 2. Extract
             signals.status.emit(c.t("UI_STATUS_EXTRACTING"))
 
-            target_dir = os.path.join(target_root, c.VERSIONS_DIR, vname)
+            target_folder_name = instance_name.strip() if instance_name and instance_name.strip() else vname
+            target_dir = os.path.join(target_root, c.VERSIONS_DIR, target_folder_name)
             if os.path.exists(target_dir):
                 shutil.rmtree(target_dir)
             os.makedirs(target_dir, exist_ok=True)
@@ -560,10 +652,6 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
             for split_path in sorted(glob.glob(base_no_ext + ".*.apk")):
                 if split_path != temp_apk:
                     apk_inputs.append(split_path)
-            logger.debug("extract inputs (%d): %s",
-                len(apk_inputs),
-                ", ".join(f"{os.path.basename(p)}({os.path.getsize(p)//1024}K)"
-                          for p in apk_inputs if os.path.exists(p)))
 
             use_flatpak_logic = is_target_flatpak
             extract_cmd = []
@@ -591,14 +679,13 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                     bundled_lib + os.pathsep + extract_env.get("LD_LIBRARY_PATH", "")
                 )
 
-            logger.debug("extract cmd=%s", " ".join(extract_cmd))
-            logger.debug("extract LD_LIBRARY_PATH=%s", extract_env.get("LD_LIBRARY_PATH", ""))
             extract_proc = subprocess.run(extract_cmd, capture_output=True, text=True,
                                           env=extract_env)
-            logger.debug("extract exit=%s stdout_tail=%r stderr_tail=%r",
-                extract_proc.returncode,
-                extract_proc.stdout[-300:] if extract_proc.stdout else "",
-                extract_proc.stderr[-300:] if extract_proc.stderr else "")
+
+            # Fallback extraction: ensure libmaesdk.so and all native libs are unpacked
+            from src.utils.safe_archive import extract_all_apk_native_libs
+            for p in apk_inputs:
+                extract_all_apk_native_libs(p, target_dir)
 
             for p in apk_inputs:
                 try:
@@ -607,8 +694,8 @@ def download_and_install_google(app, vcode, vname, arch, target_root, is_target_
                 except OSError:
                     pass
 
-            final_vname = vname
-            if extract_proc.returncode == 0 and vname == "latest":
+            final_vname = target_folder_name
+            if extract_proc.returncode == 0 and vname == "latest" and not (instance_name and instance_name.strip()):
                 real = resolve_version(target_dir)
                 if real:
                     new_target = os.path.join(target_root, c.VERSIONS_DIR, real)

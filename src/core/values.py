@@ -1,8 +1,8 @@
-"""Constantes de valor compartidas entre constants.py y ui_strings.py.
-Separadas para evitar importación circular: values.py no importa ningún 
-módulo del proyecto, por lo que es seguro importarlo desde ambos lados.
+"""Shared value constants between constants.py and ui_strings.py.
+Separated to avoid circular imports: values.py does not import any
+project module, making it safe to import from both sides.
 
-Mantener sincronizado con las definiciones oficiales en constants.py.
+Keep synchronized with official definitions in constants.py.
 """
 
 # ── Mode values ─────────────────────────────

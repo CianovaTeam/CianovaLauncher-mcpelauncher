@@ -163,7 +163,7 @@ class SetupWizard(QDialog):
         l.addWidget(self.lbl_legal_title)
 
         self.txt_legal = QTextEdit()
-        self.txt_legal.setPlainText(c.t("LEGAL_TEXT"))
+        self.txt_legal.setPlainText(getattr(c, "LEGAL_TEXT", ""))
         self.txt_legal.setReadOnly(True)
         self.txt_legal.setStyleSheet(f"background-color: {self._palette['view_bg']}; color: {self._palette['view_text']}; font-size: 11px;")
         l.addWidget(self.txt_legal, 1)

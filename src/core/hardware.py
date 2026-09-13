@@ -8,8 +8,8 @@ from src.utils.process_utils import query_glxinfo
 
 
 def _detect_cpu_flags():
-    """Retorna (arch, cpu_flags) desde /proc/cpuinfo.
-    Soporta x86 (flags) y ARM (Features)."""
+    """Returns (arch, cpu_flags) from /proc/cpuinfo.
+    Supports x86 (flags) and ARM (Features)."""
     arch = platform.machine()
     cpu_flags = []
     try:
@@ -25,16 +25,17 @@ def _detect_cpu_flags():
 
 
 def _detect_gl_version(app):
-    """Retorna la línea completa de OpenGL ES profile version via glxinfo, o 'Unknown'."""
+    """Returns the full OpenGL ES profile version line via glxinfo, or 'Unknown'."""
+    flatpak_mode = getattr(app, "running_in_flatpak", False) if app else False
     return query_glxinfo(
         "OpenGL ES profile version",
-        running_in_flatpak=app.running_in_flatpak,
+        running_in_flatpak=flatpak_mode,
         timeout=3, host_timeout=5,
     )
 
 
 def _parse_es_major_minor(gl_ver):
-    """Extrae (major, minor) de la línea de OpenGL ES version, ej: OpenGL ES 3.2 → (3, 2)."""
+    """Extracts (major, minor) from OpenGL ES version line, e.g. OpenGL ES 3.2 -> (3, 2)."""
     m = re.search(r"OpenGL ES (\d+)\.(\d+)", gl_ver)
     if m:
         return (int(m.group(1)), int(m.group(2)))
@@ -42,16 +43,16 @@ def _parse_es_major_minor(gl_ver):
 
 
 def _compute_compatibility(arch, cpu_flags, gl_ver):
-    """Retorna string de rango de compatibilidad.
+    """Returns the compatibility range string.
 
-    Basado en la tabla oficial de mcpelauncher-manifest:
+    Based on the official mcpelauncher-manifest table:
       https://github.com/minecraft-linux/mcpelauncher-manifest
     """
     es_ver = _parse_es_major_minor(gl_ver)
     if es_ver is None:
-        es_ver = (3, 0)  # GL desconocido → asumir ES 3.0 (rango medio)
+        es_ver = (3, 0)  # Unknown GL -> assume ES 3.0 (mid-range)
 
-    # x86_64: requiere SSSE3 + SSE4.1 + SSE4.2 + POPCNT
+    # x86_64: requires SSSE3 + SSE4.1 + SSE4.2 + POPCNT
     if arch == "x86_64":
         has_sse = all(f in cpu_flags for f in ["ssse3", "sse4_1", "sse4_2", "popcnt"])
         if not has_sse:
@@ -66,7 +67,7 @@ def _compute_compatibility(arch, cpu_flags, gl_ver):
             return "1.13.0 - 1.20.20"
         return c.t("UI_INCOMPATIBLE_TEXT")
 
-    # x86 (32-bit): solo SSSE3
+    # x86 (32-bit): SSSE3 only
     if arch in ("i686", "i386"):
         if "ssse3" not in cpu_flags:
             return c.t("UI_INCOMPATIBLE_TEXT")
@@ -80,7 +81,7 @@ def _compute_compatibility(arch, cpu_flags, gl_ver):
             return "1.13.0 - 1.20.20"
         return c.t("UI_INCOMPATIBLE_TEXT")
 
-    # ARM: requiere NEON
+    # ARM: requires NEON
     if arch in ("aarch64", "armv7l"):
         if "neon" not in cpu_flags:
             return c.t("UI_INCOMPATIBLE_TEXT")
@@ -100,14 +101,14 @@ def _compute_compatibility(arch, cpu_flags, gl_ver):
 
 
 def get_compatibility_range(app):
-    """Retorna el rango de compatibilidad de hardware para MC Bedrock."""
+    """Returns the hardware compatibility range for MC Bedrock."""
     arch, cpu_flags = _detect_cpu_flags()
     gl_ver = _detect_gl_version(app)
     return _compute_compatibility(arch, cpu_flags, gl_ver)
 
 
 def check_requirements_dialog(app):
-    """Analiza hardware y muestra resultado en diálogo."""
+    """Analyzes hardware and displays results in a dialog."""
     if getattr(app, '_hw_worker_running', False):
         return
     from src.gui.progress_dialog import ProgressDialog

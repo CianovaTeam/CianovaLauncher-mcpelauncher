@@ -774,12 +774,12 @@ class MigrationWizard(QDialog):
                                 migrated_count += 1
 
             from PySide6.QtCore import QTimer
-            QTimer.singleShot(0, lambda: self._on_migration_finished(migrated_count))
+            QTimer.singleShot(0, self, lambda: self._on_migration_finished(migrated_count))
         except Exception as e:
             from PySide6.QtCore import QTimer
             err_msg = str(e)
             logger.error(f"Profile migration failed: {e}")
-            QTimer.singleShot(0, lambda: self._on_migration_error(err_msg))
+            QTimer.singleShot(0, self, lambda: self._on_migration_error(err_msg))
 
     def _on_migration_finished(self, count):
         self.progress_dialog.accept()

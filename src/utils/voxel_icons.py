@@ -192,6 +192,7 @@ CATEGORY_COLORS = {
     "launch": "#2cc96b",
     "extras": "#fca311",
     "appearance": "#a855f7",
+    "customization": "#ec4899",
     "integrations": "#3b82f6",
 }
 
@@ -222,6 +223,8 @@ def category_icon(cat_key, size=24):
         return make_gauge_icon(color, size)
     elif cat_key == "appearance":
         return make_palette_icon(color, size)
+    elif cat_key == "customization":
+        return make_sparkle_icon(color, size)
     elif cat_key == "integrations":
         return make_plug_icon(color, size)
     return block_icon(color, size)
@@ -496,6 +499,28 @@ def make_shield_icon(hex_color, size=24):
     return QIcon(pm)
 
 
+def make_wrench_icon(hex_color, size=24):
+    """Clean angled mechanic wrench icon."""
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    s = size
+    c = QColor(hex_color)
+    pw = max(2, int(s * 0.15))
+
+    # Handle
+    p.setPen(QPen(c, pw, Qt.SolidLine, Qt.RoundCap))
+    p.drawLine(int(s * 0.22), int(s * 0.78), int(s * 0.58), int(s * 0.42))
+
+    # Head arc (open wrench)
+    p.setPen(QPen(c, max(2, int(s * 0.12)), Qt.SolidLine, Qt.RoundCap))
+    p.setBrush(Qt.NoBrush)
+    p.drawArc(int(s * 0.42), int(s * 0.12), int(s * 0.46), int(s * 0.46), 45 * 16, 270 * 16)
+    p.end()
+    return QIcon(pm)
+
+
 TOOL_ICON_KINDS = {
     "download": make_download_icon,
     "swap": make_swap_icon,
@@ -509,6 +534,7 @@ TOOL_ICON_KINDS = {
     "search": make_search_icon,
     "shield": make_shield_icon,
     "plug": make_plug_icon,
+    "wrench": make_wrench_icon,
 }
 
 

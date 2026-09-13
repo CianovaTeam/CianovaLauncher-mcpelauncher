@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges">
+  <!-- Gear teeth / outer boundary -->
+  <rect x="6" y="1" width="4" height="2" fill="#ffffff"/>
+  <rect x="6" y="13" width="4" height="2" fill="#ffffff"/>
+  <rect x="1" y="6" width="2" height="4" fill="#ffffff"/>
+  <rect x="13" y="6" width="2" height="4" fill="#ffffff"/>
+  <!-- Corner teeth -->
+  <rect x="2" y="2" width="3" height="3" fill="#ffffff"/>
+  <rect x="11" y="2" width="3" height="3" fill="#ffffff"/>
+  <rect x="2" y="11" width="3" height="3" fill="#ffffff"/>
+  <rect x="11" y="11" width="3" height="3" fill="#ffffff"/>
+  <!-- Gear Body -->
+  <rect x="3" y="3" width="10" height="10" fill="#ffffff"/>
+  <!-- Inner Cutouts -->
+  <rect x="6" y="6" width="4" height="4" fill="#1e1e24"/>
+  <rect x="1" y="1" width="1" height="1" fill="#1e1e24"/>
+  <rect x="14" y="1" width="1" height="1" fill="#1e1e24"/>
+  <rect x="1" y="14" width="1" height="1" fill="#1e1e24"/>
+  <rect x="14" y="14" width="1" height="1" fill="#1e1e24"/>
+</svg>
