@@ -9,10 +9,21 @@ class ImageManager:
     _max_cache_size = 50
 
     @classmethod
+    def clear_cache(cls):
+        """Clear cached pixmaps.
+
+        Kept as a named companion to ``invalidate`` for callers that release
+        optional UI assets after a cleanup operation.
+        """
+        cls._cache.clear()
+
+    @classmethod
     def get_image(cls, filename, size=(32, 32)):
         """
         Loads and caches a QPixmap scaled to the specified size.
         """
+        if isinstance(size, int):
+            size = (size, size)
         cache_key = (filename, size)
         if cache_key in cls._cache:
             return cls._cache[cache_key]
@@ -29,23 +40,29 @@ class ImageManager:
                 if os.path.exists(flatpak_path):
                     path = flatpak_path
 
+        if not os.path.isabs(path) and not os.path.exists(path):
+            alt_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", filename)
+            if os.path.exists(alt_path):
+                path = alt_path
+
         if os.path.exists(path):
             try:
-                # We can load directly with QPixmap for common formats
-                # but let's use PIL if we want to stay "functional as currently"
-                # or just use QPixmap if it's simpler.
-                # CustomTkinter's CTkImage allowed different images for light/dark.
-                # Here we just use one for now as the original code did.
+                if path.lower().endswith(".svg"):
+                    icon = QIcon(path)
+                    if not icon.isNull() and size:
+                        from PySide6.QtCore import QSize
+                        pixmap = icon.pixmap(QSize(size[0], size[1]))
+                    else:
+                        pixmap = QPixmap(path)
+                else:
+                    pixmap = QPixmap(path)
 
-                pixmap = QPixmap(path)
                 if not pixmap.isNull():
-                    if size:
+                    if size and (pixmap.width() != size[0] or pixmap.height() != size[1]):
                         from PySide6.QtCore import Qt
-                        pixmap = pixmap.scaled(size[0], size[1], Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+                        pixmap = pixmap.scaled(size[0], size[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
-                    # Simple cache eviction
                     if len(cls._cache) >= cls._max_cache_size:
-                        # Remove a random item (or could be improved to LRU)
                         cls._cache.pop(next(iter(cls._cache)))
 
                     cls._cache[cache_key] = pixmap
@@ -56,11 +73,46 @@ class ImageManager:
         return None
 
     @classmethod
+    def invalidate(cls, filename=None):
+        """Invalidate specific file from cache or clear all cache if filename is None."""
+        if not filename:
+            cls._cache.clear()
+            return
+        keys_to_del = [k for k in cls._cache if k[0] == filename or (isinstance(k[0], str) and os.path.basename(k[0]) == os.path.basename(filename))]
+        for k in keys_to_del:
+            cls._cache.pop(k, None)
+
+    @classmethod
     def get_icon(cls, filename):
         """
         Returns a QIcon from the filename.
         """
-        path = resource_path(filename)
+        if os.path.isabs(filename):
+            path = filename
+        else:
+            path = resource_path(filename)
+            if not os.path.exists(path):
+                alt_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", filename)
+                if os.path.exists(alt_path):
+                    path = alt_path
+
         if os.path.exists(path):
             return QIcon(path)
         return QIcon()
+
+    @classmethod
+    def get_tinted_icon(cls, filename, color_hex, size=(24, 24)):
+        """Loads an icon/SVG and tints it dynamically with the given color."""
+        pix = cls.get_image(filename, size=size)
+        if not pix or pix.isNull():
+            return cls.get_icon(filename)
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QPainter, QColor
+        tinted = QPixmap(pix.size())
+        tinted.fill(Qt.transparent)
+        painter = QPainter(tinted)
+        painter.drawPixmap(0, 0, pix)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.fillRect(tinted.rect(), QColor(color_hex))
+        painter.end()
+        return QIcon(tinted)

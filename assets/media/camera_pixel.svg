@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges">
+  <!-- Top Flash / Viewfinder bump -->
+  <rect x="6" y="2" width="4" height="2" fill="#ffffff"/>
+  <rect x="3" y="3" width="2" height="1" fill="#ffffff"/>
+  <!-- Camera Body -->
+  <rect x="1" y="4" width="14" height="10" fill="#ffffff"/>
+  <!-- Inner Lens Ring -->
+  <rect x="5" y="6" width="6" height="6" fill="#1e1e24"/>
+  <rect x="6" y="7" width="4" height="4" fill="#ffffff"/>
+  <rect x="7" y="8" width="2" height="2" fill="#1e1e24"/>
+  <!-- Flash Dot -->
+  <rect x="12" y="5" width="2" height="2" fill="#1e1e24"/>
+</svg>

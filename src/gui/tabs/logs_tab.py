@@ -105,9 +105,21 @@ class LogsTab(QWidget):
                 idx = log_files.index(self._current_log_name)
             self._combo.setCurrentIndex(idx)
             self._load_log(self._combo.currentData())
-            self._live_timer.start()
+            if self.isVisible():
+                self._live_timer.start()
 
         self._update_indicator()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if hasattr(self, "_live_timer") and not self._live_timer.isActive() and self._combo.count() > 0:
+            self._live_timer.start()
+            self._refresh_live_log()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        if hasattr(self, "_live_timer") and self._live_timer.isActive():
+            self._live_timer.stop()
 
     # ── Loading ─────────────────────────────────────────────────
 

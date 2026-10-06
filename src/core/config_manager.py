@@ -16,6 +16,7 @@ class ConfigManager:
         self._dirty = False
         self._debounce_timer = None
         self._debounce_ms = 400
+        self._lock = threading.RLock()
 
         # Asegurar que el directorio existe
         config_dir = os.path.dirname(self.config_file)
@@ -90,10 +91,10 @@ class ConfigManager:
         return result
 
     def _migrate_config(self, config):
-        """Migra valores de configuración antiguos o localizados a los nuevos formatos internos"""
+        """Migrate legacy or localized configuration values to internal formats."""
         changed = False
 
-        # 1. Migración de modos de ejecución/binarios
+        # 1. Migration of binary execution modes
         old_to_new_mode = {
             "Sistema (Instalado)": c.MODE_BIN_SYSTEM,
             "Local (Junto al script)": c.MODE_BIN_LOCAL,
@@ -111,7 +112,7 @@ class ConfigManager:
             config[c.CONFIG_KEY_MODE] = old_to_new_mode[mode]
             changed = True
 
-        # 2. Migración de modos de instalación
+        # 2. Migration of installation modes
         old_to_new_install = {
             "Local": c.MODE_INSTALL_LOCAL,
             "Local (Propio)": c.MODE_INSTALL_OWN,
@@ -127,12 +128,12 @@ class ConfigManager:
             config[c.CONFIG_KEY_INSTALL_MODE] = old_to_new_install[install_mode]
             changed = True
 
-        # 3. Corregir ID de Flatpak antiguo si existe
+        # 3. Correct legacy Flatpak ID if present
         if config.get(c.CONFIG_KEY_FLATPAK_ID) == c.MCPELAUNCHER_FLATPAK_ID:
             config[c.CONFIG_KEY_FLATPAK_ID] = c.DEFAULT_FLATPAK_ID
             changed = True
 
-        # 4. Migrar close_on_launch (bool) → launch_action (str)
+        # 4. Migrate close_on_launch (bool) → launch_action (str)
         if c.CONFIG_KEY_LAUNCH_ACTION not in config:
             old_val = config.get(c.CONFIG_KEY_CLOSE_ON_LAUNCH, True)
             config[c.CONFIG_KEY_LAUNCH_ACTION] = c.LAUNCH_ACTION_CLOSE if old_val else c.LAUNCH_ACTION_NONE
@@ -142,88 +143,99 @@ class ConfigManager:
 
     def load_config(self):
         """Load configuration with automatic migration from an old file if present."""
-        # Intentar cargar desde nuevo archivo
+        # Attempt to load from new file
         if os.path.exists(self.config_file):
             try:
                 with open(self.config_file, "r") as f:
                     loaded_config = json.load(f)
 
-                # Aplicar valores cargados sobre defaults usando deep merge
+                # Deep-merge loaded values onto defaults
                 config = self._deep_merge(self.default_config, loaded_config)
 
-                # Aplicar migraciones por si acaso vienen de una v2.1 temprana con strings localizados
+                # Apply migrations for legacy localized strings if needed
                 if self._migrate_config(config):
-                    logger.info("Configuración actualizada con nuevos estándares de claves internas.")
+                    logger.info("Configuration updated with internal key standards.")
                     self.config = config
                     self.save_config()
 
                 return config
             except Exception as e:
-                logger.error(f"Error cargando config: {e}")
+                logger.error(f"Error loading config: {e}")
 
-        # Si no existe, intentar migrar desde archivo antiguo
+        # If absent, attempt migration from legacy file
         if self.old_config_file and os.path.exists(self.old_config_file):
             try:
-                logger.info(f"Migrando configuración desde {self.old_config_file}...")
+                logger.info(f"Migrating configuration from {self.old_config_file}...")
                 with open(self.old_config_file, "r") as f:
                     old_config = json.load(f)
 
-                # Aplicar valores antiguos sobre defaults usando deep merge
+                # Deep-merge legacy values onto defaults
                 migrated_config = self._deep_merge(self.default_config, old_config)
 
-                # Aplicar migraciones a claves internas
+                # Apply migrations to internal keys
                 self._migrate_config(migrated_config)
 
-                # Guardar en nuevo archivo
+                # Save to new file
                 self.config = migrated_config
                 self.save_config()
-                logger.info(f"Migración completada. Config guardado en: {self.config_file}")
+                logger.info(f"Migration completed. Config saved to: {self.config_file}")
 
-                # Eliminar archivo antiguo si existe
+                # Delete legacy file if present
                 try:
                     os.remove(self.old_config_file)
-                    logger.info(f"Archivo antiguo eliminado: {self.old_config_file}")
+                    logger.info(f"Legacy file removed: {self.old_config_file}")
                 except Exception as e:
-                    logger.error(f"No se pudo eliminar el archivo antiguo: {e}")
+                    logger.error(f"Could not remove legacy file: {e}")
 
                 return migrated_config
             except Exception as e:
-                logger.error(f"Error migrando config: {e}")
+                logger.error(f"Error migrating config: {e}")
 
         return self.default_config.copy()
 
     def save_config(self):
-        """Persist the current configuration to disk as JSON."""
+        """Persist a consistent configuration snapshot atomically to disk."""
         try:
-            with open(self.config_file, "w") as f:
-                json.dump(self.config, f, indent=4)
+            with self._lock:
+                snapshot = copy.deepcopy(self.config)
+            tmp_path = self.config_file + ".tmp"
+            with open(tmp_path, "w") as f:
+                json.dump(snapshot, f, indent=4)
+            os.replace(tmp_path, self.config_file)
         except Exception as e:
-            logger.error(f"Error guardando config: {e}")
+            logger.error(f"Error saving config: {e}")
 
     def get(self, key, default=None):
         """Return the config value for *key*, or *default* if not found."""
-        return self.config.get(key, default)
+        with self._lock:
+            return self.config.get(key, default)
 
     def _mark_dirty(self):
-        self._dirty = True
-        if self._debounce_timer:
-            self._debounce_timer.cancel()
-        self._debounce_timer = threading.Timer(self._debounce_ms / 1000.0, self._flush)
-        self._debounce_timer.daemon = True
-        self._debounce_timer.start()
+        with self._lock:
+            self._dirty = True
+            if self._debounce_timer:
+                self._debounce_timer.cancel()
+            self._debounce_timer = threading.Timer(self._debounce_ms / 1000.0, self._flush)
+            self._debounce_timer.daemon = True
+            self._debounce_timer.start()
 
     def flush(self):
-        if self._debounce_timer:
-            self._debounce_timer.cancel()
-            self._debounce_timer = None
+        with self._lock:
+            if self._debounce_timer:
+                self._debounce_timer.cancel()
+                self._debounce_timer = None
         self._flush()
 
     def _flush(self):
-        if self._dirty:
+        with self._lock:
+            if not self._dirty:
+                return
             self._dirty = False
-            self.save_config()
+            self._debounce_timer = None
+        self.save_config()
 
     def set(self, key, value):
         """Set a config value and schedule a debounced save."""
-        self.config[key] = value
+        with self._lock:
+            self.config[key] = value
         self._mark_dirty()

@@ -52,8 +52,98 @@ def host_command(cmd):
 
 
 def open_path(path):
-    """Open a file or folder in the desktop file manager via ``xdg-open``."""
-    return subprocess.Popen(["xdg-open", path])
+    """Open a file or folder in the desktop file manager with multi-tier fallbacks.
+
+    Uses DBus org.freedesktop.FileManager1, native file managers (nautilus, dolphin, etc.),
+    gio, and xdg-open to avoid sandbox/portal 'Invalid fd passed' bugs.
+    """
+    if not path:
+        return None
+    path_str = os.path.abspath(str(path))
+    if not os.path.exists(path_str):
+        try:
+            if not os.path.splitext(path_str)[1]:
+                os.makedirs(path_str, exist_ok=True)
+            else:
+                parent_dir = os.path.dirname(path_str)
+                if parent_dir and os.path.exists(parent_dir):
+                    path_str = parent_dir
+        except Exception:
+            pass
+
+    is_dir = os.path.isdir(path_str)
+    prefix = host_prefix() if is_running_in_flatpak() else []
+    if prefix is None:
+        prefix = []
+
+    # 1. Try DBus org.freedesktop.FileManager1 (Official standard, bypasses portal issues)
+    try:
+        from PySide6.QtDBus import QDBusInterface, QDBusConnection
+        from PySide6.QtCore import QUrl
+        bus = QDBusConnection.sessionBus()
+        if bus.isConnected():
+            iface = QDBusInterface(
+                "org.freedesktop.FileManager1",
+                "/org/freedesktop/FileManager1",
+                "org.freedesktop.FileManager1",
+                bus
+            )
+            if iface.isValid():
+                url_str = QUrl.fromLocalFile(path_str).toString()
+                method = "ShowFolders" if is_dir else "ShowItems"
+                reply = iface.call(method, [url_str], "")
+                if reply.type() == reply.MessageType.ReplyMessage:
+                    return True
+    except Exception:
+        pass
+
+    # 2. Try native Linux desktop file managers directly
+    for fm in ("nautilus", "dolphin", "nemo", "thunar", "pcmanfm", "caja"):
+        if shutil.which(fm):
+            try:
+                cmd = prefix + [fm]
+                if not is_dir and fm in ("nautilus", "dolphin", "nemo"):
+                    cmd.append("--select")
+                cmd.append(path_str)
+                return subprocess.Popen(cmd)
+            except Exception:
+                pass
+
+    # 3. Try gio open
+    if shutil.which("gio"):
+        try:
+            cmd = prefix + ["gio", "open", path_str]
+            return subprocess.Popen(cmd)
+        except Exception:
+            pass
+
+    # 4. Try xdg-open
+    if shutil.which("xdg-open"):
+        try:
+            cmd = prefix + ["xdg-open", path_str]
+            return subprocess.Popen(cmd)
+        except Exception:
+            pass
+
+    # 5. Fallback to QDesktopServices with proper QUrl
+    try:
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtCore import QUrl
+        return QDesktopServices.openUrl(QUrl.fromLocalFile(path_str))
+    except Exception:
+        pass
+
+    return None
+
+
+def open_folder(path):
+    """Open the containing folder or directory in the desktop file manager."""
+    if not path:
+        return None
+    p = os.path.abspath(str(path))
+    if os.path.isfile(p):
+        p = os.path.dirname(p)
+    return open_path(p)
 
 
 def query_glxinfo(field, running_in_flatpak=False, timeout=None, host_timeout=None):

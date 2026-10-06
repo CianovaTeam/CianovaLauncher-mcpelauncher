@@ -1,9 +1,10 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                             QLabel, QTabWidget, QPushButton, QFrame, QScrollArea,
+                             QLabel, QTabWidget, QTabBar, QPushButton, QFrame, QScrollArea,
                              QComboBox, QApplication, QSystemTrayIcon, QMenu,
-                             QGraphicsDropShadowEffect)
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPainterPath, QAction
+                             QGraphicsDropShadowEffect, QGraphicsOpacityEffect)
+from PySide6.QtCore import (Qt, QTimer, QPropertyAnimation, QParallelAnimationGroup,
+                            QEasingCurve, Property, QRectF, QRect, QSize, QPoint, QThread)
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPainterPath, QAction, QPen, QFontMetrics, QFont, QPalette
 import os
 import re
 import sys
@@ -14,6 +15,7 @@ import time
 from src import constants as c
 from src.utils.resource_path import resource_path
 from src.utils.image_manager import ImageManager
+from src.utils.colors import hex_to_rgba, adjust_color, blend_colors
 from src.core.config_manager import ConfigManager
 from src.core import language_manager
 from src.gui import custom_dialogs as messagebox
@@ -31,6 +33,812 @@ from src.gui.tabs.settings_tab import SettingsTab
 from src.gui.tabs.about_tab import AboutTab
 from src.gui.tabs.logs_tab import LogsTab
 from src.utils.logger import logger
+
+class HamburgerNavMenu(QWidget):
+    """Floating popup drawer menu showing navigation tabs when header is in compact/narrow mode."""
+    def __init__(self, tab_widget, main_window, parent=None):
+        super().__init__(parent, Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.tab_widget = tab_widget
+        self.main_window = main_window
+
+        self._anim = QPropertyAnimation(self, b"pos", self)
+        self._anim.setDuration(160)
+        self._anim.setEasingCurve(QEasingCurve.OutCubic)
+
+        self._main_layout = QVBoxLayout(self)
+        self._main_layout.setContentsMargins(10, 10, 10, 10)
+        self._main_layout.setSpacing(6)
+        self.setFixedWidth(210)
+
+    def _rebuild_items(self):
+        while self._main_layout.count():
+            item = self._main_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        accent = getattr(self.main_window, "current_accent_color", "#1f6aa5")
+        is_dark = getattr(self.main_window, "is_dark_mode", True)
+        curr_idx = self.tab_widget.currentIndex()
+
+        # 1. Profile item at top of drawer
+        current_profile = str(getattr(self.main_window, "config", {}).get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT")) if hasattr(self.main_window, "config") else "default").upper()
+        prof_btn = QPushButton(f"  {current_profile}")
+        user_icon = ImageManager.get_icon("steve.png")
+        if user_icon and not user_icon.isNull():
+            prof_btn.setIcon(user_icon)
+            prof_btn.setIconSize(QSize(22, 22))
+        prof_btn.setFixedHeight(38)
+        prof_btn.setCursor(Qt.PointingHandCursor)
+        prof_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {hex_to_rgba(accent, 0.15) if is_dark else hex_to_rgba(accent, 0.10)};
+                color: {accent};
+                border: 1px solid {hex_to_rgba(accent, 0.45)};
+                border-radius: 19px;
+                font-weight: bold;
+                font-size: 13px;
+                text-align: left;
+                padding-left: 14px;
+            }}
+            QPushButton:hover {{
+                background-color: {hex_to_rgba(accent, 0.30) if is_dark else hex_to_rgba(accent, 0.22)};
+                border: 1px solid {accent};
+            }}
+        """)
+        prof_btn.clicked.connect(self._open_profile_from_menu)
+        self._main_layout.addWidget(prof_btn)
+
+        # Separator line
+        divider = QFrame()
+        divider.setFrameShape(QFrame.HLine)
+        divider.setFixedHeight(1)
+        divider.setStyleSheet(f"background-color: {'rgba(255,255,255,0.12)' if is_dark else 'rgba(0,0,0,0.10)'}; border: none;")
+        self._main_layout.addWidget(divider)
+
+        for i in range(self.tab_widget.count()):
+            text = self.tab_widget.tabText(i)
+            icon = self.tab_widget.tabIcon(i)
+            btn = QPushButton(text)
+            if not icon.isNull():
+                btn.setIcon(icon)
+                btn.setIconSize(QSize(18, 18))
+            btn.setFixedHeight(36)
+            btn.setCursor(Qt.PointingHandCursor)
+
+            is_selected = (i == curr_idx)
+            if is_selected:
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {accent};
+                        color: #ffffff;
+                        border-radius: 18px;
+                        font-weight: bold;
+                        font-size: 13px;
+                        text-align: left;
+                        padding-left: 16px;
+                        border: none;
+                    }}
+                """)
+            else:
+                hover_bg = "rgba(255, 255, 255, 0.09)" if is_dark else "rgba(0, 0, 0, 0.07)"
+                txt_col = "#e6e8ee" if is_dark else "#1c1e22"
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: transparent;
+                        color: {txt_col};
+                        border-radius: 18px;
+                        font-weight: bold;
+                        font-size: 13px;
+                        text-align: left;
+                        padding-left: 16px;
+                        border: none;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {hover_bg};
+                    }}
+                """)
+
+            btn.clicked.connect(lambda checked=False, idx=i: self._select_tab(idx))
+            self._main_layout.addWidget(btn)
+
+        self.adjustSize()
+
+    def _open_profile_from_menu(self):
+        self.close()
+        if hasattr(self.main_window, "open_profile_manager"):
+            self.main_window.open_profile_manager()
+
+    def _select_tab(self, index):
+        win = self.main_window
+        if hasattr(win, "settings_tab") and win.tab_widget.currentIndex() == 2 and index != 2:
+            if getattr(win.settings_tab, "has_unsaved_changes", False):
+                win.settings_tab.trigger_unsaved_shake()
+                self.close()
+                return
+        self.tab_widget.setCurrentIndex(index)
+        self.close()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        is_dark = getattr(self.main_window, "is_dark_mode", True)
+        accent = getattr(self.main_window, "current_accent_color", "#1f6aa5")
+        bg_col = QColor(blend_colors("#171717", accent, 0.09) if is_dark else blend_colors("#ffffff", accent, 0.05))
+        border_col = QColor(255, 255, 255, 24) if is_dark else QColor(0, 0, 0, 24)
+
+        card_rect = QRectF(self.rect()).adjusted(4, 4, -4, -4)
+        shadow_rect = card_rect.adjusted(0, 3, 2, 5)
+        painter.setBrush(QColor(0, 0, 0, 45 if is_dark else 30))
+        painter.setPen(Qt.NoPen)
+        painter.drawRoundedRect(shadow_rect, 16, 16)
+
+        painter.setBrush(bg_col)
+        painter.setPen(QPen(border_col, 1))
+        painter.drawRoundedRect(card_rect, 16, 16)
+        painter.end()
+
+    def show_animated(self, target_pos):
+        self._rebuild_items()
+        start_pos = QPoint(target_pos.x(), target_pos.y() - 10)
+        self.move(start_pos)
+        self.show()
+        self._anim.stop()
+        self._anim.setStartValue(start_pos)
+        self._anim.setEndValue(target_pos)
+        self._anim.start()
+
+class AnimatedTabBar(QTabBar):
+    """QTabBar with smooth sliding indicator, fluid hover, and responsive collapsible hamburger menu."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._indicator_rect = QRectF()
+        self._sink_factor = 0.0
+        self._hover_index = -1
+        self._hover_opacity = 0.0
+
+        self._is_compact = False
+        self._compact_opacity = 0.0
+        self._hover_hamburger = False
+        self._hover_profile = False
+        self._nav_menu = None
+
+        self.setMouseTracking(True)
+        self.setDrawBase(False)
+        self.setUsesScrollButtons(False)
+        self.setElideMode(Qt.ElideNone)
+
+        # Sliding position animation
+        self._slide_anim = QPropertyAnimation(self, b"indicatorRect", self)
+        self._slide_anim.setDuration(240)
+        self._slide_anim.setEasingCurve(QEasingCurve.OutCubic)
+
+        # Button press / sink tactile animation
+        self._sink_anim = QPropertyAnimation(self, b"sinkFactor", self)
+        self._sink_anim.setDuration(180)
+        self._sink_anim.setEasingCurve(QEasingCurve.InOutQuad)
+
+        # Fluid hover fade animation
+        self._hover_anim = QPropertyAnimation(self, b"hoverOpacity", self)
+        self._hover_anim.setDuration(140)
+        self._hover_anim.setEasingCurve(QEasingCurve.OutQuad)
+
+        # Compact / Hamburger mode transition animation
+        self._compact_anim = QPropertyAnimation(self, b"compactOpacity", self)
+        self._compact_anim.setDuration(200)
+        self._compact_anim.setEasingCurve(QEasingCurve.OutCubic)
+
+        # Profile button press animation
+        self._profile_sink_factor = 0.0
+        self._profile_sink_anim = QPropertyAnimation(self, b"profileSinkFactor", self)
+        self._profile_sink_anim.setDuration(180)
+        self._profile_sink_anim.setEasingCurve(QEasingCurve.InOutQuad)
+
+        # Profile hover animation
+        self._profile_hover_opacity = 0.0
+        self._profile_hover_anim = QPropertyAnimation(self, b"profileHoverOpacity", self)
+        self._profile_hover_anim.setDuration(140)
+        self._profile_hover_anim.setEasingCurve(QEasingCurve.OutQuad)
+
+        self.currentChanged.connect(self._on_current_changed)
+
+    def _get_profile_rect(self):
+        win = self.window()
+        current_profile = str(getattr(win, "config", {}).get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT")) if hasattr(win, "config") else "default").upper()
+        font = self.font()
+        font.setBold(True)
+        font.setPointSize(10)
+        fm = QFontMetrics(font)
+        text_w = fm.horizontalAdvance(current_profile)
+        icon_size = 24
+        spacing = 10
+        btn_w = max(text_w + icon_size + spacing + 22, 96)
+        btn_h = 38.0
+        y = (self.height() - btn_h) / 2.0
+        right_offset = 12.0
+        x = self.width() - btn_w - right_offset
+        return QRectF(x, y, btn_w, btn_h)
+
+    def tabSizeHint(self, index):
+        size = super().tabSizeHint(index)
+        return QSize(max(size.width() + 14, 100), 52)
+
+    def _get_button_rect(self, index):
+        if index < 0 or index >= self.count():
+            return QRectF()
+        rect = self.tabRect(index)
+        btn_height = 38.0
+        v_offset = (rect.height() - btn_height) / 2.0
+        return QRectF(rect.x() + 4, rect.y() + v_offset, rect.width() - 8, btn_height)
+
+    # ── Properties ──
+    def _get_indicator_rect(self):
+        return self._indicator_rect
+
+    def _set_indicator_rect(self, rect):
+        self._indicator_rect = rect
+        self.update()
+
+    indicatorRect = Property(QRectF, _get_indicator_rect, _set_indicator_rect)
+
+    def _get_sink_factor(self):
+        return self._sink_factor
+
+    def _set_sink_factor(self, val):
+        self._sink_factor = val
+        self.update()
+
+    sinkFactor = Property(float, _get_sink_factor, _set_sink_factor)
+
+    def _get_profile_sink_factor(self):
+        return self._profile_sink_factor
+
+    def _set_profile_sink_factor(self, val):
+        self._profile_sink_factor = val
+        self.update()
+
+    profileSinkFactor = Property(float, _get_profile_sink_factor, _set_profile_sink_factor)
+
+    def _get_hover_opacity(self):
+        return self._hover_opacity
+
+    def _set_hover_opacity(self, val):
+        self._hover_opacity = val
+        self.update()
+
+    hoverOpacity = Property(float, _get_hover_opacity, _set_hover_opacity)
+
+    def _get_profile_hover_opacity(self):
+        return self._profile_hover_opacity
+
+    def _set_profile_hover_opacity(self, val):
+        self._profile_hover_opacity = val
+        self.update()
+
+    profileHoverOpacity = Property(float, _get_profile_hover_opacity, _set_profile_hover_opacity)
+
+    def _get_compact_opacity(self):
+        return self._compact_opacity
+
+    def _set_compact_opacity(self, val):
+        self._compact_opacity = val
+        self.update()
+
+    compactOpacity = Property(float, _get_compact_opacity, _set_compact_opacity)
+
+    def _check_compact_mode(self):
+        first_tab_left = self.tabRect(0).left() if self.count() > 0 else 999
+        should_compact = (self.width() < 590 or first_tab_left < 54)
+        if should_compact != self._is_compact:
+            self._is_compact = should_compact
+            self._compact_anim.stop()
+            self._compact_anim.setStartValue(self._compact_opacity)
+            self._compact_anim.setEndValue(1.0 if should_compact else 0.0)
+            self._compact_anim.start()
+
+    def _trigger_sink_animation(self):
+        self._sink_anim.stop()
+        self._sink_anim.setKeyValueAt(0.0, 0.0)
+        self._sink_anim.setKeyValueAt(0.5, 1.0)
+        self._sink_anim.setKeyValueAt(1.0, 0.0)
+        self._sink_anim.start()
+
+    def _trigger_profile_sink_animation(self):
+        self._profile_sink_anim.stop()
+        self._profile_sink_anim.setKeyValueAt(0.0, 0.0)
+        self._profile_sink_anim.setKeyValueAt(0.5, 1.0)
+        self._profile_sink_anim.setKeyValueAt(1.0, 0.0)
+        self._profile_sink_anim.start()
+
+    def _on_current_changed(self, index):
+        if index < 0 or index >= self.count():
+            return
+        target_rect = self._get_button_rect(index)
+        self._trigger_sink_animation()
+        if self._indicator_rect.isNull() or not self.isVisible():
+            self._indicator_rect = target_rect
+            self.update()
+        else:
+            self._slide_anim.stop()
+            self._slide_anim.setStartValue(self._indicator_rect)
+            self._slide_anim.setEndValue(target_rect)
+            self._slide_anim.start()
+
+    def mousePressEvent(self, event):
+        # 1. Profile button click with tactile feedback
+        prof_rect = self._get_profile_rect()
+        if (not self._is_compact or self._compact_opacity < 0.5) and prof_rect.contains(event.position()):
+            self._trigger_profile_sink_animation()
+            win = self.window()
+            if hasattr(win, "open_profile_manager"):
+                win.open_profile_manager()
+            return
+
+        self._check_compact_mode()
+        if self._is_compact and self._compact_opacity > 0.4:
+            h_size = 34.0
+            h_x = self.width() - h_size - 10.0
+            h_y = (self.height() - h_size) / 2.0
+            h_rect = QRectF(h_x, h_y, h_size, h_size)
+            if h_rect.contains(event.position()):
+                parent_tab_widget = self.parentWidget()
+                if not self._nav_menu:
+                    self._nav_menu = HamburgerNavMenu(parent_tab_widget, self.window(), self.window())
+                menu_pos = self.mapToGlobal(QPoint(int(self.width() - 215), int(self.height() + 4)))
+                self._nav_menu.show_animated(menu_pos)
+                return
+
+        idx = self.tabAt(event.pos())
+        if idx >= 0:
+            win = self.window()
+            if hasattr(win, "settings_tab") and self.currentIndex() == 2 and idx != 2:
+                if getattr(win.settings_tab, "has_unsaved_changes", False):
+                    win.settings_tab.trigger_unsaved_shake()
+                    return
+            self._trigger_sink_animation()
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        win = self.window()
+        if hasattr(win, "settings_tab") and self.currentIndex() == 2:
+            if getattr(win.settings_tab, "has_unsaved_changes", False):
+                win.settings_tab.trigger_unsaved_shake()
+                return
+        super().keyPressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        prof_rect = self._get_profile_rect()
+        is_prof_hover = (not self._is_compact or self._compact_opacity < 0.5) and prof_rect.contains(event.position())
+        if is_prof_hover != self._hover_profile:
+            self._hover_profile = is_prof_hover
+            self._profile_hover_anim.stop()
+            self._profile_hover_anim.setStartValue(self._profile_hover_opacity)
+            self._profile_hover_anim.setEndValue(1.0 if is_prof_hover else 0.0)
+            self._profile_hover_anim.start()
+
+        if self._is_compact:
+            h_size = 34.0
+            h_x = self.width() - h_size - 10.0
+            h_y = (self.height() - h_size) / 2.0
+            h_rect = QRectF(h_x, h_y, h_size, h_size)
+            is_hover = h_rect.contains(event.position())
+            if is_hover != self._hover_hamburger:
+                self._hover_hamburger = is_hover
+                self.update()
+        else:
+            idx = self.tabAt(event.pos())
+            if idx != self._hover_index:
+                self._hover_index = idx
+                if idx >= 0 and idx != self.currentIndex():
+                    self._hover_anim.stop()
+                    self._hover_anim.setStartValue(self._hover_opacity)
+                    self._hover_anim.setEndValue(1.0)
+                    self._hover_anim.start()
+                else:
+                    self._hover_anim.stop()
+                    self._hover_anim.setStartValue(self._hover_opacity)
+                    self._hover_anim.setEndValue(0.0)
+                    self._hover_anim.start()
+
+        if is_prof_hover or self._hover_hamburger:
+            self.setCursor(Qt.PointingHandCursor)
+        elif self.cursor().shape() == Qt.PointingHandCursor:
+            self.setCursor(Qt.ArrowCursor)
+
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event):
+        self._hover_index = -1
+        self._hover_hamburger = False
+        if self._hover_profile:
+            self._hover_profile = False
+            self._profile_hover_anim.stop()
+            self._profile_hover_anim.setStartValue(self._profile_hover_opacity)
+            self._profile_hover_anim.setEndValue(0.0)
+            self._profile_hover_anim.start()
+        self.setCursor(Qt.ArrowCursor)
+        self._hover_anim.stop()
+        self._hover_anim.setStartValue(self._hover_opacity)
+        self._hover_anim.setEndValue(0.0)
+        self._hover_anim.start()
+        self.update()
+        super().leaveEvent(event)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._check_compact_mode()
+        idx = self.currentIndex()
+        if idx >= 0 and idx < self.count():
+            self._indicator_rect = self._get_button_rect(idx)
+            self.update()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._check_compact_mode()
+        idx = self.currentIndex()
+        if idx >= 0 and idx < self.count():
+            self._indicator_rect = self._get_button_rect(idx)
+            self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        win = self.window()
+        accent = getattr(win, "current_accent_color", "#1f6aa5")
+        is_dark = getattr(win, "is_dark_mode", True)
+        accent_qcolor = QColor(accent)
+
+        # 0. Draw launcher brand logo and responsive title in top-left corner
+        logo_size = 34
+        logo_x = 10.0
+        logo_y = (self.height() - logo_size) / 2.0
+        logo_rect = QRectF(logo_x, logo_y, logo_size, logo_size)
+
+        if is_dark:
+            logo_steps = 10
+            logo_max_expand = 6.5
+            logo_max_alpha = 34
+            for i in range(logo_steps, 0, -1):
+                t = i / logo_steps
+                alpha = int(logo_max_alpha * ((1.0 - t) ** 1.7))
+                if alpha <= 0:
+                    continue
+                exp = logo_max_expand * t
+                g_rect = logo_rect.adjusted(-exp, -exp, exp, exp)
+                g_radius = g_rect.height() / 2.0
+                g_color = QColor(accent_qcolor)
+                g_color.setAlpha(alpha)
+                painter.setBrush(g_color)
+                painter.setPen(Qt.NoPen)
+                painter.drawRoundedRect(g_rect, g_radius, g_radius)
+        else:
+            shadow_steps = 8
+            shadow_max_expand = 6.0
+            shadow_max_alpha = 18
+            for i in range(shadow_steps, 0, -1):
+                t = i / shadow_steps
+                alpha = int(shadow_max_alpha * ((1.0 - t) ** 1.6))
+                if alpha <= 0:
+                    continue
+                s_rect = logo_rect.adjusted(0.6 * t, 1.0 * t, shadow_max_expand * t, shadow_max_expand * t)
+                s_radius = s_rect.height() / 2.0
+                painter.setBrush(QColor(0, 0, 0, alpha))
+                painter.setPen(Qt.NoPen)
+                painter.drawRoundedRect(s_rect, s_radius, s_radius)
+
+        # Draw logo icon
+        logo_pixmap = ImageManager.get_image("icon.png", size=(logo_size, logo_size))
+        if logo_pixmap and not logo_pixmap.isNull():
+            painter.drawPixmap(int(logo_x), int(logo_y), logo_pixmap)
+
+        # Draw brand text "Cianova Launcher" only if not in compact mode and space is ample
+        first_tab_left = self.tabRect(0).left() if self.count() > 0 else 999
+        text_x = int(logo_x + logo_size + 9)
+        required_space = text_x + 135
+        if not self._is_compact and first_tab_left > required_space:
+            brand_font = self.font()
+            brand_font.setBold(True)
+            brand_font.setPointSize(11)
+            painter.setFont(brand_font)
+            brand_text_color = QColor("#ffffff" if is_dark else "#1c1e22")
+            painter.setPen(brand_text_color)
+            text_rect = QRect(text_x, 0, 150, self.height())
+            painter.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft, "Cianova Launcher")
+
+        # ── 1. Draw Horizontal Tabs when expanded ──
+        if self._compact_opacity < 1.0:
+            painter.setOpacity(1.0 - self._compact_opacity)
+
+            # Unselected hover pills
+            if self._hover_index >= 0 and self._hover_index != self.currentIndex() and self._hover_opacity > 0:
+                h_rect = self._get_button_rect(self._hover_index)
+                h_radius = h_rect.height() / 2.0
+                h_color = QColor(255, 255, 255, int(26 * self._hover_opacity)) if is_dark else QColor(0, 0, 0, int(18 * self._hover_opacity))
+                painter.setBrush(h_color)
+                painter.setPen(Qt.NoPen)
+                painter.drawRoundedRect(h_rect, h_radius, h_radius)
+
+            # Sliding indicator with sink compression & glow / shadow
+            if not self._indicator_rect.isNull():
+                sink_inset = self._sink_factor * 1.8
+                draw_rect = self._indicator_rect.adjusted(sink_inset, sink_inset, -sink_inset, -sink_inset)
+                radius = draw_rect.height() / 2.0
+
+                if is_dark:
+                    steps = 12
+                    max_expand = 8.0
+                    max_alpha = 36
+                    for i in range(steps, 0, -1):
+                        t = i / steps
+                        alpha = int(max_alpha * ((1.0 - t) ** 1.7))
+                        if alpha <= 0:
+                            continue
+                        exp = max_expand * t
+                        glow_rect = draw_rect.adjusted(-exp, -exp, exp, exp)
+                        glow_radius = glow_rect.height() / 2.0
+                        glow_color = QColor(accent_qcolor)
+                        glow_color.setAlpha(alpha)
+                        painter.setBrush(glow_color)
+                        painter.setPen(Qt.NoPen)
+                        painter.drawRoundedRect(glow_rect, glow_radius, glow_radius)
+
+                    painter.setBrush(accent_qcolor)
+                    painter.setPen(Qt.NoPen)
+                    painter.drawRoundedRect(draw_rect, radius, radius)
+                else:
+                    shadow_steps = 10
+                    shadow_max_expand_x = 7.0
+                    shadow_max_expand_y = 7.5
+                    shadow_max_alpha = 24
+                    for i in range(shadow_steps, 0, -1):
+                        t = i / shadow_steps
+                        alpha = int(shadow_max_alpha * ((1.0 - t) ** 1.6))
+                        if alpha <= 0:
+                            continue
+                        s_rect = draw_rect.adjusted(0.8 * t, 1.2 * t, shadow_max_expand_x * t, shadow_max_expand_y * t)
+                        s_radius = s_rect.height() / 2.0
+                        painter.setBrush(QColor(0, 0, 0, alpha))
+                        painter.setPen(Qt.NoPen)
+                        painter.drawRoundedRect(s_rect, s_radius, s_radius)
+
+                    painter.setBrush(accent_qcolor)
+                    painter.setPen(Qt.NoPen)
+                    painter.drawRoundedRect(draw_rect, radius, radius)
+
+            # Tab text and icons
+            for i in range(self.count()):
+                rect = self.tabRect(i)
+                text = self.tabText(i)
+                icon = self.tabIcon(i)
+                is_selected = (i == self.currentIndex())
+
+                if is_selected:
+                    text_color = QColor("#ffffff")
+                else:
+                    text_color = QColor("#e6e8ee" if is_dark else "#22252a")
+
+                painter.setPen(text_color)
+                font = self.font()
+                font.setBold(True)
+                font.setPointSize(10)
+                painter.setFont(font)
+
+                if not icon.isNull():
+                    icon_size = 18
+                    icon_rect = QRect(rect.left() + 12, rect.center().y() - icon_size // 2, icon_size, icon_size)
+                    icon.paint(painter, icon_rect)
+                    text_rect = QRect(rect.left() + 12 + icon_size + 6, rect.top(), rect.width() - (12 + icon_size + 6), rect.height())
+                    painter.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft, text)
+                else:
+                    painter.drawText(rect, Qt.AlignCenter, text)
+
+            painter.setOpacity(1.0)
+
+        # ── 2. Draw Hamburger Button on Right when compact ──
+        if self._compact_opacity > 0.0:
+            painter.setOpacity(self._compact_opacity)
+            h_size = 34.0
+            h_x = self.width() - h_size - 10.0
+            h_y = (self.height() - h_size) / 2.0
+            h_rect = QRectF(h_x, h_y, h_size, h_size)
+            h_radius = h_size / 2.0
+
+            # Hover pill
+            if self._hover_hamburger:
+                h_bg = QColor(255, 255, 255, 30) if is_dark else QColor(0, 0, 0, 20)
+                painter.setBrush(h_bg)
+                painter.setPen(Qt.NoPen)
+                painter.drawRoundedRect(h_rect, h_radius, h_radius)
+
+            # Draw 3 rounded hamburger bars
+            bar_w = 16.0
+            bar_h = 2.4
+            bar_r = 1.2
+            bar_x = h_x + (h_size - bar_w) / 2.0
+            bar_color = QColor(accent if self._hover_hamburger else ("#ffffff" if is_dark else "#1c1e22"))
+            painter.setBrush(bar_color)
+            painter.setPen(Qt.NoPen)
+
+            for offset_y in [-5.5, 0.0, 5.5]:
+                bar_y = h_y + (h_size - bar_h) / 2.0 + offset_y
+                painter.drawRoundedRect(QRectF(bar_x, bar_y, bar_w, bar_h), bar_r, bar_r)
+
+            painter.setOpacity(1.0)
+
+        # ── 3. Draw Profile Button inside Top Bar (when not in compact mode) ──
+        if not self._is_compact or self._compact_opacity < 0.6:
+            prof_opacity = max(0.0, 1.0 - self._compact_opacity)
+            painter.setOpacity(prof_opacity)
+
+            prof_rect = self._get_profile_rect()
+            current_profile = str(getattr(win, "config", {}).get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT")) if hasattr(win, "config") else "default").upper()
+
+            # Tactile press scale transformation
+            if self._profile_sink_factor > 0.001:
+                scale = 1.0 - (0.04 * self._profile_sink_factor)
+                c_point = prof_rect.center()
+                prof_rect = QRectF(
+                    c_point.x() - (prof_rect.width() * scale) / 2.0,
+                    c_point.y() - (prof_rect.height() * scale) / 2.0,
+                    prof_rect.width() * scale,
+                    prof_rect.height() * scale
+                )
+
+            prof_radius = prof_rect.height() / 2.0
+
+            # Smooth hover pill effect with animation opacity
+            if self._profile_hover_opacity > 0.01:
+                hover_alpha = int(45 * self._profile_hover_opacity) if is_dark else int(30 * self._profile_hover_opacity)
+                hover_bg = QColor(accent_qcolor)
+                hover_bg.setAlpha(hover_alpha)
+                painter.setBrush(hover_bg)
+                border_alpha = int(180 * self._profile_hover_opacity)
+                border_col = QColor(accent_qcolor)
+                border_col.setAlpha(border_alpha)
+                painter.setPen(QPen(border_col, 1.0))
+                painter.drawRoundedRect(prof_rect, prof_radius, prof_radius)
+
+            icon_size = 24
+            spacing = 10
+            icon_x = int(prof_rect.right() - icon_size - 8)
+            icon_y = int(prof_rect.top() + (prof_rect.height() - icon_size) / 2.0)
+            avatar_rect = QRectF(icon_x, icon_y, icon_size, icon_size)
+
+            # Draw Profile text in UPPERCASE on left (separated from icon)
+            font = self.font()
+            font.setBold(True)
+            font.setPointSize(10)
+            painter.setFont(font)
+            painter.setPen(QColor(accent))
+            text_w = prof_rect.width() - (icon_size + spacing + 14.0)
+            text_rect = QRectF(prof_rect.left() + 6, prof_rect.top(), text_w, prof_rect.height())
+            painter.drawText(text_rect, Qt.AlignVCenter | Qt.AlignRight, current_profile)
+
+            # Glowing border effect in dark mode / soft shadow in light mode for Steve avatar (matching logo in top-left)
+            if is_dark:
+                avatar_steps = 8
+                avatar_max_expand = 4.5
+                avatar_max_alpha = 32
+                for i in range(avatar_steps, 0, -1):
+                    t = i / avatar_steps
+                    alpha = int(avatar_max_alpha * ((1.0 - t) ** 1.7))
+                    if alpha <= 0:
+                        continue
+                    exp = avatar_max_expand * t
+                    g_rect = avatar_rect.adjusted(-exp, -exp, exp, exp)
+                    g_radius = 4.0 + exp
+                    g_color = QColor(accent_qcolor)
+                    g_color.setAlpha(alpha)
+                    painter.setBrush(g_color)
+                    painter.setPen(Qt.NoPen)
+                    painter.drawRoundedRect(g_rect, g_radius, g_radius)
+            else:
+                shadow_steps = 6
+                shadow_max_expand = 4.0
+                shadow_max_alpha = 18
+                for i in range(shadow_steps, 0, -1):
+                    t = i / shadow_steps
+                    alpha = int(shadow_max_alpha * ((1.0 - t) ** 1.6))
+                    if alpha <= 0:
+                        continue
+                    s_rect = avatar_rect.adjusted(0.4 * t, 0.8 * t, shadow_max_expand * t, shadow_max_expand * t)
+                    s_radius = 4.0
+                    painter.setBrush(QColor(0, 0, 0, alpha))
+                    painter.setPen(Qt.NoPen)
+                    painter.drawRoundedRect(s_rect, s_radius, s_radius)
+
+            # Draw Steve face avatar (steve.png)
+            pix = ImageManager.get_image("steve.png", size=(icon_size, icon_size))
+            if pix and not pix.isNull():
+                painter.drawPixmap(icon_x, icon_y, pix)
+
+            # Subtle accent border around Steve avatar in dark mode
+            if is_dark:
+                painter.setBrush(Qt.NoBrush)
+                painter.setPen(QPen(QColor(accent_qcolor), 1.0))
+                painter.drawRoundedRect(avatar_rect, 4.0, 4.0)
+
+            painter.setOpacity(1.0)
+
+        painter.end()
+
+class AnimatedTabWidget(QTabWidget):
+    """QTabWidget with smooth slide and cross-fade transition between tab pages."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setUsesScrollButtons(False)
+        self.setTabBar(AnimatedTabBar(self))
+        self._prev_index = -1
+        self._anim_group = None
+        self._anim_effect = None
+        self._anim_target = None
+        self.currentChanged.connect(self._on_tab_changed)
+
+    def _on_tab_changed(self, index):
+        if index < 0:
+            return
+        if self._prev_index == -1:
+            self._prev_index = index
+            return
+        if index == self._prev_index:
+            return
+
+        direction = 1 if index > self._prev_index else -1
+        self._prev_index = index
+
+        current_widget = self.widget(index)
+        if not current_widget or not self.isVisible():
+            return
+
+        # Clean up any existing running animation
+        if self._anim_group and self._anim_group.state() == QParallelAnimationGroup.Running:
+            self._anim_group.stop()
+        if self._anim_target and self._anim_effect:
+            try:
+                self._anim_target.setGraphicsEffect(None)
+            except RuntimeError:
+                pass
+
+        # Setup opacity effect
+        effect = QGraphicsOpacityEffect(current_widget)
+        current_widget.setGraphicsEffect(effect)
+        self._anim_effect = effect
+        self._anim_target = current_widget
+
+        # Fade in: 0.0 -> 1.0
+        anim_fade = QPropertyAnimation(effect, b"opacity", self)
+        anim_fade.setDuration(220)
+        anim_fade.setStartValue(0.0)
+        anim_fade.setEndValue(1.0)
+        anim_fade.setEasingCurve(QEasingCurve.OutCubic)
+
+        # Slide offset: 24px in the direction of movement -> 0
+        offset = 24 * direction
+        orig_pos = current_widget.pos()
+        start_pos = QPoint(orig_pos.x() + offset, orig_pos.y())
+        current_widget.move(start_pos)
+
+        anim_pos = QPropertyAnimation(current_widget, b"pos", self)
+        anim_pos.setDuration(220)
+        anim_pos.setStartValue(start_pos)
+        anim_pos.setEndValue(orig_pos)
+        anim_pos.setEasingCurve(QEasingCurve.OutCubic)
+
+        self._anim_group = QParallelAnimationGroup(self)
+        self._anim_group.addAnimation(anim_fade)
+        self._anim_group.addAnimation(anim_pos)
+
+        def _cleanup():
+            if current_widget == self._anim_target:
+                current_widget.move(orig_pos)
+                current_widget.setGraphicsEffect(None)
+                self._anim_effect = None
+                self._anim_target = None
+
+        self._anim_group.finished.connect(_cleanup)
+        self._anim_group.start()
 
 class VisualLabel(QLabel):
     """A transparent overlay label used for background and sticker display."""
@@ -105,9 +913,10 @@ class CianovaLauncherApp(QMainWindow):
         self.central_widget.setObjectName("centralWidget")
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(5, 5, 5, 5)
+        self.main_layout.setContentsMargins(10, 18, 10, 16)
+        self.main_layout.setSpacing(12)
 
-        self.tab_widget = QTabWidget()
+        self.tab_widget = AnimatedTabWidget()
         self.tab_widget.setObjectName("MainTabs")
         self.tab_widget.setDocumentMode(True)
         # Native drawBase line renders as a dark horizontal line above the
@@ -171,7 +980,7 @@ class CianovaLauncherApp(QMainWindow):
         # Game process monitoring
         self._game_process = None
         self._game_monitor = QTimer()
-        self._game_monitor.setInterval(2000)
+        self._game_monitor.setInterval(500)
         self._game_monitor.timeout.connect(self._check_game_process)
 
         # System Tray
@@ -335,8 +1144,10 @@ class CianovaLauncherApp(QMainWindow):
                     self._sticker_cache["pixmap"] = pix
 
             if pix and not pix.isNull():
-                self.sticker_label.setPixmap(pix)
-                self.sticker_label.setFixedSize(pix.size())
+                if self.sticker_label.pixmap() != pix:
+                    self.sticker_label.setPixmap(pix)
+                if self.sticker_label.size() != pix.size():
+                    self.sticker_label.setFixedSize(pix.size())
                 self.sticker_label.show()
             else:
                 self.sticker_label.hide()
@@ -385,8 +1196,10 @@ class CianovaLauncherApp(QMainWindow):
         """Change a visual setting (e.g. color theme) and update the UI."""
         if type_change == "color":
             self.config_manager.set(c.CONFIG_KEY_COLOR_THEME, value)
-            # Dynamic color change is complex with current QSS setup, usually requires reload
-            messagebox.showinfo(self, c.t("UI_RESTART_REQUIRED_TITLE"), c.t("UI_RESTART_MSG"))
+            self.config_manager.save_config()
+            self.apply_theme_settings()
+            if hasattr(self, "settings_tab"):
+                self.settings_tab._refresh_per_widget_styles()
             return
         self.config_manager.save_config()
         self.apply_theme_settings()
@@ -404,28 +1217,40 @@ class CianovaLauncherApp(QMainWindow):
         self.update_background()
         self.update_sticker()
 
+        # Save theme state for custom painted animated widgets
+        self.current_accent_color = accent
+        self.is_dark_mode = (mode == "Dark")
+        if hasattr(self, "tab_widget") and self.tab_widget.tabBar():
+            self.tab_widget.tabBar().update()
+
         # Optimization: skip reapplying the exact same QSS
         params = (mode, theme_color, section_opacity_val, has_bg)
         if self._last_qss_params == params:
             return
         self._last_qss_params = params
 
-        bg = "#242424" if mode == "Dark" else "#eef1f5"
-        text = "#DCE4EE" if mode == "Dark" else "#1a1a1a"
-        tab_bg = "#333333" if mode == "Dark" else "#cfd6e0"
+        if mode == "Dark":
+            bg = blend_colors("#0e0e0e", accent, 0.035)
+            frame_bg_base = blend_colors("#171717", accent, 0.065)
+            tab_bg = blend_colors("#141414", accent, 0.050)
+            input_bg = blend_colors("#1f1f1f", accent, 0.085)
+            input_border = blend_colors("#303030", accent, 0.12)
+            text = "#dedede"
+            input_text = "#ffffff"
+        else:
+            bg = blend_colors("#f5f6f8", accent, 0.02)
+            frame_bg_base = blend_colors("#ffffff", accent, 0.04)
+            tab_bg = blend_colors("#e9ecf0", accent, 0.04)
+            input_bg = blend_colors("#ffffff", accent, 0.04)
+            input_border = blend_colors("#d5d9e0", accent, 0.10)
+            text = "#212121"
+            input_text = "#212121"
 
         # Tab bar inset to match the content panels below (SECTION_PADDING each side)
         tab_inset = c.SECTION_PADDING
         tab_bar_width = max(120, self.tab_widget.width() - 2 * tab_inset)
 
-        input_bg = "#2a2a2a" if mode == "Dark" else "#ffffff"
-        input_text = "#ffffff" if mode == "Dark" else "#1a1a1a"
-        input_border = "#555555" if mode == "Dark" else "#c1c9d4"
-
         section_opacity = section_opacity_val / 100.0
-        from src.utils.colors import hex_to_rgba, adjust_color
-
-        frame_bg_base = "#3a3a3a" if mode == "Dark" else "#e8e8e8"
         frame_bg_opaque = hex_to_rgba(frame_bg_base, 1.0)
         
         # Section opacity should only affect Settings and Tools tabs
@@ -434,19 +1259,19 @@ class CianovaLauncherApp(QMainWindow):
         # Tool cards get a more solid background so they read as buttons even
         # when section opacity is low, plus an accent-tinted hover "illumination"
         # in both themes so the accent color clearly shows on mouse over.
-        tool_card_bg = hex_to_rgba(frame_bg_base, max(section_opacity, 0.92))
+        tool_card_bg = hex_to_rgba(frame_bg_base, max(section_opacity, 0.94))
         _base = QColor(frame_bg_base)
         _acc = QColor(accent)
         if mode == "Dark":
             # Dark: keep most of the base but add a clear accent glow.
-            _hr = int(_base.red() * 0.82 + _acc.red() * 0.18)
-            _hg = int(_base.green() * 0.82 + _acc.green() * 0.18)
-            _hb = int(_base.blue() * 0.82 + _acc.blue() * 0.18)
+            _hr = int(_base.red() * 0.80 + _acc.red() * 0.20)
+            _hg = int(_base.green() * 0.80 + _acc.green() * 0.20)
+            _hb = int(_base.blue() * 0.80 + _acc.blue() * 0.20)
         else:
             # Light: a softer accent tint so it reads as a warm highlight.
-            _hr = int(_base.red() * 0.85 + _acc.red() * 0.15)
-            _hg = int(_base.green() * 0.85 + _acc.green() * 0.15)
-            _hb = int(_base.blue() * 0.85 + _acc.blue() * 0.15)
+            _hr = int(_base.red() * 0.88 + _acc.red() * 0.12)
+            _hg = int(_base.green() * 0.88 + _acc.green() * 0.12)
+            _hb = int(_base.blue() * 0.88 + _acc.blue() * 0.12)
         tool_card_hover_bg = QColor(_hr, _hg, _hb).name()
         tool_card_hover_border = hex_to_rgba(accent, 0.85)
 
@@ -481,59 +1306,69 @@ class CianovaLauncherApp(QMainWindow):
         arrow_pixmap.save(arrow_path)
 
         # Fixed semi-transparent background for floating labels
-        floating_label_bg = hex_to_rgba("#555555" if mode == "Dark" else "#dddddd", 0.85)
-        floating_label_border = f"1px solid {hex_to_rgba('#ffffff' if mode == 'Dark' else '#000000', 0.25)}"
+        floating_label_bg = hex_to_rgba("#353542" if mode == "Dark" else "#e2e6ed", 0.85)
+        floating_label_border = f"1px solid {hex_to_rgba('#ffffff' if mode == 'Dark' else '#000000', 0.15)}"
 
         # Accent-tinted "pill" style for header indicators (status, profile,
         # installation, mode, section titles). Reads clearly in both themes.
-        pill_bg = hex_to_rgba(accent, 0.16) if mode == "Dark" else hex_to_rgba(accent, 0.10)
-        pill_border = f"1px solid {hex_to_rgba(accent, 0.55)}"
+        pill_bg = hex_to_rgba(accent, 0.18) if mode == "Dark" else hex_to_rgba(accent, 0.12)
+        pill_border = f"1px solid {hex_to_rgba(accent, 0.50)}"
         pill_text = text if mode == "Dark" else "#1a1a1a"
 
         qss = f"""
             QMainWindow, QWidget#centralWidget {{
                 {bg_qss}
                 color: {text};
-                font-family: 'Roboto', 'Segoe UI', sans-serif;
+                font-family: 'Segoe UI', 'Roboto', -apple-system, sans-serif;
             }}
             QLabel {{
                 color: {text};
             }}
             QDialog {{
                 background-color: {bg};
+                color: {text};
             }}
             #VersionManagerDialog, #InstallDialog, #AddonManagerDialog, #MigrationDialog, #GameConfigDialog {{
                 background-color: {bg};
             }}
             QTabWidget::pane {{
-                border: 1px solid {hex_to_rgba(input_border, 0.4)};
+                border: none;
                 background: transparent;
-                border-radius: {c.CORNER_RADIUS}px;
-                top: -1px;
             }}
             QTabBar {{
                 alignment: center;
-                background: {tab_bg};
-                border-radius: {c.CORNER_RADIUS}px;
-                padding: 2px;
+                background: transparent;
                 border: none;
+                min-height: 52px;
+                padding: 0px;
             }}
             QTabBar::tab {{
                 background: transparent;
                 color: {text};
-                padding: 10px 25px;
-                border-radius: {c.RADIUS_BUTTON}px;
+                padding: 0px 18px;
+                min-height: 38px;
+                border-radius: 19px;
                 font-weight: bold;
-                margin: 2px;
+                font-size: 13px;
+                margin: 2px 6px;
                 border: none;
                 outline: none;
             }}
             QTabBar::tab:selected {{
-                background: {accent};
-                color: white;
+                background: transparent;
+                color: #ffffff;
             }}
             QTabBar::tab:hover:!selected {{
-                background: {hex_to_rgba("#ffffff" if mode == "Dark" else "#000000", 0.08)};
+                background: transparent;
+            }}
+            QTabBar QToolButton, QTabBar::scroller {{
+                width: 0px;
+                height: 0px;
+                border: none;
+                background: transparent;
+                padding: 0px;
+                margin: 0px;
+                qproperty-icon: none;
             }}
             QTabWidget#MainTabs::tab-bar {{
                 top: 0px;
@@ -541,27 +1376,36 @@ class CianovaLauncherApp(QMainWindow):
                 width: {tab_bar_width}px;
                 border: none;
             }}
+            QToolTip {{
+                background-color: {"#181a1f" if mode == "Dark" else "#ffffff"};
+                color: {"#ffffff" if mode == "Dark" else "#18191c"};
+                border: 1px solid {"rgba(255, 255, 255, 0.18)" if mode == "Dark" else "rgba(0, 0, 0, 0.16)"};
+                border-radius: 6px;
+                padding: 5px 9px;
+                font-size: 11px;
+                font-weight: 500;
+            }}
             QPushButton {{
                 background-color: {accent};
-                color: white;
+                color: #ffffff;
                 border: 1px solid {accent};
                 border-radius: {c.RADIUS_BUTTON}px;
-                padding: 6px 14px;
+                padding: 7px 16px;
                 font-size: 13px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
-                background-color: {adjust_color(accent, 25)};
-                border: 1px solid {adjust_color(accent, 25)};
+                background-color: {adjust_color(accent, 20)};
+                border: 1px solid {adjust_color(accent, 20)};
             }}
             QPushButton:pressed {{
-                background-color: {adjust_color(accent, -15)};
-                border: 1px solid {adjust_color(accent, -15)};
+                background-color: {adjust_color(accent, -18)};
+                border: 1px solid {adjust_color(accent, -18)};
             }}
             QPushButton:disabled {{
-                background-color: {"#444444" if mode == "Dark" else "#dcdce0"};
-                color: {"#666666" if mode == "Dark" else "#9a9aa0"};
-                border: 1px solid {"#444444" if mode == "Dark" else "#c8c8cd"};
+                background-color: {"#363640" if mode == "Dark" else "#e2e5ea"};
+                color: {"#6c6c78" if mode == "Dark" else "#989ea8"};
+                border: 1px solid {"#363640" if mode == "Dark" else "#d0d5dd"};
             }}
             QPushButton:flat {{
                 background-color: {accent};
@@ -569,8 +1413,8 @@ class CianovaLauncherApp(QMainWindow):
                 border: none;
             }}
             QPushButton:flat:disabled {{
-                background-color: {"#444444" if mode == "Dark" else "#dcdce0"};
-                color: {"#666666" if mode == "Dark" else "#9a9aa0"};
+                background-color: {"#363640" if mode == "Dark" else "#e2e5ea"};
+                color: {"#6c6c78" if mode == "Dark" else "#989ea8"};
                 border: none;
             }}
             QLineEdit, QComboBox, QSpinBox, QTextEdit {{
@@ -578,11 +1422,15 @@ class CianovaLauncherApp(QMainWindow):
                 color: {input_text};
                 border: 1px solid {input_border};
                 border-radius: {c.RADIUS_INPUT}px;
-                padding: 6px 8px;
+                padding: 6px 10px;
+                font-size: 13px;
+            }}
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QTextEdit:focus {{
+                border: 1px solid {accent};
             }}
             QComboBox::drop-down {{ 
                 border: none; 
-                width: 25px; 
+                width: 26px; 
                 border-top-right-radius: {c.RADIUS_INPUT}px;
                 border-bottom-right-radius: {c.RADIUS_INPUT}px;
                 background: transparent;
@@ -591,7 +1439,7 @@ class CianovaLauncherApp(QMainWindow):
                 image: url("{arrow_path}");
                 width: {arrow_size}px;
                 height: {arrow_size}px;
-                margin-right: 4px;
+                margin-right: 6px;
             }}
             QComboBox QAbstractItemView {{
                 background-color: {input_bg};
@@ -600,19 +1448,21 @@ class CianovaLauncherApp(QMainWindow):
                 selection-background-color: {accent};
                 selection-color: white;
                 border-radius: {c.RADIUS_INPUT}px;
-                padding: 2px;
+                padding: 4px;
+                outline: none;
             }}
             QComboBox QAbstractItemView::item {{
                 min-height: 30px;
-                padding: 4px 8px;
+                padding: 5px 10px;
                 border-radius: {c.RADIUS_TINY}px;
             }}
             QComboBox QAbstractItemView::item:hover {{
-                background-color: {hex_to_rgba(accent, 0.3)};
+                background-color: {hex_to_rgba(accent, 0.25)};
             }}
             QCheckBox, QRadioButton {{
                 color: {text};
-                spacing: 6px;
+                spacing: 8px;
+                font-size: 13px;
             }}
             QCheckBox::indicator, QRadioButton::indicator {{
                 width: 18px; height: 18px; border-radius: {c.RADIUS_TINY}px;
@@ -623,19 +1473,25 @@ class CianovaLauncherApp(QMainWindow):
             }}
             QPushButton#PlayButton, QPushButton#SaveButton, QPushButton#ActionButton {{
                 background-color: {accent};
-                color: white;
+                color: #ffffff;
                 border-radius: {c.CORNER_RADIUS}px;
                 font-size: 16px;
                 font-weight: bold;
-                border: 1px solid rgba(255,255,255,0.2);
+                letter-spacing: 0.5px;
+                border: 1px solid rgba(255, 255, 255, 0.25);
+                padding: 8px 16px;
             }}
             QPushButton#PlayButton:hover, QPushButton#SaveButton:hover, QPushButton#ActionButton:hover {{
-                background-color: {adjust_color(accent, 20)};
+                background-color: {adjust_color(accent, 22)};
+                border: 1px solid rgba(255, 255, 255, 0.4);
+            }}
+            QPushButton#PlayButton:pressed, QPushButton#SaveButton:pressed, QPushButton#ActionButton:pressed {{
+                background-color: {adjust_color(accent, -18)};
             }}
             QPushButton#PlayButton:disabled, QPushButton#SaveButton:disabled, QPushButton#ActionButton:disabled {{
-                background-color: {"#444444" if mode == "Dark" else "#dcdce0"};
-                color: {"#888888" if mode == "Dark" else "#9a9aa0"};
-                border: 1px solid {"#444444" if mode == "Dark" else "#c8c8cd"};
+                background-color: {"#363640" if mode == "Dark" else "#e2e5ea"};
+                color: {"#6c6c78" if mode == "Dark" else "#989ea8"};
+                border: 1px solid {"#363640" if mode == "Dark" else "#d0d5dd"};
             }}
             QPushButton#ToolButton {{
                 background-color: {accent};
@@ -643,37 +1499,205 @@ class CianovaLauncherApp(QMainWindow):
                 border: none;
                 border-radius: {c.RADIUS_BUTTON}px;
                 font-weight: bold;
-                min-width: 22px;
-                min-height: 22px;
+                min-width: 24px;
+                min-height: 24px;
             }}
             QPushButton#ToolButton:hover {{
                 background-color: {adjust_color(accent, 20)};
             }}
             QPushButton#ToolButton:disabled {{
-                background-color: {"#444444" if mode == "Dark" else "#dcdce0"};
-                color: {"#888888" if mode == "Dark" else "#9a9aa0"};
+                background-color: {"#363640" if mode == "Dark" else "#e2e5ea"};
+                color: {"#6c6c78" if mode == "Dark" else "#989ea8"};
             }}
-            QFrame#ToolCard, QFrame#GroupFrame, QFrame#VersionCard {{
+            QFrame#ToolCard, QFrame#GroupFrame, QFrame#VersionCard, QFrame#VersionContainerCard, QFrame#LaunchControlCard, QFrame#RightTopCard, QFrame#RightBottomCard {{
                 border-radius: {c.CORNER_RADIUS}px;
-                border: 1px solid {hex_to_rgba(input_border, 0.5)};
+                border: 1px solid {hex_to_rgba(input_border, 0.45)};
                 background-color: {frame_bg_opaque};
             }}
 
-            #PlayTab QFrame#GroupFrame, #PlayTab QFrame#VersionCard, #AboutTab QFrame#GroupFrame {{
+            /* Version Container Card & Launch Control Card & Right Panel Cards Styling */
+            QFrame#VersionContainerCard, QFrame#LaunchControlCard, QFrame#RightTopCard, QFrame#RightBottomCard {{
+                border-radius: {c.CORNER_RADIUS}px;
+                border: 1px solid {hex_to_rgba(input_border, 0.45)};
+                background-color: {frame_bg_opaque};
+            }}
+            QWidget#RightPanelContainer {{
+                background: transparent;
+                border: none;
+            }}
+            QFrame#VersionCard {{
+                border: 1px solid {hex_to_rgba(input_border, 0.45)};
+                background-color: {frame_bg_opaque};
+            }}
+            QFrame#VersionCard:hover {{
+                border: 1px solid {hex_to_rgba(accent, 0.75)};
+                background-color: {hex_to_rgba(accent, 0.08) if mode == "Dark" else hex_to_rgba(accent, 0.05)};
+            }}
+            QFrame#VersionCard[selected="true"] {{
+                border: 2px solid {accent};
+                background-color: {hex_to_rgba(accent, 0.22) if mode == "Dark" else hex_to_rgba(accent, 0.14)};
+            }}
+
+            /* Wireframe Mockup Panels */
+            QFrame#WireframePanel {{
+                border-radius: {c.CORNER_RADIUS}px;
+                border: 1.5px dashed {hex_to_rgba(input_border, 0.65)};
+                background-color: {hex_to_rgba(frame_bg_base, 0.40)};
+            }}
+            QFrame#WireframeBox {{
+                border-radius: 10px;
+                border: 1px dashed {hex_to_rgba(input_border, 0.50)};
+                background-color: {hex_to_rgba(input_bg, 0.45)};
+            }}
+            #PlayTab QFrame#DualStatusCard, QFrame#DualStatusCard {{
+                border-radius: 12px;
+                border: 1.5px solid {hex_to_rgba(input_border, 0.65)};
+                background-color: transparent;
+                background: transparent;
+            }}
+            QFrame#DualCardDivider {{
+                background-color: {hex_to_rgba(input_border, 0.40)};
+                border: none;
+                max-height: 1px;
+            }}
+            QFrame#QuickSubCard {{
+                background-color: {"rgba(255, 255, 255, 0.04)" if mode == "Dark" else "rgba(0, 0, 0, 0.03)"};
+                border: 1px solid {"rgba(255, 255, 255, 0.08)" if mode == "Dark" else "rgba(0, 0, 0, 0.08)"};
+                border-radius: 10px;
+            }}
+            QFrame#QuickSubCard:hover {{
+                background-color: {"rgba(255, 255, 255, 0.075)" if mode == "Dark" else "rgba(0, 0, 0, 0.055)"};
+                border: 1px solid {"rgba(255, 255, 255, 0.16)" if mode == "Dark" else "rgba(0, 0, 0, 0.15)"};
+            }}
+            QFrame#QuickSubCardIcon {{
+                background-color: {"rgba(255, 255, 255, 0.06)" if mode == "Dark" else "rgba(0, 0, 0, 0.04)"};
+                border: 1px solid {"rgba(255, 255, 255, 0.08)" if mode == "Dark" else "rgba(0, 0, 0, 0.08)"};
+                border-radius: 8px;
+            }}
+            QPushButton#QuickActionBtn {{
+                background-color: {"rgba(255, 255, 255, 0.08)" if mode == "Dark" else "rgba(0, 0, 0, 0.05)"};
+                color: {"#ffffff" if mode == "Dark" else "#1a1c22"};
+                border: 1px solid {"rgba(255, 255, 255, 0.14)" if mode == "Dark" else "rgba(0, 0, 0, 0.12)"};
+                border-radius: 7px;
+                padding: 5px 14px;
+                font-size: 12px;
+                font-weight: 600;
+            }}
+            QPushButton#QuickActionBtn:hover {{
+                background-color: {hex_to_rgba(accent, 0.25) if mode == "Dark" else hex_to_rgba(accent, 0.15)};
+                color: {"#ffffff" if mode == "Dark" else accent};
+                border: 1px solid {accent};
+            }}
+            QPushButton#QuickActionBtn:pressed {{
+                background-color: {accent};
+                color: #ffffff;
+            }}
+            QPushButton#SidebarHomeButton {{
+                background-color: {hex_to_rgba(accent, 0.22) if mode == "Dark" else hex_to_rgba(accent, 0.14)};
+                color: {"#ffffff" if mode == "Dark" else "#111111"};
+                border: 1.5px solid {hex_to_rgba(accent, 0.50)};
+                border-radius: 10px;
+                padding-left: 14px;
+                text-align: left;
+                font-size: 13px;
+                font-weight: bold;
+            }}
+            QPushButton#SidebarHomeButton:hover {{
+                background-color: {hex_to_rgba(accent, 0.35) if mode == "Dark" else hex_to_rgba(accent, 0.24)};
+                border: 1.5px solid {accent};
+            }}
+            QPushButton#SidebarHomeButton:pressed {{
+                background-color: {hex_to_rgba(accent, 0.48) if mode == "Dark" else hex_to_rgba(accent, 0.38)};
+            }}
+            QLabel#ModeValueLabel {{
+                color: {accent};
+                font-weight: bold;
+                font-size: 12px;
+                background: transparent;
+                border: none;
+            }}
+            QComboBox#CleanModeCombo {{
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
+                font-size: 13px;
+                font-weight: bold;
+                color: {accent};
+            }}
+            QComboBox#CleanModeCombo::drop-down {{
+                border: none;
+                width: 14px;
+                background: transparent;
+            }}
+            QComboBox#CleanModeCombo::down-arrow {{
+                image: url("{arrow_path}");
+                width: 10px;
+                height: 10px;
+            }}
+            QComboBox#CleanModeCombo QAbstractItemView {{
+                background-color: {input_bg};
+                color: {input_text};
+                border: 1px solid {input_border};
+                selection-background-color: {accent};
+                selection-color: white;
+                border-radius: {c.RADIUS_INPUT}px;
+                padding: 4px;
+                outline: none;
+            }}
+
+            /* Floating-style Launch Action Dropdown Card */
+            QFrame#LaunchComboCard {{
+                border-radius: 10px;
+                border: 1px solid {hex_to_rgba(input_border, 0.55)};
+                background-color: {hex_to_rgba(input_bg, 0.70)};
+            }}
+            QFrame#LaunchComboCard:hover {{
+                border: 1px solid {hex_to_rgba(accent, 0.85)};
+                background-color: {hex_to_rgba(input_bg, 0.95)};
+            }}
+            QComboBox#LaunchSubCombo {{
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
+                font-size: 13px;
+                font-weight: bold;
+                color: {text};
+            }}
+            QComboBox#LaunchSubCombo::drop-down {{
+                border: none;
+                width: 14px;
+                background: transparent;
+            }}
+            QComboBox#LaunchSubCombo::down-arrow {{
+                image: url("{arrow_path}");
+                width: 10px;
+                height: 10px;
+            }}
+            QComboBox#LaunchSubCombo QAbstractItemView {{
+                background-color: {input_bg};
+                color: {input_text};
+                border: 1px solid {input_border};
+                selection-background-color: {accent};
+                selection-color: white;
+                border-radius: {c.RADIUS_INPUT}px;
+                padding: 4px;
+                outline: none;
+            }}
+
+            #PlayTab QFrame#GroupFrame, #PlayTab QFrame#VersionCard, #PlayTab QFrame#VersionContainerCard, #PlayTab QFrame#LaunchControlCard, #PlayTab QFrame#RightTopCard, #PlayTab QFrame#RightBottomCard, #AboutTab QFrame#GroupFrame {{
                 background-color: {frame_bg_opaque};
             }}
 
             #SettingsTab, #LogsTab {{
                 background-color: {bg};
             }}
-            #PlayTab, #ToolsTab {{
+            #PlayTab, #ToolsTab, #AboutTab {{
                 background-color: transparent;
             }}
             #SettingsTab QStackedWidget, #SettingsTab QStackedWidget > QWidget {{
                 background-color: {bg};
-            }}
-            #AboutTab {{
-                background-color: {frame_bg_opaque};
             }}
 
             #ToolsTab QFrame#GroupFrame, #ToolsTab QFrame#ToolCard,
@@ -697,15 +1721,15 @@ class CianovaLauncherApp(QMainWindow):
                 {scroll_content_bg}
             }}
             #AboutTab QScrollArea {{
-                background-color: {frame_bg_opaque};
+                background-color: transparent;
             }}
             #AboutTab QScrollArea > QWidget > QWidget#ScrollContent {{
-                background-color: {frame_bg_opaque};
+                background-color: transparent;
             }}
             #SettingsTab QScrollArea {{
                 background-color: {bg};
             }}
-            #ToolsTab QFrame#ToolCard:hover, QFrame#VersionCard:hover,
+            #ToolsTab QFrame#ToolCard:hover,
             #ToolsTab QFrame#GroupFrame:hover {{
                 border: 1px solid {tool_card_hover_border};
             }}
@@ -724,39 +1748,39 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {floating_label_bg};
                 color: {text};
                 padding: 5px 15px;
-                border-radius: 4px;
+                border-radius: 6px;
                 border: {floating_label_border};
                 qproperty-alignment: 'AlignCenter';
             }}
             QLabel#IndicatorPill {{
                 background-color: {pill_bg};
                 color: {pill_text};
-                padding: 4px 13px;
-                border-radius: 13px;
+                padding: 5px 14px;
+                border-radius: 14px;
                 border: {pill_border};
                 font-weight: bold;
+                font-size: 12px;
                 qproperty-alignment: 'AlignCenter';
             }}
             QSlider:horizontal {{
                 min-height: 24px;
             }}
             QSlider::groove:horizontal {{
-                background: {"#4a4a4a" if mode == "Dark" else "#c9c9c9"};
+                background: {"#3e3e4c" if mode == "Dark" else "#d0d5dd"};
                 height: 6px;
                 border-radius: 3px;
-                border: 1px solid {input_border};
                 margin: 2px 0;
             }}
             QSlider::handle:horizontal {{
                 background: {accent};
-                border: 1px solid {input_border};
+                border: 2px solid {"#ffffff" if mode == "Dark" else "#ffffff"};
                 width: 16px;
                 height: 16px;
-                margin: -3px 0;
+                margin: -5px 0;
                 border-radius: 8px;
             }}
             QSlider::handle:horizontal:hover {{
-                background: {adjust_color(accent, 20)};
+                background: {adjust_color(accent, 25)};
             }}
             QSlider::sub-page:horizontal {{
                 background: {accent};
@@ -766,41 +1790,45 @@ class CianovaLauncherApp(QMainWindow):
                 background-color: {accent};
                 color: white;
             }}
+            /* Sleek modern scrollbars */
             QScrollBar:vertical {{
-                background: {tab_bg};
-                width: 12px;
-                margin: 0px;
-                border-radius: 4px;
+                background: transparent;
+                width: 11px;
+                margin: 2px 0px 2px 0px;
+                border-radius: 5px;
             }}
             QScrollBar::handle:vertical {{
-                background: {accent};
-                min-height: 20px;
-                border-radius: 4px;
+                background: {hex_to_rgba(accent, 0.65)};
+                min-height: 28px;
+                border-radius: 5px;
             }}
             QScrollBar::handle:vertical:hover {{
-                background: {adjust_color(accent, 30)};
+                background: {accent};
             }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0px;
             }}
-            QScrollBar:horizontal {{
-                background: {tab_bg};
-                height: 12px;
-                margin: 0px;
+            QScrollBar::horizontal {{
+                background: transparent;
+                height: 8px;
+                margin: 0px 2px 0px 2px;
                 border-radius: 4px;
             }}
             QScrollBar::handle:horizontal {{
-                background: {accent};
-                min-width: 20px;
+                background: {hex_to_rgba(accent, 0.65)};
+                min-width: 24px;
                 border-radius: 4px;
+            }}
+            QScrollBar::handle:horizontal:hover {{
+                background: {accent};
             }}
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
                 width: 0px;
             }}
             /* ── Settings sidebar ── */
             QFrame#SettingsSidebar {{
-                background-color: {hex_to_rgba(frame_bg_base, 0.5)};
-                border-right: 1px solid {hex_to_rgba(input_border, 0.4)};
+                background-color: {hex_to_rgba(frame_bg_base, 0.55)};
+                border-right: 1px solid {hex_to_rgba(input_border, 0.35)};
                 border-top-left-radius: {c.CORNER_RADIUS}px;
                 border-bottom-left-radius: {c.CORNER_RADIUS}px;
             }}
@@ -808,16 +1836,17 @@ class CianovaLauncherApp(QMainWindow):
                 background: transparent;
                 color: {"#333333" if mode == "Light" else "#cccccc"};
                 border: none;
-                border-radius: 4px;
+                border-radius: 6px;
                 padding: 10px 14px;
                 font-size: 13px;
                 font-weight: bold;
                 text-align: left;
                 min-width: 35px;
                 min-height: 42px;
+                margin: 2px 4px;
             }}
             QPushButton#SidebarButton:hover {{
-                background: {"#d8d8d8" if mode == "Light" else "#333333"};
+                background: {hex_to_rgba(accent, 0.12)};
                 color: {"#000000" if mode == "Light" else "white"};
             }}
             QPushButton#SidebarButton:disabled {{
@@ -825,22 +1854,23 @@ class CianovaLauncherApp(QMainWindow):
                 color: {"#9a9aa0" if mode == "Light" else "#666666"};
             }}
             QPushButton#SidebarButton[active="true"] {{
-                background: {"#cccccc" if mode == "Light" else "#2a2a2a"};
+                background: {hex_to_rgba(accent, 0.20)};
                 color: {accent};
                 border-left: 4px solid {accent};
-                border-radius: 0px;
+                border-radius: 4px;
             }}
             QPushButton#SidebarToggle {{
                 background: transparent;
                 color: {"#333333" if mode == "Light" else "#cccccc"};
                 border: none;
-                border-radius: 4px;
+                border-radius: 6px;
                 font-size: 16px;
                 font-weight: bold;
                 min-height: 38px;
+                margin: 2px 4px;
             }}
             QPushButton#SidebarToggle:hover {{
-                background: {"#d8d8d8" if mode == "Light" else "#333333"};
+                background: {hex_to_rgba(accent, 0.12)};
                 color: {"#000000" if mode == "Light" else "white"};
             }}
             QPushButton#SidebarToggle:disabled {{
@@ -850,9 +1880,9 @@ class CianovaLauncherApp(QMainWindow):
             /* ── QGroupBox in Settings ── */
             #SettingsTab QGroupBox {{
                 border: 1px solid {hex_to_rgba(input_border, 0.35)};
-                border-radius: 4px;
+                border-radius: 8px;
                 margin-top: 1.5ex;
-                padding: 18px 10px 10px 10px;
+                padding: 18px 12px 12px 12px;
                 background-color: {frame_bg_transparent};
             }}
             #SettingsTab QGroupBox::title {{
@@ -875,14 +1905,81 @@ class CianovaLauncherApp(QMainWindow):
                 background: transparent;
                 border: none;
             }}
+            /* ── Modern Fallback QFileDialog Styling ── */
+            QFileDialog {{
+                background-color: {bg};
+                color: {text};
+            }}
+            QFileDialog QTreeView, QFileDialog QListView, QFileDialog QTableView {{
+                background-color: {input_bg};
+                color: {text};
+                border: 1px solid {hex_to_rgba(input_border, 0.5)};
+                border-radius: 8px;
+                padding: 4px;
+                outline: none;
+            }}
+            QFileDialog QTreeView::item, QFileDialog QListView::item {{
+                padding: 4px 6px;
+                border-radius: 4px;
+            }}
+            QFileDialog QTreeView::item:hover, QFileDialog QListView::item:hover {{
+                background-color: {hex_to_rgba(accent, 0.20)};
+            }}
+            QFileDialog QTreeView::item:selected, QFileDialog QListView::item:selected {{
+                background-color: {accent};
+                color: #ffffff;
+            }}
+            QFileDialog QHeaderView, QFileDialog QHeaderView::section, QFileDialog QTableCornerButton::section {{
+                background-color: {frame_bg_opaque};
+                color: {text};
+                padding: 5px 8px;
+                border: none;
+                border-right: 1px solid {hex_to_rgba(input_border, 0.3)};
+                border-bottom: 1px solid {hex_to_rgba(input_border, 0.3)};
+                font-weight: bold;
+                font-size: 11px;
+            }}
+            QFileDialog QToolButton {{
+                background-color: {hex_to_rgba(frame_bg_base, 0.6)};
+                color: {text};
+                border: 1px solid {hex_to_rgba(input_border, 0.4)};
+                border-radius: 6px;
+                padding: 4px;
+                margin: 2px;
+            }}
+            QFileDialog QToolButton:hover {{
+                background-color: {hex_to_rgba(accent, 0.3)};
+                border: 1px solid {accent};
+            }}
+            QFileDialog QToolButton:pressed {{
+                background-color: {hex_to_rgba(accent, 0.5)};
+            }}
+            QFileDialog QSplitter::handle {{
+                background-color: {hex_to_rgba(input_border, 0.3)};
+            }}
         """
         try:
             QApplication.instance().setStyleSheet(qss)
+            palette = QApplication.instance().palette()
+            if mode == "Dark":
+                palette.setColor(QPalette.ToolTipBase, QColor("#181a1f"))
+                palette.setColor(QPalette.ToolTipText, QColor("#ffffff"))
+            else:
+                palette.setColor(QPalette.ToolTipBase, QColor("#ffffff"))
+                palette.setColor(QPalette.ToolTipText, QColor("#18191c"))
+            QApplication.instance().setPalette(palette)
         except Exception as e:
             logger.warning(f"Failed to apply global stylesheet: {e}")
 
         if hasattr(self, "settings_tab"):
             self.settings_tab._refresh_per_widget_styles()
+
+        if hasattr(self, "play_tab") and hasattr(self.play_tab, "update_theme_styles"):
+            self.play_tab.update_theme_styles()
+        if hasattr(self, "tools_tab") and hasattr(self.tools_tab, "update_theme_styles"):
+            self.tools_tab.update_theme_styles()
+        if hasattr(self, "about_tab") and hasattr(self.about_tab, "update_theme_styles"):
+            self.about_tab.update_theme_styles()
 
         from src.core.install_ops import refresh_version_cards_theme
         try:
@@ -893,7 +1990,7 @@ class CianovaLauncherApp(QMainWindow):
         # Apply drop shadow to all card-type frames
         shadow_color = QColor(0, 0, 0, 60) if mode == "Dark" else QColor(0, 0, 0, 30)
         for frame in self.findChildren(QFrame):
-            if frame.objectName() in ("GroupFrame", "ToolCard", "VersionCard"):
+            if frame.objectName() in ("GroupFrame", "ToolCard", "VersionCard", "VersionContainerCard", "LaunchControlCard", "RightTopCard", "RightBottomCard"):
                 existing = frame.graphicsEffect()
                 if existing is None:
                     shadow = QGraphicsDropShadowEffect()
@@ -901,6 +1998,19 @@ class CianovaLauncherApp(QMainWindow):
                     shadow.setOffset(0, 2)
                     shadow.setColor(shadow_color)
                     frame.setGraphicsEffect(shadow)
+
+        self.update_top_profile_badge()
+
+    def open_profile_manager(self):
+        """Open the profile manager dialog."""
+        from src.gui.profile_manager_dialog import ProfileManagerDialog
+        dialog = ProfileManagerDialog(self, self)
+        dialog.exec()
+
+    def update_top_profile_badge(self):
+        """Trigger repaint of AnimatedTabBar to update profile indicator."""
+        if hasattr(self, "tab_widget") and self.tab_widget and self.tab_widget.tabBar():
+            self.tab_widget.tabBar().update()
 
     def _apply_debounced_personalization(self):
         self.apply_theme_settings()
@@ -930,6 +2040,7 @@ class CianovaLauncherApp(QMainWindow):
             if hasattr(tab, "retranslate_ui"):
                 tab.retranslate_ui()
         self.update_floating_labels()
+        self.update_top_profile_badge()
 
     def show_info(self, title, msg):
         """Show an information dialog with the given title and message."""
@@ -937,8 +2048,9 @@ class CianovaLauncherApp(QMainWindow):
 
     # Tool openers
     def install_apk_dialog(self):
-        """Open the APK installation dialog."""
-        InstallDialog(self).exec()
+        """Switch to the embedded installation view in the play tab sidebar."""
+        self.tab_widget.setCurrentIndex(0)
+        self.play_tab.show_install_view()
     def open_skin_tool(self):
         """Open the skin pack creator tool."""
         SkinPackTool(self).exec()
@@ -955,11 +2067,13 @@ class CianovaLauncherApp(QMainWindow):
         try: AddonManagerDialog(self).exec()
         except Exception as e: messagebox.showerror(self, c.t("UI_ERROR_TITLE"), f"Error: {e}")
 
-    def open_version_manager(self):
-        """Open the version manager dialog for renaming, deleting, and shortcuts."""
-        from src.gui.version_manager_dialog import VersionManagerDialog
-        try: VersionManagerDialog(self, self).exec()
-        except Exception as e: messagebox.showerror(self, c.t("UI_ERROR_TITLE"), f"Error: {e}")
+    def open_version_manager(self, version=None):
+        """Open the version manager dialog for renaming, customizing, and shortcuts."""
+        from src.gui.version_manager_dialog import SleekVersionEditDialog
+        try:
+            SleekVersionEditDialog(self, target_version=version).exec()
+        except Exception as e:
+            messagebox.showerror(self, c.t("UI_ERROR_TITLE"), f"Error: {e}")
 
     def sync_gamemode_ui(self, value):
         """Synchronize the gamemode toggle between Play and Settings tabs."""
@@ -1002,11 +2116,18 @@ class CianovaLauncherApp(QMainWindow):
         """Synchronize the launch-action combo between Play and Settings tabs."""
         self.config_manager.set(c.CONFIG_KEY_LAUNCH_ACTION, action_key)
         for tab in (self.play_tab, self.settings_tab):
-            if hasattr(tab, "combo_launch_action"):
+            if tab is None:
+                continue
+            if hasattr(tab, "box_launch_action") and hasattr(tab.box_launch_action, "setCurrentAction"):
+                tab.box_launch_action.setCurrentAction(action_key)
+            elif hasattr(tab, "combo_launch_action"):
                 blocked = tab.combo_launch_action.blockSignals(True)
-                idx = tab.combo_launch_action.findData(action_key)
-                if idx >= 0:
-                    tab.combo_launch_action.setCurrentIndex(idx)
+                if hasattr(tab.combo_launch_action, "setCurrentAction"):
+                    tab.combo_launch_action.setCurrentAction(action_key)
+                elif hasattr(tab.combo_launch_action, "findData"):
+                    idx = tab.combo_launch_action.findData(action_key)
+                    if idx >= 0:
+                        tab.combo_launch_action.setCurrentIndex(idx)
                 tab.combo_launch_action.blockSignals(blocked)
 
     def _setup_tray_icon(self):
@@ -1041,16 +2162,8 @@ class CianovaLauncherApp(QMainWindow):
             self.play_tab.set_game_status(True)
 
     def _set_persistent_game_indicator(self, running):
-        """Show/hide a global 'game running' badge visible on every tab."""
-        if running:
-            self.game_status_label.setText(f"● {c.t('UI_GAME_STATUS_RUNNING')}")
-            self.game_status_label.adjustSize()
-            x = self.width() - self.game_status_label.width() - 20
-            y = self.tab_widget.tabBar().height() + 14
-            self.game_status_label.move(x, y)
-            self.game_status_label.raise_()
-            self.game_status_label.show()
-        else:
+        """Global badge suppressed in favor of dedicated PlayTab status card."""
+        if hasattr(self, "game_status_label") and self.game_status_label:
             self.game_status_label.hide()
 
     def _check_game_process(self):
@@ -1081,6 +2194,29 @@ class CianovaLauncherApp(QMainWindow):
             self._tray_icon.hide()
         if hasattr(self, '_discord_rpc') and self._discord_rpc:
             self._discord_rpc.stop()
+
+        # Stop background worker threads cleanly
+        workers = []
+        if hasattr(self, '_update_checker') and self._update_checker:
+            t = getattr(self._update_checker, '_thread', None)
+            if t and isinstance(t, QThread) and t.isRunning():
+                workers.append(t)
+        if hasattr(self, 'play_tab') and self.play_tab:
+            for subview_name in ['view_screenshots', 'view_worlds', 'view_packs', 'view_mods']:
+                subview = getattr(self.play_tab, subview_name, None)
+                if subview:
+                    for attr in ['_scan_worker', '_world_scan_worker', '_pack_scan_worker', '_worker']:
+                        w = getattr(subview, attr, None)
+                        if w and isinstance(w, QThread) and w.isRunning():
+                            workers.append(w)
+        for w in workers:
+            try:
+                w.requestInterruption()
+                w.quit()
+                w.wait(200)
+            except Exception:
+                pass
+
         super().closeEvent(event)
 
     def check_version_update(self):

@@ -46,7 +46,7 @@ pp_bin = collect_dynamic_libs('pypresence')
 
 # ── Datos del proyecto ──
 my_datas = [
-    ('icon.png', '.'),
+    ('assets', 'assets'),
     ('src/langs', 'src/langs'),
     ('Docs', 'Docs'),
 ]
@@ -66,7 +66,10 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['tkinter', 'matplotlib', 'scipy', 'numpy', 'pandas', 'unittest',
+              'pydoc', 'doctest', 'test', 'PySide6.Qt3D', 'PySide6.QtWebEngine',
+              'PySide6.QtWebEngineCore', 'PySide6.QtWebEngineWidgets',
+              'PySide6.QtQuick', 'PySide6.QtQml', 'PySide6.QtDesigner'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -90,7 +93,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icon.png'],
+    icon=['assets/media/icon.png'],
 )
 coll = COLLECT(
     exe,

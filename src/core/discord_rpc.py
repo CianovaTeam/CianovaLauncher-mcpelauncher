@@ -27,6 +27,7 @@ class DiscordRPC:
     def __init__(self, app):
         self.app = app
         self._thread = None
+        self._stop_event = None
         self._running = False
         self._rpc = None
         self._lock = threading.Lock()
@@ -41,7 +42,7 @@ class DiscordRPC:
     def start(self):
         if not self.available:
             return
-        if self._running:
+        if self._thread and self._thread.is_alive():
             return
         custom_id = self.app.config.get(c.CONFIG_KEY_DISCORD_RPC_CLIENT_ID, "").strip()
         self._client_id = custom_id or c.DISCORD_DEFAULT_CLIENT_ID
@@ -49,11 +50,15 @@ class DiscordRPC:
             logger.debug("Discord RPC: no DISCORD_DEFAULT_CLIENT_ID configured in constants.py")
             return
         self._running = True
-        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, args=(self._stop_event,), daemon=True)
         self._thread.start()
 
     def stop(self):
         self._running = False
+        if self._stop_event:
+            self._stop_event.set()
+        thread = self._thread
         with self._lock:
             if self._rpc:
                 try:
@@ -66,7 +71,13 @@ class DiscordRPC:
                     pass
                 self._rpc = None
                 self._connected = False
-        self._thread = None
+        # Event.wait() in the worker wakes immediately, so this join normally
+        # returns at once and prevents an old worker racing a new connection.
+        if thread and thread is not threading.current_thread():
+            thread.join(timeout=1)
+        if thread and not thread.is_alive():
+            self._thread = None
+            self._stop_event = None
 
     def _build_presence_kwargs(self, details, state, start, large_image, large_text, small_image, small_text):
         kwargs = dict(details=details)
@@ -161,18 +172,18 @@ class DiscordRPC:
             self._connected = False
             return False
 
-    def _run(self):
+    def _run(self, stop_event):
         retry_interval = 30
         last_retry = 0
 
-        while self._running:
+        while not stop_event.is_set():
             now = time.time()
 
             if not self._connected:
                 if now - last_retry >= retry_interval:
                     last_retry = now
                     self._connect()
-                time.sleep(2)
+                stop_event.wait(2)
                 continue
 
             with self._lock:
@@ -204,7 +215,7 @@ class DiscordRPC:
                         pass
                     self._rpc = None
 
-            time.sleep(15)
+            stop_event.wait(15)
 
         with self._lock:
             if self._rpc:
@@ -215,3 +226,6 @@ class DiscordRPC:
                     pass
                 self._rpc = None
                 self._connected = False
+            if self._thread is threading.current_thread():
+                self._thread = None
+                self._stop_event = None

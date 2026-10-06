@@ -1,3 +1,4 @@
+import os
 import subprocess
 import shutil
 from PySide6.QtWidgets import QFileDialog
@@ -11,7 +12,7 @@ class _ZenityCancelled(Exception):
 def _qt_file_filter(filetypes):
     if filetypes:
         return ";;".join([f"{name} ({pattern})" for name, pattern in filetypes])
-    return f"{c.t("UI_ALL_FILES_TYPE")} (*)"
+    return f"{c.t('UI_ALL_FILES_TYPE')} (*)"
 
 
 def _append_zenity_filters(cmd, filetypes):
@@ -36,12 +37,15 @@ def _run_zenity(cmd):
         return None
 
 
-def ask_open_filename_native(parent, title=None, filetypes=None):
+def ask_open_filename_native(parent, title=None, filetypes=None, initial_dir=None):
     if title is None: title = c.t("UI_OPEN_FILE_TITLE")
     qt_filter = _qt_file_filter(filetypes)
 
     if shutil.which("zenity"):
         cmd = ["zenity", "--file-selection", f"--title={title}"]
+        if initial_dir:
+            dir_path = os.path.expanduser(initial_dir).rstrip('/')
+            cmd.append(f"--filename={dir_path}/")
         _append_zenity_filters(cmd, filetypes)
         try:
             selected = _run_zenity(cmd)
@@ -50,9 +54,10 @@ def ask_open_filename_native(parent, title=None, filetypes=None):
         if selected:
             return selected
 
-    filename, _ = QFileDialog.getOpenFileName(parent, title, "", qt_filter)
+    start_dir = initial_dir or ""
+    filename, _ = QFileDialog.getOpenFileName(parent, title, start_dir, qt_filter)
     if not filename:
-        filename, _ = QFileDialog.getOpenFileName(parent, title, "", qt_filter, options=QFileDialog.DontUseNativeDialog)
+        filename, _ = QFileDialog.getOpenFileName(parent, title, start_dir, qt_filter, options=QFileDialog.DontUseNativeDialog)
     return filename
 
 
@@ -61,20 +66,30 @@ def ask_save_filename_native(parent, title=None, filetypes=None, default_name=No
     qt_filter = _qt_file_filter(filetypes)
 
     if shutil.which("zenity"):
-        cmd = ["zenity", "--file-selection", "--save", f"--title={title}"]
+        cmd = ["zenity", "--file-selection", "--save", "--confirm-overwrite", f"--title={title}"]
         if default_name:
-            cmd.append(f"--filename={default_name}")
+            cmd.append(f"--filename={os.path.expanduser(default_name)}")
         _append_zenity_filters(cmd, filetypes)
         try:
             selected = _run_zenity(cmd)
         except _ZenityCancelled:
             return ""
         if selected:
+            # If user didn't type an extension, append it from default_name or filetypes
+            if "." not in os.path.basename(selected):
+                if default_name and "." in os.path.basename(default_name):
+                    ext = os.path.splitext(default_name)[1]
+                    selected += ext
+                elif filetypes and filetypes[0][1]:
+                    first_pat = filetypes[0][1].split()[0]
+                    if first_pat.startswith("*."):
+                        selected += first_pat[1:]
             return selected
 
-    path, _ = QFileDialog.getSaveFileName(parent, title, "", qt_filter)
+    start_name = default_name or ""
+    path, _ = QFileDialog.getSaveFileName(parent, title, start_name, qt_filter)
     if not path:
-        path, _ = QFileDialog.getSaveFileName(parent, title, "", qt_filter, options=QFileDialog.DontUseNativeDialog)
+        path, _ = QFileDialog.getSaveFileName(parent, title, start_name, qt_filter, options=QFileDialog.DontUseNativeDialog)
     return path
 
 

@@ -4,7 +4,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from src import constants as c
 from src.gui import custom_dialogs as messagebox
-from src.utils.colors import hex_to_rgba, adjust_color
+from src.utils.colors import hex_to_rgba, adjust_color, blend_colors
+from src.utils.image_manager import ImageManager
 
 
 class ProfileManagerDialog(QDialog):
@@ -19,11 +20,19 @@ class ProfileManagerDialog(QDialog):
         mode = self.app.config.get(c.CONFIG_KEY_APPEARANCE, "Dark")
         theme_color = self.app.config.get(c.CONFIG_KEY_COLOR_THEME, "blue")
         self.accent = c.THEME_COLOR_MAP.get(theme_color, "#1f6aa5")
-        self.bg = "#242424" if mode == "Dark" else "#ebebeb"
-        self.text = "#DCE4EE" if mode == "Dark" else "#242424"
-        self.card_bg = "#333333" if mode == "Dark" else "#d0d0d0"
-        self.input_bg = "#333333" if mode == "Dark" else "#ffffff"
-        self.input_border = "#444444" if mode == "Dark" else "#cccccc"
+
+        if mode == "Dark":
+            self.bg = blend_colors("#0e0e0e", self.accent, 0.035)
+            self.card_bg = blend_colors("#171717", self.accent, 0.065)
+            self.input_bg = blend_colors("#1f1f1f", self.accent, 0.085)
+            self.input_border = blend_colors("#303030", self.accent, 0.12)
+            self.text = "#dedede"
+        else:
+            self.bg = blend_colors("#f5f6f8", self.accent, 0.02)
+            self.card_bg = blend_colors("#ffffff", self.accent, 0.04)
+            self.input_bg = blend_colors("#ffffff", self.accent, 0.04)
+            self.input_border = blend_colors("#d5d9e0", self.accent, 0.10)
+            self.text = "#212121"
         self.muted = "#888888"
 
         self.setup_ui()
@@ -165,11 +174,11 @@ class ProfileManagerDialog(QDialog):
         card = QFrame()
         card.setObjectName("ProfileCard")
         if is_current:
-            border = f"1px solid {self.accent}"
-            bg = hex_to_rgba(self.accent, 0.08)
+            border = f"1.5px solid {self.accent}"
+            bg = hex_to_rgba(self.accent, 0.12)
         else:
-            border = f"1px solid {hex_to_rgba(self.input_border, 0.3)}"
-            bg = "transparent"
+            border = f"1px solid {hex_to_rgba(self.input_border, 0.50)}"
+            bg = self.card_bg
         card.setStyleSheet(f"""
             QFrame#ProfileCard {{
                 background-color: {bg};
@@ -179,7 +188,7 @@ class ProfileManagerDialog(QDialog):
             }}
             QFrame#ProfileCard:hover {{
                 border: 1px solid {self.accent};
-                background-color: {hex_to_rgba(self.accent, 0.04)};
+                background-color: {hex_to_rgba(self.accent, 0.08)};
             }}
         """)
         card.setCursor(Qt.PointingHandCursor)
@@ -188,9 +197,15 @@ class ProfileManagerDialog(QDialog):
         layout.setContentsMargins(14, 10, 10, 10)
         layout.setSpacing(10)
 
-        icon = QLabel("★" if is_current else "○")
-        icon.setStyleSheet(f"font-size: 16px; color: {self.accent if is_current else self.muted};")
-        icon.setFixedWidth(20)
+        icon = QLabel()
+        icon.setFixedSize(26, 26)
+        pix = ImageManager.get_image("steve.png", size=(26, 26))
+        if pix and not pix.isNull():
+            icon.setPixmap(pix)
+            icon.setScaledContents(True)
+        else:
+            icon.setText("👤")
+        icon.setStyleSheet("background: transparent; border: none; border-radius: 4px;")
         layout.addWidget(icon)
 
         name_label = QLabel(name)

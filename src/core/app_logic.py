@@ -21,7 +21,10 @@ from src.utils.process_utils import (
     open_path,
 )
 
-from .moddb_service import ModInstallWorker, detect_architecture, fetch_moddb, get_mod_info, find_asset_for_arch, cache_moddb
+from .moddb_service import (
+    ModInstallWorker, ModDBFetchWorker, detect_architecture, get_mod_info,
+    find_asset_for_arch, get_cached_moddb,
+)
 
 # Own build source — mod compiled from https://github.com/Leimsoto/mcpelauncher-updates (MIT)
 # Release ZIP naming: mcpelauncher-updates-{arch}-release.zip  (arch: x86_64 | arm64)
@@ -327,7 +330,7 @@ def _on_mod_install_error(app, mod_name, err_msg, on_done=None):
 
 
 def install_drm_mod(app, on_done=None):
-    """One-click: descarga el mod DRM desde nuestra release y lo instala.
+    """Downloads and installs the DRM mod in one click.
 
     Build source: https://github.com/Leimsoto/mcpelauncher-updates
     Uses the general ModInstallWorker from moddb_service.
@@ -338,10 +341,20 @@ def install_drm_mod(app, on_done=None):
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_DRM_NO_MODS_FOLDER"))
         return
 
+    from .google_integration import check_google_session
+    if not check_google_session(app):
+        messagebox.showwarning(
+            app,
+            c.t("UI_DRM_GOOGLE_REQ_TITLE"),
+            c.t("UI_DRM_GOOGLE_REQ_MSG")
+        )
+        if on_done:
+            on_done()
+        return
+
     arch = detect_architecture()
     if not arch:
-        messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                             f"Arquitectura no soportada")
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_DRM_UNSUPPORTED_ARCH"))
         return
 
     mods_base = os.path.join(app.active_path, c.MODS_DIR, "mcpelauncher-updates")
@@ -352,13 +365,13 @@ def install_drm_mod(app, on_done=None):
 
     if already_installed:
         if not messagebox.askyesno(app, c.t("UI_CONFIRM_TITLE"),
-                                   "El mod mcpelauncher-updates ya está instalado.\n¿Reinstalar?"):
+                                   c.t("UI_MOD_ALREADY_INSTALLED_REINSTALL", mod_name="mcpelauncher-updates")):
             return
 
     own_arch = OWN_DRM_ARCH_MAP.get(arch)
     if not own_arch:
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                            f"Arquitectura no soportada para este mod: {arch}")
+                             c.t("UI_DRM_UNSUPPORTED_ARCH_MOD", arch=arch))
         return
 
     download_url = OWN_DRM_RELEASE_URL_TPL.format(tag=OWN_DRM_RELEASE_TAG, arch=own_arch)
@@ -390,7 +403,7 @@ def install_drm_mod(app, on_done=None):
     worker.start()
 
 
-def install_mod_from_moddb(app, mod_name, on_done=None):
+def install_mod_from_moddb(app, mod_name, on_done=None, moddb=None):
     """Install any mod from the mod database by name.
 
     Fetches moddb, finds the mod entry, downloads the ZIP for the current
@@ -409,17 +422,35 @@ def install_mod_from_moddb(app, mod_name, on_done=None):
                              f"Arquitectura no soportada")
         return
 
-    try:
-        moddb = fetch_moddb()
-        cache_moddb(app.active_path, moddb)
-        mod_entry = get_mod_info(moddb, mod_name)
-        if not mod_entry:
-            messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                                f"El mod '{mod_name}' no se encontró en la base de datos")
+    if moddb is None:
+        moddb = get_cached_moddb(app.active_path)
+
+    if moddb is None:
+        # Network I/O must never run from the button callback.  Reuse the
+        # existing worker, which also persists the result for future installs.
+        if getattr(app, "_moddb_lookup_worker", None) and app._moddb_lookup_worker.isRunning():
             return
-    except Exception as e:
+        worker = ModDBFetchWorker(app.active_path)
+        app._moddb_lookup_worker = worker
+
+        def _on_fetched(data):
+            app._moddb_lookup_worker = None
+            install_mod_from_moddb(app, mod_name, on_done=on_done, moddb=data)
+
+        def _on_error(error):
+            app._moddb_lookup_worker = None
+            messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
+                                 f"Error al obtener lista de mods: {error}")
+
+        worker.finished.connect(_on_fetched)
+        worker.error.connect(_on_error)
+        worker.start()
+        return
+
+    mod_entry = get_mod_info(moddb, mod_name)
+    if not mod_entry:
         messagebox.showerror(app, c.t("UI_ERROR_TITLE"),
-                            f"Error al obtener lista de mods: {e}")
+                             f"El mod '{mod_name}' no se encontró en la base de datos")
         return
 
     download_url, mod_ver = find_asset_for_arch(mod_entry, arch)
@@ -436,10 +467,10 @@ def install_mod_from_moddb(app, mod_name, on_done=None):
 
     if os.path.isdir(dest_dir):
         if not messagebox.askyesno(app, c.t("UI_CONFIRM_TITLE"),
-                                   f"El mod {mod_name} ya está instalado.\n¿Reinstalar?"):
+                                   c.t("UI_MOD_ALREADY_INSTALLED_REINSTALL", mod_name=mod_name)):
             return
 
-    dialog = ProgressDialog(app, c.t("UI_DOWNLOADING_TITLE"), "Iniciando...")
+    dialog = ProgressDialog(app, c.t("UI_DOWNLOADING_TITLE"), c.t("UI_STARTING_MSG"))
     dialog.show()
 
     worker = ModInstallWorker(mod_name, download_url, dest_dir)
@@ -606,11 +637,11 @@ def _ensure_mc_libraries(app):
     needed = ["libsqliteX.so", "libmcpelauncher_mod.so"]
 
     if all(os.path.isfile(os.path.join(dest_dir, lib)) for lib in needed):
-        return  # ya están todos
+        return  # All required libraries are present
 
-    # Buscar el .so en distintas fuentes
+    # Search for .so in candidate sources
     candidates = []
-    # 1) Junto al binario mcpelauncher-client: <client_dir>/../libs_mc/lib/<arch>/
+    # 1) Alongside mcpelauncher-client binary: <client_dir>/../libs_mc/lib/<arch>/
     mode = app.config.get(c.CONFIG_KEY_MODE, c.t("UI_DEFAULT_MODE"))
     if mode == c.MODE_BIN_CUSTOM:
         cl = app.config[c.CONFIG_KEY_BINARY_PATHS].get(c.CONFIG_KEY_CLIENT, "")
@@ -620,12 +651,12 @@ def _ensure_mc_libraries(app):
         cl = shutil.which("mcpelauncher-client")
         if cl:
             candidates.append(os.path.join(os.path.dirname(cl), "..", "libs_mc", "lib", arch))
-    # 2) Bundled en CianovaLauncher mismo (libs_mc/ en la raíz del proyecto)
+    # 2) Bundled within CianovaLauncher itself (libs_mc/ in project root)
     launcher_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
     candidates.append(os.path.join(launcher_dir, "libs_mc", "lib", arch))
-    # 3) En el directorio flatpak
+    # 3) In Flatpak directory
     candidates.append(os.path.join("/app", "libs_mc", "lib", arch))
-    # 4) En el mod mcpelauncher-updates instalado (libmcpelauncher-updates.so -> libmcpelauncher_mod.so)
+    # 4) In installed mcpelauncher-updates mod (libmcpelauncher-updates.so -> libmcpelauncher_mod.so)
     if app.active_path:
         mods_base = os.path.join(app.active_path, c.MODS_DIR, "mcpelauncher-updates")
         if os.path.isdir(mods_base):
@@ -730,15 +761,16 @@ def launch_game(app):
         if drm_status == "missing":
             if _prompt_install_drm(app, version):
                 install_drm_mod(app)
-                return  # will re-launch on next click after install
             else:
-                pass  # user declined, launch without DRM mod
+                messagebox.showerror(
+                    app,
+                    c.t("UI_DRM_REQUIRED_TITLE"),
+                    c.t("UI_DRM_CANNOT_LAUNCH_MSG", version=version)
+                )
+            return  # Block launch! Cannot run Google Play version without DRM mod
         elif drm_status == "disabled":
             _warn_drm_disabled(app, version)
-    elif install_source == "apk":
-        if drm_mod_dir:
-            logger.info(f"APK install detected, excluding DRM mod from launch")
-        # DrM mod is not needed for APK versions
+            return  # Block launch! Cannot run if DRM mod is disabled
     elif drm_status == "missing" and get_latest_version_needs_drm(app):
         if _prompt_install_drm(app, version):
             install_drm_mod(app)
@@ -746,8 +778,9 @@ def launch_game(app):
 
     # Add enabled mod directories (loaded via -m flag by mcpelauncher-client)
     mod_dirs = _get_enabled_mod_dirs(app)
-    # Filter out DRM mod for APK installs
-    if install_source == "apk" and drm_mod_dir:
+    # Filter out DRM mod if the version was NOT installed from Google Play
+    if install_source != "google_play" and drm_mod_dir:
+        logger.info(f"Version install source is '{install_source or 'other'}', excluding DRM mod from launch")
         mod_dirs = [d for d in mod_dirs if d != drm_mod_dir]
 
     for d in mod_dirs:
@@ -761,9 +794,9 @@ def launch_game(app):
     _ensure_credential_helper(app)
 
     env = os.environ.copy()
-    # Solo en modo custom: prepend la carpeta configurada al PATH para que
-    # mcpelauncher-client encuentre sus librerías. En modo sistema/flatpak
-    # se usa el default y no se toca nada.
+    # Only in custom mode: prepend configured folder to PATH so
+    # mcpelauncher-client can find its libraries. In system/flatpak mode
+    # defaults are preserved untouched.
     if app.config.get(c.CONFIG_KEY_MODE) == c.MODE_BIN_CUSTOM:
         mc_dir = app.config.get(c.CONFIG_KEY_MC_LIBS_PATH, "").strip()
         if mc_dir:
@@ -874,6 +907,9 @@ def launch_game(app):
             logger.warning(f"subprocess.Popen failed ({e}), trying os.execve...")
             os.execve(cmd[0], cmd, env)
 
+        if app._game_process is not None and hasattr(app, 'on_game_launched'):
+            app.on_game_launched()
+
         action = app.config.get(c.CONFIG_KEY_LAUNCH_ACTION, c.LAUNCH_ACTION_CLOSE)
         if action == c.LAUNCH_ACTION_CLOSE:
             logger.info("Closing launcher as requested on launch.")
@@ -883,11 +919,37 @@ def launch_game(app):
             app.hide_to_tray()
         elif action == c.LAUNCH_ACTION_NONE:
             logger.info("Launching without closing launcher.")
-            if hasattr(app, 'on_game_launched'):
-                app.on_game_launched()
     except Exception as e:
         logger.error(f"Launch error: {e}")
-        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), f"Launch error: {e}")
+        messagebox.showerror(app, c.t("UI_ERROR_TITLE"), c.t("UI_LAUNCH_ERROR_MSG", error=e))
+
+
+def _force_kill_process(proc):
+    try:
+        if proc.poll() is None:
+            proc.kill()
+    except Exception:
+        pass
+
+
+def kill_game(app):
+    """Terminate the running Minecraft process."""
+    proc = getattr(app, "_game_process", None)
+    if proc is not None and proc.poll() is None:
+        logger.info(f"Terminating Minecraft process (PID: {proc.pid})...")
+        try:
+            proc.terminate()
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(1200, lambda: _force_kill_process(proc))
+        except Exception as e:
+            logger.warning(f"Error terminating game process: {e}")
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        if hasattr(app, "_check_game_process"):
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(200, app._check_game_process)
 
 
 # ═══════════════════════════════════════════
@@ -918,5 +980,8 @@ from .dependencies import verify_dependencies, show_dep_results
 from .google_integration import (
     launch_google_login,
     check_google_session,
+    get_google_session_email,
+    remove_google_session,
     download_and_install_google,
+    cancel_google_install,
 )

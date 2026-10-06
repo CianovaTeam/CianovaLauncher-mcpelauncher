@@ -83,4 +83,4 @@ class ChangelogDialog(QDialog):
             with open(path, "r", encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
-            return f"# Error\nNo se pudo cargar el historial de cambios: {e}"
+            return f"# Error\nCould not load changelog: {e}"

@@ -1,5 +1,5 @@
 # ==========================================
-# MAPA DE DEPENDENCIAS DEL SISTEMA
+# SYSTEM DEPENDENCY MAP
 # ==========================================
 DEPENDENCY_MAP = {
     "APT": [
@@ -55,11 +55,11 @@ DEPENDENCY_MAP = {
 
 
 # ==========================================
-# CONSTANTES GLOBALES Y CONFIGURACIÓN
+# GLOBAL CONSTANTS AND CONFIGURATION
 # ==========================================
 import os
 
-# --- Información de la Aplicación ---
+# --- Application Information ---
 APP_NAME = "CianovaLauncher"
 VERSION_LAUNCHER = "3.2"
 BINARY_VERSION_INFO = "v1.7.4-official"  # Default for Flatpak or if not found
@@ -100,22 +100,22 @@ FLATPAK_REQUIRED_RUNTIMES = [
     "org.freedesktop.Platform.VAAPI.Intel"
 ]
 
-# --- Rutas y Nombres de Archivos ---
+# --- Paths and File Names ---
 HOME_DIR = os.path.expanduser("~")
 FLATPAK_INFO_FILE = "/.flatpak-info"
 DEFAULT_FLATPAK_ID = "org.cianova.Launcher"
 MCPELAUNCHER_FLATPAK_ID = "com.mcpelauncher.MCPELauncher"
 
-# Rutas de datos (sin modificar la estructura existente)
+# Data paths (preserving existing structure)
 FLATPAK_DATA_DIR = ".var/app"
 MCPELAUNCHER_DATA_SUBDIR = "data/mcpelauncher"
 LOCAL_SHARE_DIR = ".local/share/mcpelauncher"
 
-# Nombres de archivos de configuración
+# Configuration file names
 CONFIG_FILE_NAME = "cianovalauncher-config.json"
 OLD_CONFIG_FILE_NAME = "config.json"
 
-# Nombres de directorios
+# Directory names
 VERSIONS_DIR = "versions"
 PROFILES_DIR = "profiles"
 DISABLED_PACKS_DIR = "disabled_packs"
@@ -130,13 +130,13 @@ APPLICATIONS_DIR = ".local/share/applications"
 DESKTOP_SHORTCUT_NAME = "cianova-launcher.desktop"
 
 
-# Client ID — crear app en https://discord.com/developers/applications y pegar el ID.
+# Client ID — create app at https://discord.com/developers/applications and paste the ID.
 DISCORD_DEFAULT_CLIENT_ID = "1505628404362248213"
 
-# (MODE_* y STYLE_* se importan desde values.py al final del archivo)
+# (MODE_* and STYLE_* are imported from values.py at the end of the file)
 
 
-# --- Colores de la Interfaz ---
+# --- Interface Colors ---
 COLOR_PRIMARY_GREEN = "#2cc96b"
 COLOR_PRIMARY_GREEN_HOVER = "#229e54"
 COLOR_BLUE_BUTTON = "#1f6aa5"
@@ -154,16 +154,16 @@ COLOR_ORANGE_BUTTON = "#f97316"
 COLOR_ORANGE_BUTTON_HOVER = "#ea580c"
 COLOR_SELECTED_GREEN = "#15803d"
 
-CORNER_RADIUS = 4
-RADIUS_SMALL = 4
-RADIUS_TINY = 2
-RADIUS_BUTTON = 4
-RADIUS_INPUT = 4
-BTN_HEIGHT = 32
+CORNER_RADIUS = 12
+RADIUS_SMALL = 8
+RADIUS_TINY = 4
+RADIUS_BUTTON = 18
+RADIUS_INPUT = 8
+BTN_HEIGHT = 34
 SECTION_PADDING = 10
-ELEMENT_SPACING = 5
+ELEMENT_SPACING = 6
 
-# --- Textos de la Interfaz (UI Strings) ---
+# --- Theme Color Map & Dimensions ---
 # General
 THEME_COLOR_MAP = {
     "blue": "#1f6aa5",      # Classic Blue

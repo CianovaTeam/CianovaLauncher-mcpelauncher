@@ -14,7 +14,7 @@ def _mods_config_path(active_path):
     return os.path.join(active_path, c.MODS_DIR, "mods_config.json")
 
 def load_mods_config(app):
-    """Carga la config de mods (qué mods se lanzan al iniciar el juego)."""
+    """Loads the mods config (which mods are launched when starting the game)."""
     if not app.active_path:
         return {}
     cfg_path = _mods_config_path(app.active_path)
@@ -28,7 +28,7 @@ def load_mods_config(app):
     return config
 
 def save_mods_config(app, config):
-    """Guarda la config de mods."""
+    """Saves the mods config."""
     if not app.active_path:
         logger.warning("save_mods_config: no active_path")
         return
@@ -53,9 +53,10 @@ def _mod_stable_key(mod_path):
     return base
 
 
-def get_mod_launch_state(app, mod_path):
-    """Retorna si un mod debe cargarse al lanzar el juego."""
-    config = load_mods_config(app)
+def get_mod_launch_state(app, mod_path, config=None):
+    """Returns whether a mod should be loaded when launching the game."""
+    if config is None:
+        config = load_mods_config(app)
     mod_key = _mod_stable_key(mod_path)
     if mod_key in config:
         val = config[mod_key].get("launch", True)
@@ -66,7 +67,7 @@ def get_mod_launch_state(app, mod_path):
 
 
 def set_mod_launch_state(app, mod_path, launch_enabled):
-    """Establece si un mod debe cargarse al lanzar el juego."""
+    """Sets whether a mod should be loaded when launching the game."""
     config = load_mods_config(app)
     mod_key = _mod_stable_key(mod_path)
     if mod_key not in config:
@@ -76,7 +77,7 @@ def set_mod_launch_state(app, mod_path, launch_enabled):
     save_mods_config(app, config)
 
 def get_com_mojang_path(active_path):
-    """Retorna la ruta a games/com.mojang"""
+    """Returns the path to games/com.mojang."""
     if not active_path:
         return None
     # Try standard path first
@@ -89,19 +90,19 @@ def get_com_mojang_path(active_path):
     return p
 
 def get_disabled_packs_path(app):
-    """Retorna la ruta a disabled_packs dentro del perfil actual"""
+    """Returns the path to disabled_packs inside the current profile."""
     if not app.active_path:
         return None
     current_profile = app.config.get(c.CONFIG_KEY_CURRENT_PROFILE, c.t("UI_PROFILE_DEFAULT"))
     return os.path.join(app.active_path, c.PROFILES_DIR, current_profile, c.DISABLED_PACKS_DIR)
 
 def strip_mc_codes(text):
-    """Elimina códigos de color de Minecraft (§a, §l, etc.)"""
+    """Strips Minecraft color codes (§a, §l, etc.)."""
     if not text: return ""
     return re.sub(r'§[0-9a-gk-or]', '', text)
 
 def parse_lang_file(lang_path):
-    """Parsea un archivo .lang de Minecraft Bedrock"""
+    """Parses a Minecraft Bedrock .lang file."""
     translations = {}
     if os.path.exists(lang_path):
         try:
@@ -117,7 +118,7 @@ def parse_lang_file(lang_path):
     return translations
 
 def scan_all_addons(app):
-    """Escanea todas las carpetas de addons y retorna una lista de diccionarios"""
+    """Scans all addon folders and returns a list of dictionaries."""
     active_path = app.active_path
     com_mojang = get_com_mojang_path(active_path)
     if not com_mojang:
@@ -125,7 +126,7 @@ def scan_all_addons(app):
 
     addon_list = []
 
-    # Carpetas a escanear (Activadas)
+    # Folders to scan (Active)
     folders = {
         "resource_packs": c.t("UI_TYPE_RESOURCE"),
         "behavior_packs": c.t("UI_TYPE_BEHAVIOR"),
@@ -134,7 +135,7 @@ def scan_all_addons(app):
         "custom_skins": c.t("UI_TYPE_SKIN"),
     }
 
-    # Escanear packs activos
+    # Scan active packs
     for folder, type_label in folders.items():
         path = os.path.join(com_mojang, folder)
         if os.path.exists(path):
@@ -157,7 +158,7 @@ def scan_all_addons(app):
             except OSError as e:
                 logger.debug(f"Could not scan addon folder {path}: {e}")
 
-    # Escanear packs desactivados
+    # Scan disabled packs
     disabled_root = get_disabled_packs_path(app)
     if disabled_root and os.path.exists(disabled_root):
         for folder in folders.keys():
@@ -184,7 +185,7 @@ def scan_all_addons(app):
     return addon_list
 
 def _peek_packed_info(path):
-    """Lee el manifest.json dentro de un .mcpack/.mcaddon/.zip sin extraer todo"""
+    """Reads manifest.json inside a .mcpack/.mcaddon/.zip without extracting everything."""
     try:
         with zipfile.ZipFile(path, 'r') as z:
             candidates = [n for n in z.namelist() if n.replace("\\", "/").endswith("manifest.json")]
@@ -223,7 +224,7 @@ def _peek_packed_info(path):
         return None
 
 def get_addon_info(path, folder_type=None):
-    """Extrae información del manifest.json o levelname.txt"""
+    """Extracts information from manifest.json or levelname.txt."""
     info = {
         "name": os.path.basename(path),
         "description": "",
@@ -293,15 +294,15 @@ def get_addon_info(path, folder_type=None):
                 if desc:
                     info["description"] = strip_mc_codes(str(desc))
 
-                # Soporte para traducciones (.lang)
+                # Support for translation files (.lang)
                 texts_dir = os.path.join(os.path.dirname(manifest_path), "texts")
                 if os.path.exists(texts_dir):
                     all_translations = {}
-                    # Cargar traducciones (Inglés y Español)
+                    # Load translations (English and Spanish)
                     for lang_file in ["en_US.lang", "es_ES.lang", "es_MX.lang"]:
                         all_translations.update(parse_lang_file(os.path.join(texts_dir, lang_file)))
 
-                    # Resolver claves de traducción si los valores originales eran keys
+                    # Resolve translation keys if original values were keys
                     name_key = str(name) if name else ""
                     desc_key = str(desc) if desc else ""
 
@@ -353,7 +354,7 @@ def find_file_recursive(base_path, filename, max_depth=2, current_depth=0):
     return None
 
 def toggle_addon(app, addon_info):
-    """Activa o desactiva un addon moviéndolo de carpeta"""
+    """Enables or disables an addon by moving it between folders."""
     current_path = addon_info["path"]
     folder_name = addon_info["folder"]
     item_name = os.path.basename(current_path)
@@ -386,7 +387,7 @@ def delete_addon(path):
     return False
 
 def export_world(world_path, dest_dir):
-    """Exporta un mundo a formato .mcworld"""
+    """Exports a world to .mcworld format."""
     try:
         name = os.path.basename(world_path)
         levelname_path = os.path.join(world_path, "levelname.txt")
@@ -409,7 +410,7 @@ def export_world(world_path, dest_dir):
         return False, str(e)
 
 def install_addon_file(active_path, file_path, manual_type=None):
-    """Instala un archivo .mcpack, .mcworld, .mcaddon"""
+    """Installs a .mcpack, .mcworld, or .mcaddon file."""
     com_mojang = get_com_mojang_path(active_path)
     ext = os.path.splitext(file_path)[1].lower()
     results = []
@@ -566,28 +567,51 @@ def install_mcaddon(file_path, com_mojang):
         results.append(("ERROR", str(e)))
     return results
 
-def _collect_mods_recursive(search_path, app=None):
+def _collect_mods_recursive(search_path, app=None, config=None, visited=None):
+    """Collect native mods without following symlink cycles.
+
+    The launcher data directory is user-controlled, so a symlink can point back
+    to one of its parents.  Keeping real paths visited both prevents unbounded
+    recursion and avoids scanning the same tree more than once.
+    """
     mods = []
+    if visited is None:
+        visited = set()
+    real_path = os.path.realpath(search_path)
+    if real_path in visited:
+        return mods
+    visited.add(real_path)
     try:
         for item in os.listdir(search_path):
             item_path = os.path.join(search_path, item)
             if os.path.isdir(item_path):
-                mods.extend(_collect_mods_recursive(item_path, app))
+                mods.extend(_collect_mods_recursive(item_path, app, config, visited))
             elif os.path.isfile(item_path):
                 is_disabled = item.lower().endswith(".disabled")
                 base_name = item[:-9] if is_disabled else item
                 if not base_name.lower().endswith(".so"):
                     continue
+
+                # Filter out internal Minecraft game libraries that may be placed in mods
+                non_mod_libs = {
+                    "libmaesdk.so", "libplayfabmultiplayer.so", "libpairipcore.so",
+                    "libminecraftpe.so", "libfmod.so", "libc++_shared.so",
+                    "libsqlitex.so", "libconscrypt_jni.so", "libhttpclient.android.so",
+                    "libmediadecoders_android.so"
+                }
+                if base_name.lower() in non_mod_libs:
+                    continue
+
                 try:
                     size = os.path.getsize(item_path)
                 except OSError:
                     size = 0
-                launch = get_mod_launch_state(app, item_path) if app else True
+                launch = get_mod_launch_state(app, item_path, config) if app else True
 
                 # Detect DRM mod (mcpelauncher-updates)
                 desc = ""
                 if "mcpelauncher-updates" in search_path and base_name == "libmcpelauncher-updates.so":
-                    desc = "Parchea Pairip Core DRM para ejecutar Minecraft Bedrock ≥ 1.21.30 en Linux. Solo necesario para versiones instaladas desde Google Play."
+                    desc = c.t("UI_MODS_DRM_DESC")
 
                 mods.append({
                     "name": base_name,
@@ -615,7 +639,9 @@ def scan_mods(app):
     mods_path = os.path.join(active_path, c.MODS_DIR)
     if not os.path.exists(mods_path):
         return []
-    return _collect_mods_recursive(mods_path, app)
+    # Read the launch-state file once per complete scan rather than once per
+    # native library.  A collection may contain dozens of .so files.
+    return _collect_mods_recursive(mods_path, app, load_mods_config(app))
 
 def toggle_mod(app, mod_info):
     current_path = mod_info["path"]

@@ -1,18 +1,47 @@
+import os
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QTextEdit
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 from src import constants as c
+from src.utils.colors import blend_colors, hex_to_rgba
+from src.utils.resource_path import resource_path
+
+_CHICKEN_PIXMAP_CACHE = None
+
+def get_chicken_icon_pixmap(target_height=60):
+    """Load, crop out transparent borders, and cache the Minecraft chicken asset."""
+    global _CHICKEN_PIXMAP_CACHE
+    if _CHICKEN_PIXMAP_CACHE is not None and not _CHICKEN_PIXMAP_CACHE.isNull():
+        return _CHICKEN_PIXMAP_CACHE
+
+    path = resource_path("chicken_forward.png")
+    if not os.path.exists(path):
+        path = resource_path("assets/media/chicken_forward.png")
+
+    if os.path.exists(path):
+        orig = QPixmap(path)
+        if not orig.isNull():
+            # Non-transparent bounding box for chicken: (237, 37, 325, 377)
+            cropped = orig.copy(237, 37, 325, 377)
+            scaled = cropped.scaledToHeight(target_height, Qt.SmoothTransformation)
+            _CHICKEN_PIXMAP_CACHE = scaled
+            return scaled
+    return None
 
 
 def _find_theme(parent):
     """Walk up the parent chain looking for a config to read appearance/theme."""
     obj = parent
     while obj is not None:
-        cfg = getattr(obj, "config", None) or getattr(obj, "config_manager", None)
+        cfg = getattr(obj, "config", None)
+        if cfg is None:
+            cfg = getattr(obj, "config_manager", None)
         if cfg is not None:
             mode = cfg.get(c.CONFIG_KEY_APPEARANCE, "Dark")
             theme_color = cfg.get(c.CONFIG_KEY_COLOR_THEME, "blue")
             return mode, c.THEME_COLOR_MAP.get(theme_color, "#1f6aa5")
-        obj = obj.parent()
+        parent_func = getattr(obj, "parent", None)
+        obj = parent_func() if callable(parent_func) else None
     return "Dark", c.THEME_COLOR_MAP.get("blue", "#1f6aa5")
 
 
@@ -26,47 +55,67 @@ class CustomDialog(QDialog):
 
         mode, self.accent = _find_theme(parent)
         light = mode != "Dark"
-        self.dialog_bg = "#f4f5f7" if light else "#242424"
-        self.text_color = "#1a1a1a" if light else "#ffffff"
-        self.muted_color = "#555555" if light else "#a0a0a0"
+        if not light:
+            self.dialog_bg = blend_colors("#0e0e0e", self.accent, 0.035)
+            self.card_bg = blend_colors("#171717", self.accent, 0.065)
+            self.text_color = "#dedede"
+            self.muted_color = "#9e9e9e"
+            self.border_color = hex_to_rgba(blend_colors("#303030", self.accent, 0.12), 0.6)
+        else:
+            self.dialog_bg = blend_colors("#f5f6f8", self.accent, 0.02)
+            self.card_bg = blend_colors("#ffffff", self.accent, 0.04)
+            self.text_color = "#212121"
+            self.muted_color = "#5f6368"
+            self.border_color = "rgba(0, 0, 0, 0.12)"
 
         # Base size and layout
-        self.setMinimumWidth(450)
+        self.setMinimumWidth(460)
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(15, 15, 15, 15)
-        self.layout.setSpacing(10)
+        self.layout.setContentsMargins(16, 16, 16, 16)
+        self.layout.setSpacing(12)
 
-        # Main frame to mimic CTk appearance
+        # Main frame to mimic clean modern card appearance
         self.main_frame = QFrame()
         self.main_frame.setObjectName("MainFrame")
         self.main_layout = QVBoxLayout(self.main_frame)
-        self.main_layout.setContentsMargins(15, 15, 15, 15)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setSpacing(16)
         self.layout.addWidget(self.main_frame)
 
         # Content layout (Icon + Text)
         self.content_layout = QHBoxLayout()
-        self.content_layout.setSpacing(25)
+        self.content_layout.setSpacing(20)
         self.content_layout.setAlignment(Qt.AlignCenter)
         self.main_layout.addLayout(self.content_layout)
 
-        # Icon mapping
-        icon_map = {
-            "info": ("#3498db", "ℹ️"),
-            "warning": ("#f1c40f", "⚠️"),
-            "error": ("#e74c3c", "❌"),
-            "question": ("#2ecc71", "❓")
-        }
-        color, icon_char = icon_map.get(icon_type, icon_map["info"])
+        # Check if chicken icon asset should be used (info, warning, question, confirm)
+        use_chicken = icon_type in ("info", "warning", "question", "ask", "confirm", "chicken")
+        chicken_pix = get_chicken_icon_pixmap(60) if use_chicken else None
 
-        # Icon Label — sin fondo, solo el emoji limpio
-        self.icon_label = QLabel(icon_char)
-        self.icon_label.setFixedSize(50, 50)
-        self.icon_label.setStyleSheet("font-size: 36px;")
+        self.icon_label = QLabel()
+        self.icon_label.setStyleSheet("background: transparent; border: none;")
         self.icon_label.setAlignment(Qt.AlignCenter)
+
+        if chicken_pix and not chicken_pix.isNull():
+            self.icon_label.setPixmap(chicken_pix)
+            self.icon_label.setFixedSize(chicken_pix.size())
+        else:
+            icon_map = {
+                "info": ("#3498db", "ℹ️"),
+                "warning": ("#f1c40f", "⚠️"),
+                "error": ("#e74c3c", "❌"),
+                "question": ("#2ecc71", "❓")
+            }
+            color, icon_char = icon_map.get(icon_type, icon_map["info"])
+            self.icon_label.setText(icon_char)
+            self.icon_label.setFixedSize(48, 48)
+            self.icon_label.setStyleSheet("font-size: 34px; background: transparent; border: none;")
+
         self.content_layout.addWidget(self.icon_label)
 
         # Message Container (to allow better centering)
         msg_container = QFrame()
+        msg_container.setStyleSheet("background: transparent; border: none;")
         msg_layout = QVBoxLayout(msg_container)
         msg_layout.setContentsMargins(0, 0, 0, 0)
         msg_layout.setAlignment(Qt.AlignVCenter)
@@ -78,12 +127,12 @@ class CustomDialog(QDialog):
             self.msg_widget.setPlainText(message)
             self.msg_widget.setReadOnly(True)
             self.msg_widget.setFrameStyle(QFrame.NoFrame)
-            self.msg_widget.setStyleSheet(f"background: transparent; font-size: 13px; color: {self.text_color};")
+            self.msg_widget.setStyleSheet(f"background: transparent; font-size: 13px; color: {self.text_color}; border: none;")
             self.msg_widget.setMinimumHeight(150)
         else:
             self.msg_widget = QLabel(message)
             self.msg_widget.setWordWrap(True)
-            self.msg_widget.setStyleSheet(f"font-size: 14px; color: {self.text_color}; background: transparent;")
+            self.msg_widget.setStyleSheet(f"font-size: 13px; color: {self.text_color}; background: transparent; border: none;")
             self.msg_widget.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
 
         msg_layout.addWidget(self.msg_widget)
@@ -91,14 +140,14 @@ class CustomDialog(QDialog):
 
         # Buttons Frame
         self.btn_layout = QHBoxLayout()
-        self.btn_layout.setSpacing(10)
+        self.btn_layout.setSpacing(12)
         self.btn_layout.setAlignment(Qt.AlignCenter)
         self.main_layout.addLayout(self.btn_layout)
 
         for i, opt in enumerate(options):
             btn = QPushButton(opt)
             btn.setMinimumHeight(38)
-            btn.setMinimumWidth(115)
+            btn.setMinimumWidth(110)
 
             # Apply styles based on option text
             opt_low = opt.lower()
@@ -119,11 +168,13 @@ class CustomDialog(QDialog):
                     background-color: {bg_color};
                     color: white;
                     border: none;
-                    border-radius: 8px;
+                    border-radius: 6px;
                     font-weight: bold;
+                    font-size: 13px;
+                    padding: 8px 16px;
                 }}
                 QPushButton:hover {{
-                    background-color: rgba({r}, {g}, {b}, 0.73);
+                    background-color: rgba({r}, {g}, {b}, 0.82);
                 }}
             """)
 
@@ -136,7 +187,9 @@ class CustomDialog(QDialog):
                 background-color: {self.dialog_bg};
             }}
             #MainFrame {{
-                background-color: {self.dialog_bg};
+                background-color: {self.card_bg};
+                border-radius: 10px;
+                border: 1px solid {self.border_color};
             }}
             QLabel, QTextEdit {{
                 color: {self.text_color};
