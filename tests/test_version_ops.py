@@ -77,7 +77,7 @@ class TestResolveVersion:
 
 class TestGetInstalledVersions:
     def _make_app(self, active_path):
-        return SimpleNamespace(active_path=active_path)
+        return SimpleNamespace(active_path=active_path, config={})
 
     def test_lists_version_dirs_sorted_desc(self, tmp_path):
         vdir = tmp_path / c.VERSIONS_DIR

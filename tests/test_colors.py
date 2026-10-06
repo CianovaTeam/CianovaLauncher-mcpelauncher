@@ -46,7 +46,18 @@ class TestAdjustColor:
         assert adjust_color("#000000", 10) == "#0a0a0a"
 
     def test_darken(self):
-        assert adjust_color("#ffffff", -1) == "#fefefe"
+        assert adjust_color("#ffffff", -16) == "#efefef"
+
+    def test_factor_one_is_identity(self):
+        # |amount| <= 1 se interpreta como factor de brillo, no como delta.
+        assert adjust_color("#1a2b3c", 1.0) == "#1a2b3c"
+
+    def test_fractional_amount_above_one_is_additive(self):
+        # |amount| > 1 → delta aditivo (1.15 suma 1.15 a cada canal).
+        assert adjust_color("#102030", 1.15) == "#112131"
+
+    def test_factor_darken(self):
+        assert adjust_color("#102030", 0.88) == "#0e1c2a"
 
     def test_clamped_at_max(self):
         assert adjust_color("#ffffff", 50) == "#ffffff"
@@ -57,8 +68,9 @@ class TestAdjustColor:
     def test_three_digit_shorthand(self):
         assert adjust_color("#fff", -255) == "#000000"
 
-    def test_no_change_amount_zero(self):
-        assert adjust_color("#1a2b3c", 0) == "#1a2b3c"
+    def test_amount_zero_uses_factor_mode(self):
+        # amount=0 cae en el modo factor (0 * rgb → negro).
+        assert adjust_color("#1a2b3c", 0) == "#000000"
 
     def test_passthrough_non_hex(self):
         assert adjust_color("blue", 10) == "blue"
