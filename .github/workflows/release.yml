@@ -38,6 +38,20 @@ on:
       mcpelauncher_bins_version:
         description: "mcpelauncher-bins version to use (leave empty for latest)"
         required: false
+      is_hotfix:
+        description: "¿Es un hotfix? (re-publicación de la misma versión para un fix urgente)"
+        required: false
+        type: boolean
+        default: false
+      hotfix_reason:
+        description: "Razón del hotfix (se mostrará en el aviso a los usuarios)"
+        required: false
+        type: string
+      hotfix_force:
+        description: "Aviso obligatorio (no se puede ignorar por el usuario)"
+        required: false
+        type: boolean
+        default: false
 
   # ── Uncomment when ready for automatic release on tag push ──
   # push:
@@ -51,7 +65,7 @@ jobs:
       VERSION: ${{ github.event.inputs.version || github.ref_name }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # ── System dependencies ──
       - name: Install system dependencies
@@ -64,7 +78,7 @@ jobs:
 
       # ── Python ──
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -216,18 +230,85 @@ jobs:
              found {print}' Docs/Changelog.md > Docs/Changelog-current.md
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.VERSION }}
           name: Cianova Launcher ${{ env.VERSION }}
           body_path: Docs/Changelog-current.md
           fail_on_unmatched_files: false
-          overwrite: true
+          overwrite_files: true
           draft: true
           files: |
             CianovaLauncher-${{ env.VERSION }}.flatpak
             CianovaLauncher-${{ env.VERSION }}.tar.gz
             assets/flatpak/CianovaLauncher.flatpakrepo
+
+      # ── Update version.json on gh-pages root ──
+      # Uses the Contents API (no full clone of the 500MB flatpak repo).
+      # Hotfix fields let the launcher notify users even when the version string
+      # is unchanged (same-version re-release).
+      - name: Update version.json on gh-pages
+        uses: actions/github-script@v8
+        env:
+          VERSION: ${{ env.VERSION }}
+          IS_HOTFIX: ${{ github.event.inputs.is_hotfix || 'false' }}
+          HOTFIX_REASON: ${{ github.event.inputs.hotfix_reason }}
+          HOTFIX_FORCE: ${{ github.event.inputs.hotfix_force || 'false' }}
+        with:
+          script: |
+            const version = process.env.VERSION.replace(/^v/, '');
+            const isHotfix = process.env.IS_HOTFIX === 'true';
+            const reason = (process.env.HOTFIX_REASON || '').trim();
+            const force = process.env.HOTFIX_FORCE === 'true';
+
+            if (isHotfix && !reason) {
+              core.setFailed('hotfix_reason es obligatorio cuando is_hotfix=true');
+              return;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const path = 'version.json';
+            const branch = 'gh-pages';
+
+            let existing = { latest_version: '', prerelease: false };
+            let sha;
+            try {
+              const res = await github.rest.repos.getContent({ owner, repo, path, ref: branch });
+              sha = res.data.sha;
+              existing = JSON.parse(Buffer.from(res.data.content, 'base64').toString('utf-8'));
+            } catch (e) {
+              core.info('version.json no encontrado en gh-pages, se creará.');
+            }
+
+            const newData = {
+              latest_version: version,
+              prerelease: false,
+            };
+
+            if (isHotfix) {
+              const crypto = require('crypto');
+              const id = 'hf-' + crypto.createHash('sha1')
+                .update(version + '|' + reason).digest('hex').slice(0, 12);
+              newData.hotfix = {
+                id: id,
+                title: reason.slice(0, 80),
+                body: reason,
+                force: force,
+              };
+            } else {
+              delete existing.hotfix;
+            }
+
+            const content = Buffer.from(JSON.stringify(newData, null, 2) + '\n').toString('base64');
+            await github.rest.repos.createOrUpdateFileContents({
+              owner, repo, path,
+              message: `Update version.json to ${version}${isHotfix ? ' (hotfix)' : ''}`,
+              content,
+              branch,
+              sha,
+            });
+            core.info(`version.json actualizado en gh-pages (hotfix: ${isHotfix})`);
 
       # ── Deploy Flatpak repo to gh-pages ──
       - name: Deploy to gh-pages
@@ -246,7 +327,7 @@ jobs:
       VERSION: ${{ github.event.inputs.version || github.ref_name }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install system dependencies
         run: |
@@ -272,7 +353,8 @@ jobs:
             qml6-module-qtquick qml6-module-qtquick-window \
             qml6-module-qtquick-controls qml6-module-qtquick-layouts \
             zenity unzip \
-            qt6-base-dev-tools
+            qt6-base-dev-tools \
+            cmake ninja-build zlib1g-dev libssl-dev
 
       - name: Setup AppImage tooling
         run: |
@@ -284,7 +366,7 @@ jobs:
           chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -401,6 +483,23 @@ jobs:
           rm -f "${APPDIR}/usr/lib/cianova/_internal/libssl.so.3"
           rm -f "${APPDIR}/usr/lib/cianova/_internal/libcrypto.so.3"
 
+      - name: Build libzip 1.11.4 (libzip.so.5)
+        run: |
+          curl -fsSL -o /tmp/libzip.tar.gz \
+            "https://github.com/nih-at/libzip/releases/download/v1.11.4/libzip-1.11.4.tar.gz"
+          tar -xzf /tmp/libzip.tar.gz -C /tmp
+          cmake -S /tmp/libzip-1.11.4 -B /tmp/libzip-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DENABLE_LZMA=OFF -DENABLE_BZIP2=OFF -DENABLE_ZSTD=OFF
+          cmake --build /tmp/libzip-build -j"$(nproc)"
+          sudo cmake --install /tmp/libzip-build
+          # Copia explícita a ruta de búsqueda por defecto (además del cache via ldconfig)
+          sudo cp /usr/local/lib/libzip.so.5 /usr/lib/x86_64-linux-gnu/
+          sudo ldconfig
+          ldconfig -p | grep "libzip\.so\.5" || { echo "libzip.so.5 no quedó registrado"; exit 1; }
+
       - name: Bundle dependencies with linuxdeploy
         run: |
           export APPIMAGE_EXTRACT_AND_RUN=1
@@ -423,9 +522,9 @@ jobs:
             "CianovaLauncher-${VERSION}-x86_64.AppImage"
 
       - name: Upload AppImage to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.VERSION }}
           files: CianovaLauncher-${{ env.VERSION }}-x86_64.AppImage
           fail_on_unmatched_files: false
-          overwrite: true
+          overwrite_files: true
