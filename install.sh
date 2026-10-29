@@ -5,7 +5,7 @@ set -euo pipefail
 # Repositorio: https://github.com/CianovaTeam/CianovaLauncher-mcpelauncher
 
 REPO_NAME="CianovaLauncher"
-REPO_URL="https://cianovalauncher.org/CianovaLauncher.flatpakrepo"
+REPO_URL="https://cianovateam.github.io/flatpak-app/CianovaLauncher.flatpakrepo"
 APP_ID="org.cianova.Launcher"
 RUNTIMES=("org.kde.Platform//6.10" "io.qt.qtwebengine.BaseApp//6.10")
 

@@ -1,7 +1,7 @@
 [Flatpak Repo]
 Title=Cianova Launcher
-Url=https://cianovalauncher.org/repo_dist
-Homepage=https://github.com/CianovaTeam/CianovaLauncher-mcpelauncher
+Url=https://cianovateam.github.io/flatpak-app/repo_dist
+Homepage=https://github.com/CianovaTeam/flatpak-app
 Comment=Launcher simple para Minecraft Bedrock
 Description=CianovaLauncher es una interfaz gráfica moderna diseñada para facilitar la gestión, instalación y personalización de Minecraft: Bedrock Edition en Linux. Esta herramienta trabaja en conjunto con la base del proyecto MCPELauncher-manifest, proporcionando una experiencia de usuario amigable y potente.
 Icon=https://cianovalauncher.org/icon.png
